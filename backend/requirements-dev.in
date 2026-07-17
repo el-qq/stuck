@@ -1,0 +1,11 @@
+# Complete local development/test environment. The generated
+# requirements-dev.txt includes the runtime graph as well.
+-r requirements.in
+
+pytest
+pytest-asyncio
+respx
+httpx2
+pip-tools
+pip-audit
+ruff

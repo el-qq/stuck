@@ -1,0 +1,228 @@
+# STUCK — PR pipeline (iteration 8).
+#
+# Chain: lint -> { backend, frontend } (in parallel, so a PR author sees both
+# sides' failures at once) -> { e2e, docker, audit } (in parallel). Job names
+# are short on purpose — they are the required checks:
+# lint, backend, frontend, e2e, docker, audit.
+#
+# No secrets are needed anywhere in this workflow.
+
+name: PR
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  # One run per PR (or per ref for pushes); newer commits cancel older runs.
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+
+      # ruff only (not the whole requirements-dev.txt — too slow for a gate),
+      # but at the exact version pinned in backend/requirements-dev.txt so CI
+      # and local venv agree.
+      - name: Install ruff (version from backend/requirements-dev.txt)
+        run: |
+          RUFF_VERSION="$(sed -n 's/^ruff==\([0-9.]*\).*/\1/p' backend/requirements-dev.txt | head -n1)"
+          test -n "$RUFF_VERSION" || { echo "ruff pin not found in backend/requirements-dev.txt" >&2; exit 1; }
+          echo "Using ruff==$RUFF_VERSION"
+          pip install "ruff==$RUFF_VERSION"
+
+      - name: Ruff lint (backend)
+        working-directory: backend # picks up backend/ruff.toml
+        run: ruff check app tests tools
+
+      # Same as `npm run format:backend:check`, without the venv path.
+      - name: Ruff format check (backend)
+        working-directory: backend
+        run: ruff format --check app tests tools
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install root dev dependencies (prettier, editorconfig-checker)
+        run: npm ci
+
+      - name: Prettier check
+        run: npm run format:prettier:check
+
+      - name: EditorConfig check
+        run: npm run lint:editorconfig
+
+      - name: Version consistency check
+        run: npm run version:check
+
+  backend:
+    needs: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+          cache: pip # keyed by hashFiles of the dependency path below
+          cache-dependency-path: backend/requirements-dev.txt
+
+      # Same set as `npm run setup:backend`, installed into the runner's
+      # python directly (no venv needed on a throwaway runner).
+      - name: Install backend dependencies
+        working-directory: backend
+        run: pip install --require-hashes -r requirements-dev.txt
+
+      # Same as `npm run test:backend`, without the venv path.
+      - name: Backend tests (pytest)
+        working-directory: backend
+        run: python -m pytest tests/ tools/ngfw_testdata/tests/
+
+  frontend:
+    needs: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Typecheck
+        working-directory: frontend
+        run: npm run typecheck
+
+      # Same as `npm run test:frontend` (vitest, single run).
+      - name: Frontend tests (vitest)
+        working-directory: frontend
+        run: npm test -- --run
+
+  e2e:
+    needs: [backend, frontend]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            frontend/package-lock.json
+
+      - name: Install root dependencies
+        run: npm ci
+
+      - name: Install frontend dependencies
+        run: npm --prefix frontend ci
+
+      - name: Resolve pinned Playwright version
+        id: playwright
+        run: |
+          PLAYWRIGHT_VERSION="$(node -p "require('./frontend/package-lock.json').packages['node_modules/@playwright/test'].version")"
+          echo "version=$PLAYWRIGHT_VERSION" >> "$GITHUB_OUTPUT"
+          echo "Using @playwright/test $PLAYWRIGHT_VERSION"
+
+      - name: Cache Playwright browsers
+        id: playwright-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}
+
+      - name: Install Playwright chromium (+ system deps)
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        working-directory: frontend
+        run: npx playwright install --with-deps chromium
+
+      # Browsers restored from cache still need the system libraries.
+      - name: Install Playwright system deps only (cache hit)
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        working-directory: frontend
+        run: npx playwright install-deps chromium
+
+      - name: E2E tests (Playwright)
+        working-directory: frontend
+        run: npm run test:e2e
+
+      - name: Upload Playwright artifacts on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-artifacts
+          path: |
+            frontend/playwright-report
+            frontend/test-results
+          if-no-files-found: ignore
+          retention-days: 7
+
+  docker:
+    needs: [backend, frontend]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      # Build-only (no push), mirroring `docker compose build`: both current
+      # Dockerfiles are self-contained and take no build args (the Vite
+      # frontend is a static build served by nginx).
+      - name: Build backend image
+        run: docker build -t stuck-backend:ci backend/
+
+      - name: Build frontend image
+        run: docker build -t stuck-frontend:ci frontend/
+
+  audit:
+    needs: [backend, frontend]
+    runs-on: ubuntu-latest
+    # Advisory job: new upstream CVEs must not block unrelated PRs.
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+
+      - name: Install pip-audit (version from backend/requirements-dev.txt)
+        run: |
+          PIP_AUDIT_VERSION="$(sed -n 's/^pip-audit==\([0-9.]*\).*/\1/p' backend/requirements-dev.txt | head -n1)"
+          test -n "$PIP_AUDIT_VERSION" || { echo "pip-audit pin not found in backend/requirements-dev.txt" >&2; exit 1; }
+          echo "Using pip-audit==$PIP_AUDIT_VERSION"
+          pip install "pip-audit==$PIP_AUDIT_VERSION"
+
+      # Same as `npm run deps:audit:backend`, without the venv path.
+      - name: Audit backend dependencies (pip-audit)
+        working-directory: backend
+        run: pip-audit --require-hashes --disable-pip -r requirements-dev.txt
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      # npm audit reads the lockfiles; no npm ci needed.
+      - name: Audit root npm dependencies
+        run: npm audit --audit-level=high
+
+      - name: Audit frontend npm dependencies
+        run: npm --prefix frontend audit --audit-level=high

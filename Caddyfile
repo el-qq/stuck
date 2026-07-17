@@ -1,0 +1,28 @@
+# HTTPS entry point for the Docker stack. `localhost` receives a certificate
+# from Caddy's local CA; a real STUCK_PUBLIC_HOST enables normal ACME HTTPS.
+{$STUCK_PUBLIC_HOST:localhost} {
+	header {
+		# The theme bootstrap is an external same-origin file so scripts do not
+		# require unsafe-inline. React still uses inline style attributes.
+		Content-Security-Policy "default-src 'self'; base-uri 'self'; connect-src 'self'; font-src 'self'; form-action 'self'; frame-ancestors 'none'; img-src 'self' data:; object-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'"
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "no-referrer"
+		Permissions-Policy "accelerometer=(), camera=(), geolocation=(), gyroscope=(), microphone=(), payment=(), usb=()"
+		Cross-Origin-Opener-Policy "same-origin"
+		Cross-Origin-Resource-Policy "same-origin"
+		X-XSS-Protection "0"
+		-Server
+		-Via
+	}
+
+	handle /api/* {
+		header Cache-Control "no-store"
+		reverse_proxy backend:8000
+	}
+
+	handle {
+		reverse_proxy frontend:3000
+	}
+}

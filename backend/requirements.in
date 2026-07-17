@@ -1,0 +1,8 @@
+# Direct runtime dependencies. Exact direct/transitive versions are generated
+# into requirements.txt by `npm run deps:update`.
+fastapi
+starlette
+uvicorn[standard]
+httpx
+pydantic
+pydantic-settings

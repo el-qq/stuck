@@ -1,0 +1,83 @@
+# STUCK — local stack: FastAPI backend + static React/Vite frontend.
+#
+#   STUCK_ALLOWED_NGFW_HOSTS=ngfw.example.local docker compose up --build
+#   → https://localhost                 (Caddy → static UI / FastAPI /api/*)
+#
+# Only the HTTPS proxy is published on the host. Frontend and backend remain
+# private compose services; this keeps Secure cookies on one browser origin.
+#
+# The NGFW itself is external: its address is entered on the login form.
+# Access is fail-closed unless the operator configures allowed hosts/CIDRs or
+# explicitly enables STUCK_ALLOW_ANY_NGFW for an isolated lab.
+#
+# Caddy routes /api/* directly to backend and all other requests to the static
+# frontend container, preserving one HTTPS origin for Secure cookies.
+
+services:
+  backend:
+    build: ./backend
+    container_name: stuck-backend
+    volumes:
+      # Backend conf (all STUCK_* keys); env vars still override file values.
+      - ./backend/conf/stuck.conf:/app/conf/stuck.conf:ro
+    environment:
+      # Docker is served through Caddy over HTTPS on one browser origin.
+      STUCK_COOKIE_SECURE: "true"
+      STUCK_ALLOWED_ORIGINS: "https://${STUCK_PUBLIC_HOST:-localhost}"
+      STUCK_ALLOWED_NGFW_HOSTS: "${STUCK_ALLOWED_NGFW_HOSTS:-}"
+      STUCK_ALLOWED_NGFW_CIDRS: "${STUCK_ALLOWED_NGFW_CIDRS:-}"
+      STUCK_ALLOW_ANY_NGFW: "${STUCK_ALLOW_ANY_NGFW:-false}"
+      # stdout logging, docker-friendly (see backend/conf/stuck.conf for keys).
+      STUCK_LOG_LEVEL: INFO
+      STUCK_LOG_FORMAT: text
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/api/health', timeout=3).status==200 else 1)"
+      interval: 30s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend
+    container_name: stuck-frontend
+    expose:
+      - "3000"
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      # busybox wget is available in nginx:alpine.
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:3000/"]
+      interval: 30s
+      timeout: 5s
+      start_period: 15s
+      retries: 3
+    restart: unless-stopped
+
+  proxy:
+    image: caddy:2.11.4-alpine@sha256:5f5c8640aae01df9654968d946d8f1a56c497f1dd5c5cda4cf95ab7c14d58648
+    container_name: stuck-proxy
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      # `localhost` uses Caddy's local HTTPS CA; set a real DNS name in a
+      # production environment so Caddy can obtain a public certificate.
+      STUCK_PUBLIC_HOST: ${STUCK_PUBLIC_HOST:-localhost}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      frontend:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  caddy_data:
+  caddy_config:

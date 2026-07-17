@@ -1,0 +1,17 @@
+**/node_modules
+**/dist
+**/.next
+**/.venv
+**/coverage
+**/playwright-report
+**/test-results
+**/package-lock.json
+.claude/**
+backend/**
+docs/source/**
+frontend/public/licenses/**
+LICENSE
+NOTICE
+Caddyfile
+**/Dockerfile
+.env*

@@ -1,0 +1,39 @@
+{
+  "name": "stuck",
+  "version": "0.1.0",
+  "private": true,
+  "description": "STUCK — Secure Traffic Utility & Configuration Kit. Root orchestration scripts for the FastAPI backend and React/Vite frontend.",
+  "scripts": {
+    "setup": "npm ci && npm run setup:backend && npm run setup:frontend",
+    "setup:backend": "cd backend && python3 -m venv .venv && .venv/bin/pip install --require-hashes -r requirements-dev.txt",
+    "setup:frontend": "npm --prefix frontend ci",
+    "version:check": "node scripts/version.mjs",
+    "version:set": "node scripts/version.mjs --set",
+    "deps:update": "npm run deps:update:backend && npm run deps:update:frontend && npm test && npm --prefix frontend run typecheck && npm --prefix frontend run build && npm run deps:audit",
+    "deps:update:backend": "cd backend && .venv/bin/pip install --upgrade pip-tools && .venv/bin/pip-compile --upgrade --resolver=backtracking --strip-extras --generate-hashes --allow-unsafe --output-file=requirements.txt requirements.in && .venv/bin/pip-compile --upgrade --resolver=backtracking --strip-extras --generate-hashes --allow-unsafe --output-file=requirements-dev.txt requirements-dev.in && .venv/bin/pip-sync requirements-dev.txt",
+    "deps:update:frontend": "npm install --save-dev --save-exact concurrently@latest editorconfig-checker@latest prettier@latest && npm --prefix frontend install --save-exact @ibm/plex-mono@latest @ibm/plex-sans@latest react@latest react-dom@latest && npm --prefix frontend install --save-dev --save-exact @playwright/test@latest @types/node@latest @types/react@latest @types/react-dom@latest @vitejs/plugin-react@latest @vitest/ui@latest happy-dom@latest typescript@latest vite@latest vitest@latest",
+    "deps:audit": "npm run deps:audit:backend && npm audit --audit-level=high && npm --prefix frontend audit --audit-level=high",
+    "deps:audit:backend": "cd backend && .venv/bin/pip-audit --require-hashes --disable-pip -r requirements-dev.txt",
+    "lint:editorconfig": "EC_VERSION=v3.8.0 editorconfig-checker -no-color",
+    "format": "npm run format:backend && npm run format:prettier",
+    "format:check": "npm run format:backend:check && npm run format:prettier:check && npm run lint:editorconfig",
+    "format:backend": "cd backend && .venv/bin/ruff format app tests tools",
+    "format:backend:check": "cd backend && .venv/bin/ruff format --check app tests tools",
+    "format:prettier": "prettier --write .",
+    "format:prettier:check": "prettier --check .",
+    "prestart": "sh scripts/check-setup.sh",
+    "start": "concurrently -k -n backend,frontend -c blue,green \"npm run start:backend\" \"npm run start:frontend\"",
+    "dev": "npm start",
+    "start:backend": "cd backend && STUCK_ALLOW_ANY_NGFW=true STUCK_COOKIE_SECURE=false STUCK_ALLOWED_ORIGINS=http://localhost:3000 .venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000",
+    "start:frontend": "cd frontend && STUCK_BACKEND_ORIGIN=http://127.0.0.1:8000 npm run dev",
+    "pretest": "sh scripts/check-setup.sh",
+    "test": "npm run version:check && npm run test:backend && npm run test:frontend",
+    "test:backend": "cd backend && .venv/bin/python -m pytest tests/ tools/ngfw_testdata/tests/",
+    "test:frontend": "cd frontend && npm test -- --run"
+  },
+  "devDependencies": {
+    "concurrently": "10.0.3",
+    "editorconfig-checker": "6.1.1",
+    "prettier": "3.9.5"
+  }
+}
