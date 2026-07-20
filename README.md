@@ -4,10 +4,6 @@
 
 [Русский](README_RU.md)
 
-## Supported interface languages
-
-🇬🇧 English · 🇪🇸 Español · 🇷🇺 Русский · 🇰🇿 Қазақша · 🇲🇾 Bahasa Melayu · 🇫🇷 Français · 🇧🇾 Беларуская · 🇰🇬 Кыргызча · 🇦🇲 Հայերեն
-
 STUCK is a read-only web tool for explaining how a request to a domain, IP
 address or `host:port` is processed by Ideco NGFW Novum. It loads the current
 NGFW configuration, evaluates the ordered traffic pipeline locally and shows
@@ -17,6 +13,10 @@ The interface supports checks without a specific user or on behalf of an NGFW
 user. User checks combine active authorization sessions with configured IP
 bindings. If no source IP is known, identity-based rules are still evaluated
 and IP-dependent decisions remain explicitly unknown.
+
+#### Supported interface languages
+
+🇬🇧 English · 🇪🇸 Español · 🇷🇺 Русский · 🇰🇿 Қазақша · 🇲🇾 Bahasa Melayu · 🇫🇷 Français · 🇧🇾 Беларуская · 🇰🇬 Кыргызча · 🇦🇲 Հայերեն
 
 ## Demo
 
