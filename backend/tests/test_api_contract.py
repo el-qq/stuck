@@ -84,7 +84,7 @@ class TestHealthEndpoint:
         resp = client.get("/api/health")
         assert resp.status_code == 200
         assert resp.json()["status"] == "ok"
-        assert resp.json()["version"] == __version__ == "0.1.0"
+        assert resp.json()["version"] == __version__
 
     def test_health_reports_ngfw_port_default(self, client: TestClient, settings):
         """v2.2 (FR-10.3): health exposes the NGFW port the backend connects to."""
