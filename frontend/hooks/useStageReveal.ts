@@ -10,10 +10,10 @@ const STEP_MS = 420;
  * remaining na/skip stages still render immediately after, per contract
  * invariant that every contract stage is always present).
  */
-export function useStageReveal(stages: TraceStage[] | null) {
+export function useStageReveal(stages: TraceStage[] | null, animationEnabled: boolean) {
   const reduceMotion = useMediaQuery("(prefers-reduced-motion: reduce)");
   const compactLayout = useMediaQuery("(max-width: 959px)");
-  const showImmediately = reduceMotion || compactLayout;
+  const showImmediately = !animationEnabled || reduceMotion || compactLayout;
   const [revealCount, setRevealCount] = useState(() => (showImmediately ? (stages?.length ?? 0) : 0));
   const [flowing, setFlowing] = useState(() => !showImmediately && !!stages?.length);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -60,5 +60,5 @@ export function useStageReveal(stages: TraceStage[] | null) {
 
   // Iteration 3 (#6): the "replay animation" control was removed by customer
   // request; only "skip" remains.
-  return { revealCount, flowing, done, skip };
+  return { revealCount, flowing, done, skip, animateStages: !showImmediately };
 }

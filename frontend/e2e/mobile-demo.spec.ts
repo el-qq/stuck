@@ -3,7 +3,7 @@ import { STAGE_ORDER } from "../lib/types";
 
 const MOBILE_WIDTHS = [320, 360, 390, 430, 768] as const;
 
-async function mockAnonymousBootstrap(page: Page, ngfwAccessMode: "allowlist" | "unrestricted" = "allowlist") {
+async function mockAnonymousBootstrap(page: Page, ngfwAccessMode: "allowlist" | "unrestricted" = "allowlist", traceAnimationEnabled = true) {
   await page.route("**/api/**", async (route) => {
     const path = new URL(route.request().url()).pathname;
     if (path === "/api/session") {
@@ -30,7 +30,7 @@ async function mockAnonymousBootstrap(page: Page, ngfwAccessMode: "allowlist" | 
       await route.fulfill({
         status: 200,
         contentType: "application/json",
-        body: JSON.stringify({ default_server: "" }),
+        body: JSON.stringify({ default_server: "", trace_animation_enabled: traceAnimationEnabled }),
       });
       return;
     }
@@ -38,14 +38,23 @@ async function mockAnonymousBootstrap(page: Page, ngfwAccessMode: "allowlist" | 
   });
 }
 
-async function openDemo(page: Page) {
-  await mockAnonymousBootstrap(page);
+async function openDemo(page: Page, traceAnimationEnabled = true) {
+  await mockAnonymousBootstrap(page, "allowlist", traceAnimationEnabled);
+  const configLoaded = page.waitForResponse((response) => new URL(response.url()).pathname === "/api/config");
   await page.goto("/");
+  await configLoaded;
   await page.getByRole("button", { name: "Explore the demo" }).click();
   await expect(page.getByText("Demo mode", { exact: true })).toBeVisible();
 }
 
 async function openAuthenticatedApp(page: Page) {
+  await page.route("**/api/config", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ default_server: "", trace_animation_enabled: true }),
+    });
+  });
   await page.route("**/api/session", async (route) => {
     await route.fulfill({
       status: 200,
@@ -317,4 +326,14 @@ test("desktop keeps the staged animation and the skip control", async ({ page })
   await page.getByRole("button", { name: "Skip animation" }).click();
   await expect(page.locator(".stage-node")).toHaveCount(STAGE_ORDER.length);
   await expect(page.getByText("Access allowed", { exact: true })).toBeVisible();
+});
+
+test("trace-animation configuration shows the full result immediately", async ({ page }) => {
+  await page.setViewportSize({ width: 1024, height: 800 });
+  await openDemo(page, false);
+  await page.getByRole("button", { name: "Check address" }).click();
+
+  await expect(page.locator(".stage-node")).toHaveCount(STAGE_ORDER.length);
+  await expect(page.getByText("Access allowed", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Skip animation" })).toBeHidden();
 });

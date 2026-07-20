@@ -110,6 +110,33 @@ STUCK_ALLOWED_NGFW_CIDRS=10.20.0.0/16
 setting. Loopback, link-local, multicast and unspecified destinations remain
 forbidden in every mode.
 
+## Configuration
+
+Set the values in `backend/conf/stuck.conf` or provide an environment variable
+with the same name; environment variables take precedence.
+
+| Parameter                      | Default             | Purpose                                                                                                                                                       |
+| ------------------------------ | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `STUCK_DEFAULT_SERVER`         | `gateway`           | Legacy default NGFW host for compatible clients.                                                                                                              |
+| `STUCK_NGFW_PORT`              | `8443`              | HTTPS port used to connect to NGFW.                                                                                                                           |
+| `STUCK_ALLOWED_NGFW_HOSTS`     | empty               | Comma-separated exact allowed NGFW hostnames or IPv4 addresses.                                                                                               |
+| `STUCK_ALLOWED_NGFW_CIDRS`     | empty               | Comma-separated allowed IPv4 or IPv6 networks.                                                                                                                |
+| `STUCK_ALLOW_ANY_NGFW`         | `false`             | Explicitly allow any safe NGFW host; laboratory use only.                                                                                                     |
+| `STUCK_SESSION_TTL_HOURS`      | `10`                | STUCK browser-session lifetime in hours.                                                                                                                      |
+| `STUCK_COOKIE_SECURE`          | `true`              | Mark the session cookie as HTTPS-only.                                                                                                                        |
+| `STUCK_COOKIE_SAMESITE`        | `lax`               | SameSite policy for the session cookie.                                                                                                                       |
+| `STUCK_NGFW_VERIFY_TLS`        | `false`             | Verify the NGFW TLS certificate.                                                                                                                              |
+| `STUCK_NGFW_CA_BUNDLE`         | empty               | CA-bundle path used when TLS verification is enabled.                                                                                                         |
+| `STUCK_ALLOWED_ORIGINS`        | `https://localhost` | Comma-separated CORS origins for development or split deployments.                                                                                            |
+| `STUCK_BACKEND_PORT`           | `8000`              | Port on which the backend listens.                                                                                                                            |
+| `STUCK_TRACE_DEFAULT_PORT`     | `443`               | Destination port assumed when a checked address omits one.                                                                                                    |
+| `STUCK_NGFW_TIMEOUT_SECONDS`   | `15`                | Timeout for a single NGFW request, in seconds.                                                                                                                |
+| `STUCK_LOG_LEVEL`              | `INFO`              | Minimum log level: `DEBUG`, `INFO`, `WARNING` or `ERROR`.                                                                                                     |
+| `STUCK_LOG_FORMAT`             | `text`              | Log output format: `text` or `json`.                                                                                                                          |
+| `STUCK_LOG_FILE`               | empty               | Log-file path; empty writes logs to standard output.                                                                                                          |
+| `STUCK_ENABLE_RULES_EXPORT`    | `true`              | Make the authenticated rules-snapshot export available.                                                                                                       |
+| `STUCK_ENABLE_TRACE_ANIMATION` | `true`              | Reveal desktop trace stages one at a time and show **Skip animation**; set `false` to show the complete result immediately. Also applies to the offline demo. |
+
 IBM Plex is self-hosted from exact npm packages; the built UI contacts neither
 Google Fonts nor another font CDN, and the OFL license is included.
 

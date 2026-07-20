@@ -5,11 +5,13 @@ import { useI18n } from "@/i18n";
 import { MessageKey } from "@/i18n/en";
 import { TraceResponse } from "@/lib/types";
 import { useStageReveal } from "@/hooks/useStageReveal";
+import { usePublicConfig } from "@/contexts/PublicConfigContext";
 import { StageNode } from "./StageNode";
 
 export function TraceResult({ result }: { result: TraceResponse }) {
   const { t, tOptional } = useI18n();
-  const { revealCount, flowing, done, skip } = useStageReveal(result.stages);
+  const { traceAnimationEnabled } = usePublicConfig();
+  const { revealCount, flowing, done, skip, animateStages } = useStageReveal(result.stages, traceAnimationEnabled);
 
   const stages = [...result.stages].sort((a, b) => a.order - b.order);
   // Iteration 3 (#7): the pipeline renders bottom-up — newly revealed stages
@@ -83,7 +85,7 @@ export function TraceResult({ result }: { result: TraceResponse }) {
         )}
         <div style={{ flex: 1 }} />
         {/* Iteration 3 (#6): "replay animation" removed; "skip" stays. */}
-        {!done && (
+        {traceAnimationEnabled && !done && (
           <button className="link-btn" onClick={skip} style={{ fontSize: 12.5, fontWeight: 600 }}>
             {t("verdict.skipAnimation")}
           </button>
@@ -170,7 +172,14 @@ export function TraceResult({ result }: { result: TraceResponse }) {
           const trafficIndex = stages.length - 1 - di;
           if (!(trafficIndex < revealCount || done)) return null;
           return (
-            <StageNode key={stage.key} stage={stage} isLast={trafficIndex === 0} revealed flowingConnector={flowing && trafficIndex === revealCount - 1} />
+            <StageNode
+              key={stage.key}
+              stage={stage}
+              isLast={trafficIndex === 0}
+              revealed
+              animate={animateStages}
+              flowingConnector={flowing && trafficIndex === revealCount - 1}
+            />
           );
         })}
       </div>

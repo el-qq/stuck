@@ -152,7 +152,11 @@ class LiveTestClient:
             self._thread.join(timeout=1)
             raise RuntimeError("local Uvicorn test server did not start")
 
-        self._client = httpx.Client(base_url=f"http://127.0.0.1:{self._port}")
+        # The application can assemble a complete rule snapshot before sending
+        # a trace response. CI runners occasionally need longer than httpx's
+        # five-second default to schedule that local Uvicorn thread; this is a
+        # test-transport timeout only and does not affect NGFW request limits.
+        self._client = httpx.Client(base_url=f"http://127.0.0.1:{self._port}", timeout=15.0)
         self.cookies = self._client.cookies
 
     def get(self, url: str, **kwargs):

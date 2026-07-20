@@ -60,11 +60,14 @@ No authentication required. Optional fields keep older clients compatible.
 ```ts
 {
   default_server: string;
+  trace_animation_enabled?: boolean;
 }
 ```
 
 Compatibility endpoint for non-sensitive bootstrap configuration. The current
 UI remembers the last entered host and does not depend on this value.
+`trace_animation_enabled` controls the trace-stage reveal for both live and
+demo results; absence preserves the enabled default for older backends.
 
 ## Authentication and session
 

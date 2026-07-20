@@ -63,6 +63,9 @@ class Settings(BaseSettings):
     # (v2.3) Rules export is available by default. Operators can still disable
     # it explicitly; the endpoint then answers 404 and disappears from the UI.
     STUCK_ENABLE_RULES_EXPORT: bool = True
+    # Animated trace-stage reveal is a presentation preference. Operators may
+    # turn it off for an immediate, static result view.
+    STUCK_ENABLE_TRACE_ANIMATION: bool = True
 
     @field_validator("STUCK_COOKIE_SAMESITE", "STUCK_LOG_FORMAT", mode="before")
     @classmethod

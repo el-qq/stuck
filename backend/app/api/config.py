@@ -12,4 +12,7 @@ router = APIRouter(prefix="/api", tags=["config"])
 @router.get("/config")
 async def public_config(settings: Settings = Depends(get_settings)):
     """Return values the browser needs before an administrator signs in."""
-    return {"default_server": settings.STUCK_DEFAULT_SERVER}
+    return {
+        "default_server": settings.STUCK_DEFAULT_SERVER,
+        "trace_animation_enabled": settings.STUCK_ENABLE_TRACE_ANIMATION,
+    }

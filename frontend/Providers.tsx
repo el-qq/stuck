@@ -4,16 +4,19 @@ import { SettingsProvider } from "@/contexts/SettingsContext";
 import { SessionProvider } from "@/contexts/SessionContext";
 import { ToastProvider } from "@/contexts/ToastContext";
 import { ToastViewport } from "@/components/ToastViewport";
+import { PublicConfigProvider } from "@/contexts/PublicConfigContext";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <SettingsProvider>
       <I18nProvider>
         <ToastProvider>
-          <SessionProvider>
-            {children}
-            <ToastViewport />
-          </SessionProvider>
+          <PublicConfigProvider>
+            <SessionProvider>
+              {children}
+              <ToastViewport />
+            </SessionProvider>
+          </PublicConfigProvider>
         </ToastProvider>
       </I18nProvider>
     </SettingsProvider>
