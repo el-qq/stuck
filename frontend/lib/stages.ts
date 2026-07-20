@@ -3,7 +3,7 @@ import { StageKey, StageStatus } from "./types";
 /**
  * Node badges for the pipeline visualization. Abbreviations are kept
  * language-neutral (technical shorthand, not translated) so they read the
- * same in all 5 locales; the full stage name comes from `title_key` via i18n.
+ * same in every locale; the full stage name comes from `title_key` via i18n.
  */
 export const STAGE_ABBR: Record<StageKey, string> = {
   pre_filter: "PRE",

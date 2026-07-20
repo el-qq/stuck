@@ -4,6 +4,10 @@
 
 [Русский](README_RU.md)
 
+## Supported interface languages
+
+🇬🇧 English · 🇪🇸 Español · 🇷🇺 Русский · 🇰🇿 Қазақша · 🇲🇾 Bahasa Melayu · 🇫🇷 Français · 🇧🇾 Беларуская · 🇰🇬 Кыргызча · 🇦🇲 Հայերեն
+
 STUCK is a read-only web tool for explaining how a request to a domain, IP
 address or `host:port` is processed by Ideco NGFW Novum. It loads the current
 NGFW configuration, evaluates the ordered traffic pipeline locally and shows

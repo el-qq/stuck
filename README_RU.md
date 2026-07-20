@@ -1,5 +1,9 @@
 # Secure Traffic Utility & Configuration Kit
 
+## Поддерживаемые языки интерфейса
+
+🇬🇧 English · 🇪🇸 Español · 🇷🇺 Русский · 🇰🇿 Қазақша · 🇲🇾 Bahasa Melayu · 🇫🇷 Français · 🇧🇾 Беларуская · 🇰🇬 Кыргызча · 🇦🇲 Հայերեն
+
 [![PR](https://github.com/el-qq/stuck/actions/workflows/pr.yml/badge.svg)](https://github.com/el-qq/stuck/actions/workflows/pr.yml)
 
 [English](README.md) | **Русский**

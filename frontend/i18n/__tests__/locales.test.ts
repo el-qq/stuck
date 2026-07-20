@@ -4,6 +4,10 @@ import { es } from "../es";
 import { ru } from "../ru";
 import { kk } from "../kk";
 import { ms } from "../ms";
+import { fr } from "../fr";
+import { be } from "../be";
+import { ky } from "../ky";
+import { hy } from "../hy";
 
 describe("i18n locales (FR-6: Localization)", () => {
   const locales = {
@@ -12,6 +16,10 @@ describe("i18n locales (FR-6: Localization)", () => {
     ru,
     kk,
     ms,
+    fr,
+    be,
+    ky,
+    hy,
   };
 
   const localeNames = Object.keys(locales) as Array<keyof typeof locales>;
