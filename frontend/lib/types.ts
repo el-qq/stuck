@@ -232,4 +232,7 @@ export interface HealthResponse {
 /** Non-sensitive values needed before the administrator has a session. */
 export interface PublicConfig {
   default_server: string;
+  /** Whether trace stages should reveal one by one. Absent on older backends;
+   *  the UI preserves the historical enabled default. */
+  trace_animation_enabled?: boolean;
 }

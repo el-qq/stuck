@@ -25,10 +25,11 @@ interface Props {
   stage: TraceStage;
   isLast: boolean;
   revealed: boolean;
+  animate: boolean;
   flowingConnector: boolean;
 }
 
-export function StageNode({ stage, isLast, revealed, flowingConnector }: Props) {
+export function StageNode({ stage, isLast, revealed, animate, flowingConnector }: Props) {
   const { t, tOptional } = useI18n();
 
   const tone = STATUS_TONE[stage.status];
@@ -71,7 +72,7 @@ export function StageNode({ stage, isLast, revealed, flowingConnector }: Props) 
         display: "flex",
         gap: 4,
         opacity: revealed ? undefined : 0,
-        animation: revealed ? "fadeDown .45s ease both" : undefined,
+        animation: revealed && animate ? "fadeDown .45s ease both" : undefined,
       }}
     >
       <div className="trace-pipeline__rail">

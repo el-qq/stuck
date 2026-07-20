@@ -147,6 +147,12 @@ pre_filter → rate_limit → dns → dnat → content_filter → antivirus
 variables override the file; `STUCK_CONF_FILE` selects another file. Do not
 duplicate defaults in documentation.
 
+`STUCK_ENABLE_TRACE_ANIMATION` controls only the presentation of a completed
+trace. When true, desktop results reveal stage-by-stage and offer a skip
+control; when false, every stage and the verdict appear immediately. The
+non-sensitive value is exposed through `GET /api/config`, so it also applies to
+the offline demo.
+
 NGFW destination controls:
 
 - `STUCK_ALLOWED_NGFW_HOSTS` — comma-separated exact IPv4/hostnames;

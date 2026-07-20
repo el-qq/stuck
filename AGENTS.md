@@ -68,9 +68,11 @@ TypeScript frontend. An offline demo mirrors the UI without contacting NGFW.
 2. Preserve unrelated user changes in a dirty worktree.
 3. Make the smallest coherent implementation. Update tests for behavior, not
    implementation details.
-4. Update `CHANGELOG.md` for user-visible changes. Update API/architecture docs
-   only when their contract or invariants change.
-5. Run the narrow tests first, then the full applicable checks.
+4. Update `CHANGELOG.md` only for release-note-worthy user-visible changes or
+   when the user explicitly requests it. Update API/architecture docs when
+   their contract or invariants change.
+5. Run the narrow tests first, then the full applicable checks. Run e2e tests
+   only when the change affects browser-observable behavior or e2e coverage.
 
 ## Commands
 
@@ -97,4 +99,5 @@ verification. Never place credentials in command lines, fixtures or files.
 - NGFW endpoint, response mapping or pipeline assumption →
   `docs/NGFW_API_NOTES.md`; consult a local `docs/source/` file when available.
 - Lab seeding behavior → `docs/NGFW_TESTDATA_CLI.md`.
-- User-visible change → `CHANGELOG.md`.
+- Release-note-worthy user-visible change (or explicit user request) →
+  `CHANGELOG.md`.

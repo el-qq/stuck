@@ -115,12 +115,26 @@ class TestHealthEndpoint:
             get_settings.cache_clear()
 
     def test_deprecated_public_config_still_responds(self, client: TestClient):
-        """GET /api/config is deprecated (iteration 3: the frontend no longer
-        uses it — no gateway default in the UI), but the endpoint is still
-        served for older clients."""
+        """GET /api/config exposes non-sensitive UI bootstrap settings."""
         resp = client.get("/api/config")
         assert resp.status_code == 200
         assert "default_server" in resp.json()
+        assert resp.json()["trace_animation_enabled"] is True
+
+    def test_public_config_reports_trace_animation_disabled(self, monkeypatch):
+        from app.config import get_settings
+        from app.main import create_app
+
+        monkeypatch.setenv("STUCK_ENABLE_TRACE_ANIMATION", "false")
+        get_settings.cache_clear()
+        try:
+            client = TestClient(create_app())
+            resp = client.get("/api/config")
+
+            assert resp.status_code == 200
+            assert resp.json()["trace_animation_enabled"] is False
+        finally:
+            get_settings.cache_clear()
 
 
 class TestValidationErrors:

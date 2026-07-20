@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { exportRules, getSession, getUsers, health, login, trace } from "../api";
+import { exportRules, getPublicConfig, getSession, getUsers, health, login, trace } from "../api";
 import { ApiError } from "../errors";
 
 /**
@@ -186,6 +186,22 @@ describe("lib/api.ts", () => {
 
       const data = await health();
       expect(data.ngfw_port).toBe(9443);
+    });
+  });
+
+  describe("public configuration", () => {
+    it("parses the trace-animation feature flag", async () => {
+      vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse({ default_server: "", trace_animation_enabled: false })));
+
+      const data = await getPublicConfig();
+      expect(data.trace_animation_enabled).toBe(false);
+    });
+
+    it("allows an older backend to omit the optional feature flag", async () => {
+      vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse({ default_server: "" })));
+
+      const data = await getPublicConfig();
+      expect(data.trace_animation_enabled).toBeUndefined();
     });
   });
 
