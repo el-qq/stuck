@@ -1,6 +1,6 @@
 {
   "name": "stuck-frontend",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "type": "module",
   "scripts": {
@@ -24,9 +24,9 @@
     "@types/react-dom": "19.2.3",
     "@vitejs/plugin-react": "6.0.3",
     "@vitest/ui": "4.1.10",
-    "happy-dom": "20.10.6",
+    "happy-dom": "20.11.0",
     "typescript": "7.0.2",
-    "vite": "8.1.4",
+    "vite": "8.1.5",
     "vitest": "4.1.10"
   },
   "overrides": {
