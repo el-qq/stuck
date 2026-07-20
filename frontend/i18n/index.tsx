@@ -6,8 +6,12 @@ import { es } from "./es";
 import { ru } from "./ru";
 import { kk } from "./kk";
 import { ms } from "./ms";
+import { fr } from "./fr";
+import { be } from "./be";
+import { ky } from "./ky";
+import { hy } from "./hy";
 
-export type Locale = "en" | "es" | "ru" | "kk" | "ms";
+export type Locale = "en" | "es" | "ru" | "kk" | "ms" | "fr" | "be" | "ky" | "hy";
 
 export const SUPPORTED_LOCALES: readonly { code: Locale; nativeName: string }[] = [
   { code: "en", nativeName: "English" },
@@ -15,12 +19,16 @@ export const SUPPORTED_LOCALES: readonly { code: Locale; nativeName: string }[] 
   { code: "ru", nativeName: "Русский" },
   { code: "kk", nativeName: "Қазақша" },
   { code: "ms", nativeName: "Bahasa Melayu" },
+  { code: "fr", nativeName: "Français" },
+  { code: "be", nativeName: "Беларуская" },
+  { code: "ky", nativeName: "Кыргызча" },
+  { code: "hy", nativeName: "Հայերեն" },
 ];
 
 const DEFAULT_LOCALE: Locale = "en";
 const LOCALE_STORAGE_KEY = "stuck.locale";
 
-const DICTIONARIES: Record<Locale, Record<MessageKey, string>> = { en, es, ru, kk, ms };
+const DICTIONARIES: Record<Locale, Record<MessageKey, string>> = { en, es, ru, kk, ms, fr, be, ky, hy };
 
 function isLocale(v: string): v is Locale {
   return (Object.keys(DICTIONARIES) as string[]).includes(v);
