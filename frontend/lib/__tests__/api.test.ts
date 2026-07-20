@@ -159,7 +159,7 @@ describe("lib/api.ts", () => {
         vi.fn().mockResolvedValue(
           jsonResponse({
             status: "ok",
-            version: "0.1.0",
+            version: "1.2.3-test",
             ngfw_port: 8443,
             ngfw_access_mode: "allowlist",
           }),
@@ -168,7 +168,7 @@ describe("lib/api.ts", () => {
 
       const data = await health();
       expect(data.status).toBe("ok");
-      expect(data.version).toBe("0.1.0");
+      expect(data.version).toBe("1.2.3-test");
       expect(data.ngfw_port).toBe(8443);
       expect(data.ngfw_access_mode).toBe("allowlist");
     });
