@@ -209,6 +209,8 @@ export const ru: Record<keyof typeof en, string> = {
   "verdict.resolvedIpLabel": "Разрешённый IP",
   "verdict.sourceIpLabel": "IP источника",
   "verdict.skipAnimation": "Пропустить анимацию",
+  "traceExport.downloadJson": "Скачать JSON трейса",
+  "traceExport.print": "Печать отчёта",
 
   "settings.title": "Настройки",
   "settings.themeLabel": "Тема",

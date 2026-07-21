@@ -460,3 +460,35 @@ test("trace-animation configuration shows the full result immediately", async ({
   await expect(page.getByText("Access allowed", { exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Skip animation" })).toBeHidden();
 });
+
+test("a completed demo trace can be attached as JSON or printed without an API request", async ({ page }) => {
+  await page.addInitScript(() => {
+    window.print = () => {
+      document.documentElement.dataset.printCalled = "true";
+    };
+  });
+  await page.setViewportSize({ width: 1024, height: 800 });
+  await openDemo(page, false);
+  await page.getByRole("button", { name: "Check address" }).click();
+
+  const downloadReady = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Download trace JSON" }).click();
+  const download = await downloadReady;
+  expect(download.suggestedFilename()).toMatch(/^trace-success\.com-.*\.json$/);
+  const stream = await download.createReadStream();
+  expect(stream).not.toBeNull();
+  let contents = "";
+  for await (const chunk of stream!) contents += chunk.toString();
+  expect(JSON.parse(contents)).toMatchObject({
+    format: "stuck.trace/v1",
+    trace: { target: { host: "success.com", dst_port: 443 }, summary: { verdict: "allowed" } },
+  });
+
+  await page.getByRole("button", { name: "Print report" }).click();
+  await expect(page.locator("html")).toHaveAttribute("data-print-called", "true");
+
+  await page.emulateMedia({ media: "print" });
+  await expect(page.locator(".check-workspace__controls")).toBeHidden();
+  await expect(page.locator(".trace-result")).toBeVisible();
+  await page.emulateMedia({ media: "screen" });
+});

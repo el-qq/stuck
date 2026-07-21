@@ -207,6 +207,8 @@ export const kk: Record<keyof typeof en, string> = {
   "verdict.resolvedIpLabel": "Анықталған IP",
   "verdict.sourceIpLabel": "Бастапқы IP",
   "verdict.skipAnimation": "Анимацияны өткізіп жіберу",
+  "traceExport.downloadJson": "Трасса JSON-ын жүктеу",
+  "traceExport.print": "Есепті басып шығару",
 
   "settings.title": "Баптаулар",
   "settings.themeLabel": "Тақырып",

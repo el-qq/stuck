@@ -213,6 +213,8 @@ export const es: Record<keyof typeof en, string> = {
   "verdict.resolvedIpLabel": "IP resuelta",
   "verdict.sourceIpLabel": "IP de origen",
   "verdict.skipAnimation": "Omitir animación",
+  "traceExport.downloadJson": "Descargar JSON del trazado",
+  "traceExport.print": "Imprimir informe",
 
   "settings.title": "Ajustes",
   "settings.themeLabel": "Tema",

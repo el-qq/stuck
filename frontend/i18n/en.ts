@@ -224,6 +224,10 @@ export const en = {
   "verdict.sourceIpLabel": "Source IP",
   "verdict.skipAnimation": "Skip animation",
 
+  // ---- trace export ----
+  "traceExport.downloadJson": "Download trace JSON",
+  "traceExport.print": "Print report",
+
   // ---- settings ----
   "settings.title": "Settings",
   "settings.themeLabel": "Theme",

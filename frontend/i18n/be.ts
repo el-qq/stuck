@@ -141,6 +141,8 @@ export const be: Record<keyof typeof en, string> = {
   "verdict.resolvedIpLabel": "Вызначаны IP",
   "verdict.sourceIpLabel": "IP крыніцы",
   "verdict.skipAnimation": "Прапусціць анімацыю",
+  "traceExport.downloadJson": "Спампаваць JSON трасіроўкі",
+  "traceExport.print": "Надрукаваць справаздачу",
   "settings.title": "Налады",
   "settings.themeLabel": "Тэма",
   "settings.themeLight": "Светлая",
