@@ -143,6 +143,7 @@ export const ms: Record<keyof typeof en, string> = {
   "detail.moduleOn": "Diaktifkan",
   "detail.moduleOff": "Dinyahaktifkan",
   "detail.noRule": "Tiada peraturan khusus yang sepadan pada peringkat ini.",
+  "detail.openRuleInNgfw": "Buka bahagian berkaitan dalam NGFW",
 
   "reason.cf_category_blocked": "Disekat mengikut kategori URL.",
   "reason.rate_limit_applied": "Peraturan yang sepadan mengehadkan kelajuan trafik.",

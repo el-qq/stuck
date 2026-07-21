@@ -97,6 +97,16 @@ NGFW exposes `checks_*`-style firewall verification helpers, but their workflow
 creates temporary configuration objects. The STUCK application must not call
 them. Local evaluation is less exact but preserves the read-only guarantee.
 
+## Browser links to matched rules
+
+For supported rule-bearing trace stages, STUCK can open the corresponding NGFW
+web administration section in a new browser tab. The documented UI hierarchy
+maps firewall, content-filter and IPS matches to their respective traffic-rule
+sections. The vendor material does not document a stable per-rule browser URL,
+so STUCK intentionally opens the section instead of fabricating a rule-row
+deep-link. This is a browser navigation only; it does not forward STUCK's
+server-side NGFW cookies or make an NGFW API request.
+
 ## Error mapping
 
 - transport error or timeout → `server_unreachable`;

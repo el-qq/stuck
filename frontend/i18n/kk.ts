@@ -142,6 +142,7 @@ export const kk: Record<keyof typeof en, string> = {
   "detail.moduleOn": "Қосулы",
   "detail.moduleOff": "Өшірулі",
   "detail.noRule": "Бұл кезеңде нақты ереже сәйкес келмеді.",
+  "detail.openRuleInNgfw": "NGFW-дегі тиісті бөлімді ашу",
 
   "reason.cf_category_blocked": "URL санаты бойынша бұғатталды.",
   "reason.rate_limit_applied": "Сәйкес ереже трафик жылдамдығын шектейді.",

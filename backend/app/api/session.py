@@ -33,6 +33,9 @@ async def session_status(
         "expires_at": _iso(session.expires_at),
         "rules_loaded": rules_updated_at is not None,
         "rules_updated_at": _iso(rules_updated_at) if rules_updated_at else None,
+        # The frontend uses this non-secret connection metadata solely to
+        # build a hyperlink to the corresponding NGFW administration section.
+        "ngfw_port": settings.STUCK_NGFW_PORT,
         # (v2.3) frontend shows the "Export rules" button only when true.
         "rules_export_enabled": settings.STUCK_ENABLE_RULES_EXPORT,
     }

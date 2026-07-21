@@ -143,6 +143,7 @@ export const es: Record<keyof typeof en, string> = {
   "detail.moduleOn": "Activado",
   "detail.moduleOff": "Desactivado",
   "detail.noRule": "Ninguna regla específica coincidió en esta etapa.",
+  "detail.openRuleInNgfw": "Abrir la sección relacionada en NGFW",
 
   "reason.cf_category_blocked": "Bloqueado por categoría de URL.",
   "reason.rate_limit_applied": "Una regla coincidente limita la velocidad del tráfico.",

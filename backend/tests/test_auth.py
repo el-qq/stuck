@@ -292,7 +292,7 @@ class TestLogout:
 class TestSessionEndpoint:
     """GET /api/session — session status (v2: + rules_updated_at)."""
 
-    def test_get_session_authenticated(self, authenticated_client: TestClient, valid_login_data):
+    def test_get_session_authenticated(self, authenticated_client: TestClient, valid_login_data, settings):
         resp = authenticated_client.get("/api/session")
 
         assert resp.status_code == 200
@@ -300,6 +300,7 @@ class TestSessionEndpoint:
         assert data["authenticated"] is True
         assert data["login"] == valid_login_data["login"]
         assert data["server"] == NGFW_SERVER
+        assert data["ngfw_port"] == settings.STUCK_NGFW_PORT
         assert "expires_at" in data
         # Snapshot not loaded yet (lazy): flag false, timestamp null.
         assert data["rules_loaded"] is False
