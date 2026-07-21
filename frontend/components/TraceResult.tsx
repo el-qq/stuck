@@ -4,6 +4,7 @@ import React from "react";
 import { useI18n } from "@/i18n";
 import { MessageKey } from "@/i18n/en";
 import { TraceResponse } from "@/lib/types";
+import { downloadTraceExport } from "@/lib/traceExport";
 import { useStageReveal } from "@/hooks/useStageReveal";
 import { usePublicConfig } from "@/contexts/PublicConfigContext";
 import { StageNode } from "./StageNode";
@@ -64,6 +65,10 @@ export function TraceResult({ result }: { result: TraceResponse }) {
   };
   const v = verdictMeta[verdict] ?? verdictMeta.unknown!;
 
+  function printReport() {
+    window.print();
+  }
+
   return (
     <div className="trace-result">
       <div className="trace-result__header">
@@ -86,7 +91,17 @@ export function TraceResult({ result }: { result: TraceResponse }) {
           </div>
         )}
         <div style={{ flex: 1 }} />
-        {/* Iteration 3 (#6): "replay animation" removed; "skip" stays. */}
+        <div className="trace-result__exports">
+          <button className="link-btn" onClick={() => downloadTraceExport(result)} style={{ fontSize: 12.5, fontWeight: 600 }}>
+            {t("traceExport.downloadJson")}
+          </button>
+          {done && (
+            <button className="link-btn" onClick={printReport} style={{ fontSize: 12.5, fontWeight: 600 }}>
+              {t("traceExport.print")}
+            </button>
+          )}
+        </div>
+        {/* The printed result is only offered after all animated stages are visible. */}
         {traceAnimationEnabled && !done && (
           <button className="link-btn" onClick={skip} style={{ fontSize: 12.5, fontWeight: 600 }}>
             {t("verdict.skipAnimation")}

@@ -141,6 +141,8 @@ export const hy: Record<keyof typeof en, string> = {
   "verdict.resolvedIpLabel": "Որոշված IP",
   "verdict.sourceIpLabel": "Աղբյուրի IP",
   "verdict.skipAnimation": "Բաց թողնել անիմացիան",
+  "traceExport.downloadJson": "Հետագծի JSON-ը ներբեռնել",
+  "traceExport.print": "Տպել հաշվետվությունը",
   "settings.title": "Կարգավորումներ",
   "settings.themeLabel": "Թեմա",
   "settings.themeLight": "Լուսավոր",

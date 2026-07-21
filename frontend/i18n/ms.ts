@@ -210,6 +210,8 @@ export const ms: Record<keyof typeof en, string> = {
   "verdict.resolvedIpLabel": "IP yang diselesaikan",
   "verdict.sourceIpLabel": "IP sumber",
   "verdict.skipAnimation": "Langkau animasi",
+  "traceExport.downloadJson": "Muat turun JSON jejak",
+  "traceExport.print": "Cetak laporan",
 
   "settings.title": "Tetapan",
   "settings.themeLabel": "Tema",

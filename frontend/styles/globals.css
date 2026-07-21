@@ -542,6 +542,13 @@ button {
   max-width: 100%;
 }
 
+.trace-result__exports {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
 .trace-result__categories {
   display: flex;
   align-items: center;
@@ -1000,6 +1007,69 @@ button {
     left: 12px !important;
     width: auto;
     max-width: none !important;
+  }
+}
+
+@media print {
+  @page {
+    margin: 14mm;
+  }
+
+  html,
+  body {
+    background: #fff;
+    color: #111;
+  }
+
+  .trace-result {
+    --bg: #fff;
+    --panel: #fff;
+    --panel2: #f5f6f8;
+    --line: #c5cad3;
+    --text: #111;
+    --muted: #46505f;
+    --ok: #087443;
+    --ok-soft: #e8f6ef;
+    --bad: #b42318;
+    --bad-soft: #fcecea;
+    --warn: #9a6700;
+    --warn-soft: #fff5d8;
+    --info: #066c80;
+    --info-soft: #e4f6f8;
+    --skip: #5a6678;
+    --skip-soft: #edf0f4;
+    --shadow: none;
+  }
+
+  .app-header,
+  .demo-banner,
+  .check-workspace__controls,
+  .trace-result__exports,
+  .trace-result__header > .link-btn {
+    display: none !important;
+  }
+
+  .check-workspace,
+  .check-workspace__result {
+    display: block;
+    max-width: none;
+    min-height: 0;
+    padding: 0;
+  }
+
+  .trace-result,
+  .stage-node {
+    animation: none;
+  }
+
+  .trace-verdict {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+
+  .trace-verdict,
+  .stage-node {
+    break-inside: avoid;
   }
 }
 

@@ -141,6 +141,8 @@ export const ky: Record<keyof typeof en, string> = {
   "verdict.resolvedIpLabel": "Аныкталган IP",
   "verdict.sourceIpLabel": "Булак IP",
   "verdict.skipAnimation": "Анимацияны өткөрүп жиберүү",
+  "traceExport.downloadJson": "Трассанын JSON файлын жүктөө",
+  "traceExport.print": "Отчётту басып чыгаруу",
   "settings.title": "Жөндөөлөр",
   "settings.themeLabel": "Тема",
   "settings.themeLight": "Ачык",

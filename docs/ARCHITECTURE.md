@@ -28,6 +28,10 @@ evaluates traces locally.
 - A matched rule may link to its NGFW administration section. The URL is built
   from the authenticated server and configured NGFW port, opens in a new tab
   with `noopener noreferrer`, and contains no STUCK or NGFW session value.
+- A single trace can be downloaded as a browser-generated JSON attachment or
+  printed for a ticket. Both use only an allowlisted copy of the already
+  received `TraceResponse`; neither action sends another request or exports
+  STUCK/NGFW session state.
 - `frontend/lib/types.ts` mirrors public response shapes and the fixed stage
   order.
 - `frontend/lib/storage.ts` stores only non-sensitive conveniences: the last
