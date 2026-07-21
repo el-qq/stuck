@@ -29,6 +29,18 @@ CF_DENY_RULE = {
 }
 
 
+def _whoami_profile(login: str) -> dict[str, object]:
+    """Minimal valid canonical administrator profile for a mocked NGFW."""
+
+    return {
+        "login": login,
+        "name": f"{login} display name",
+        "role_id": "predefined_admin_readonly",
+        "role_name": "Read-only administrator",
+        "competence": ["admin_read"],
+    }
+
+
 class TestTraceAuth:
     def test_trace_requires_authentication(self, client: TestClient):
         resp = client.post("/api/trace", json={"url": "example.com"})
@@ -802,6 +814,7 @@ class TestBindingPool:
     def test_binding_isolation_other_admin(self, client: TestClient, ngfw_mock, valid_login_data, binding_pool):
         """Different admin on the same server = separate binding with its own snapshot."""
         # admin1 loads a 2-user snapshot.
+        ngfw_mock.state["whoami"] = (200, _whoami_profile("admin"))
         assert client.post("/api/auth/login", json=valid_login_data).status_code == 200
         assert len(client.get("/api/users").json()["users"]) == 2
 
@@ -811,6 +824,7 @@ class TestBindingPool:
             DEFAULT_USERS + [{"id": "user.id.3", "name": "New", "login": "new"}],
         )
         admin2 = {**valid_login_data, "login": "admin2"}
+        ngfw_mock.state["whoami"] = (200, _whoami_profile("admin2"))
         resp = client.post("/api/auth/login", json=admin2)
         assert resp.status_code == 200
         assert resp.json()["session"]["first_login"] is True  # own binding, empty
@@ -819,6 +833,7 @@ class TestBindingPool:
         assert len(resp.json()["users"]) == 3
 
         # admin1's binding is untouched: re-login -> first_login=False, 2 users from cache.
+        ngfw_mock.state["whoami"] = (200, _whoami_profile("admin"))
         resp = client.post("/api/auth/login", json=valid_login_data)
         assert resp.json()["session"]["first_login"] is False
         resp = client.get("/api/users")
@@ -831,6 +846,7 @@ class TestBindingPool:
 
     def test_binding_isolation_other_server(self, client: TestClient, ngfw_mock, valid_login_data, binding_pool):
         """Same admin on a different server = separate binding (first_login=true)."""
+        ngfw_mock.state["whoami"] = (200, _whoami_profile("admin"))
         assert client.post("/api/auth/login", json=valid_login_data).status_code == 200
         assert client.get("/api/users").status_code == 200  # snapshot for server 1
 
@@ -843,6 +859,9 @@ class TestBindingPool:
                 json={"success": True},
                 headers=[("set-cookie", "insecure-ideco-session=tok2; Path=/")],
             )
+        )
+        ngfw_mock.router.get("https://10.0.0.2:8443/web/whoami").mock(
+            return_value=_httpx.Response(200, json=_whoami_profile("admin"))
         )
 
         resp = client.post("/api/auth/login", json={**valid_login_data, "server": "10.0.0.2"})

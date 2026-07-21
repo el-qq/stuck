@@ -21,20 +21,21 @@ interface ErrorEnvelope {
 }
 ```
 
-| Code                     | HTTP | Meaning                                         |
-| ------------------------ | ---: | ----------------------------------------------- |
-| `validation_error`       |  400 | Invalid request body or value                   |
-| `invalid_server_address` |  400 | Server is not a bare IPv4/hostname              |
-| `ngfw_host_not_allowed`  |  403 | Host is outside this installation's NGFW policy |
-| `invalid_credentials`    |  401 | NGFW rejected administrator credentials         |
-| `second_factor_required` |  401 | NGFW requires unsupported 2FA                   |
-| `not_authenticated`      |  401 | Missing or unknown STUCK session                |
-| `session_expired`        |  401 | STUCK or NGFW session can no longer be used     |
-| `not_found`              |  404 | Resource or disabled feature is unavailable     |
-| `server_unreachable`     |  502 | NGFW/network timeout or connection failure      |
-| `api_changed`            |  502 | Required NGFW response shape changed            |
-| `ngfw_error`             |  502 | Other NGFW failure                              |
-| `internal_error`         |  500 | Unexpected backend failure; details are hidden  |
+| Code                            | HTTP | Meaning                                                                  |
+| ------------------------------- | ---: | ------------------------------------------------------------------------ |
+| `validation_error`              |  400 | Invalid request body or value                                            |
+| `invalid_server_address`        |  400 | Server is not a bare IPv4/hostname                                       |
+| `ngfw_host_not_allowed`         |  403 | Host is outside this installation's NGFW policy                          |
+| `invalid_credentials`           |  401 | NGFW rejected administrator credentials                                  |
+| `second_factor_required`        |  401 | NGFW requires unsupported 2FA                                            |
+| `insufficient_ngfw_permissions` |  403 | Current NGFW role cannot run diagnostics; details contain only `role_id` |
+| `not_authenticated`             |  401 | Missing or unknown STUCK session                                         |
+| `session_expired`               |  401 | STUCK or NGFW session can no longer be used                              |
+| `not_found`                     |  404 | Resource or disabled feature is unavailable                              |
+| `server_unreachable`            |  502 | NGFW/network timeout or connection failure                               |
+| `api_changed`                   |  502 | Required NGFW response shape changed                                     |
+| `ngfw_error`                    |  502 | Other NGFW failure                                                       |
+| `internal_error`                |  500 | Unexpected backend failure; details are hidden                           |
 
 Frontend locale dictionaries must contain every known error code and tolerate
 unknown codes with a generic fallback.
@@ -103,7 +104,12 @@ a different API request returns `ngfw_host_not_allowed` without an NGFW
 request. Login always validates the destination policy before sending
 credentials. Exact host/CIDR mismatch or an unsafe destination also returns
 `ngfw_host_not_allowed` without an NGFW request.
-Success sets `stuck_session`; no NGFW cookie is returned.
+After the password request and before creating a STUCK session, the backend
+performs a server-side `GET /web/whoami` using the provisional NGFW cookies. It
+accepts only `login`, `name`, `role_id`, `role_name` and `competence`; the raw
+payload and cookies are never returned or logged. A 401/403 at this step is a
+2FA diagnostic (`second_factor_required`) and creates no STUCK session. Success
+sets `stuck_session`; no NGFW cookie is returned.
 
 ### `POST /api/auth/logout`
 
@@ -120,10 +126,40 @@ best-effort closes its NGFW session. The non-secret rules snapshot remains.
   expires_at: string;
   rules_loaded: boolean;
   rules_updated_at: string | null;
+  access_profile: {
+    role_id: string;
+    role_name: string;
+    trace_allowed: boolean;
+  };
   rules_export_enabled?: boolean;
   ngfw_port?: number;
 }
 ```
+
+`access_profile` is the safe, reduced result of the server-side role check.
+Only `predefined_admin_write` and `predefined_admin_readonly` have
+`trace_allowed: true`. Other known roles remain authenticated so the browser can
+show diagnostics and retry, but cannot load a rules snapshot or run a trace.
+
+### `POST /api/session/access/refresh`
+
+Rechecks the active administrator's role using the server-side NGFW cookie and
+returns the same reduced profile:
+
+```ts
+{
+  ok: true;
+  access_profile: {
+    role_id: string;
+    role_name: string;
+    trace_allowed: boolean;
+  }
+}
+```
+
+When the rechecked role is insufficient, any cached snapshot for that
+administrator + host is discarded. A rejected active cookie returns
+`session_expired`.
 
 ## Users and source addresses
 
@@ -278,6 +314,11 @@ NGFW session.
 ```
 
 Count keys describe snapshot collections and are not a stable UI layout.
+
+Snapshot-loading endpoints (`/api/rules/refresh`, users, trace and rules
+export) require `access_profile.trace_allowed`. A known insufficient role gets
+`403 insufficient_ngfw_permissions` with the safe detail
+`{ role_id: string }`; no partial trace is returned.
 
 ### `GET /api/rules/export`
 

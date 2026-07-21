@@ -80,6 +80,85 @@ async function openAuthenticatedApp(page: Page, traceAnimationEnabled = true) {
   await expect(page.getByText("Check an address", { exact: true })).toBeVisible();
 }
 
+const DENIED_ACCESS_PROFILE = {
+  role_id: "predefined_firewall_admin",
+  // This value deliberately resembles a private vendor response. The UI must
+  // use its localized role-id mapping, not render this server-provided label.
+  role_name: "private whoami payload /web/whoami",
+  trace_allowed: false,
+};
+const ALLOWED_ACCESS_PROFILE = {
+  role_id: "predefined_admin_readonly",
+  role_name: "Read-only administrator",
+  trace_allowed: true,
+};
+
+function sessionWithAccessProfile(access_profile: typeof DENIED_ACCESS_PROFILE | typeof ALLOWED_ACCESS_PROFILE) {
+  return {
+    authenticated: true,
+    login: "limited.admin",
+    server: "ngfw.example",
+    expires_at: "2099-01-01T00:00:00Z",
+    rules_loaded: false,
+    rules_updated_at: null,
+    ngfw_port: 8443,
+    rules_export_enabled: false,
+    access_profile,
+  };
+}
+
+async function openAccessRestrictedApp(page: Page, retryProfile = DENIED_ACCESS_PROFILE) {
+  let accessRefreshCalls = 0;
+  let rulesRefreshCalls = 0;
+  let logoutCalls = 0;
+  await page.route("**/api/**", async (route) => {
+    const path = new URL(route.request().url()).pathname;
+    if (path === "/api/config") {
+      await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ default_server: "", trace_animation_enabled: false }) });
+      return;
+    }
+    if (path === "/api/session") {
+      await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(sessionWithAccessProfile(DENIED_ACCESS_PROFILE)) });
+      return;
+    }
+    if (path === "/api/session/access/refresh") {
+      accessRefreshCalls += 1;
+      await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ ok: true, access_profile: retryProfile }) });
+      return;
+    }
+    if (path === "/api/rules/refresh") {
+      rulesRefreshCalls += 1;
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ ok: true, rules_updated_at: "2026-01-01T09:00:00Z", counts: {} }),
+      });
+      return;
+    }
+    if (path === "/api/auth/logout") {
+      logoutCalls += 1;
+      await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ ok: true }) });
+      return;
+    }
+    if (path === "/api/health") {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ status: "ok", ngfw_port: 8443, ngfw_access_mode: "allowlist" }),
+      });
+      return;
+    }
+    await route.abort();
+  });
+  await page.goto("/");
+  await expect(page.getByTestId("access-diagnostic-modal")).toBeVisible();
+  return {
+    accessRefreshCalls: () => accessRefreshCalls,
+    rulesRefreshCalls: () => rulesRefreshCalls,
+    logoutCalls: () => logoutCalls,
+  };
+}
+
 async function expectNoHorizontalOverflow(page: Page) {
   const dimensions = await page.evaluate(() => ({
     clientWidth: document.documentElement.clientWidth,
@@ -145,6 +224,53 @@ test("configured default server is locked on the login form", async ({ page }) =
   await expect(server).toHaveCSS("background-color", "rgb(238, 240, 244)");
   await expect(server).toHaveCSS("color", "rgb(102, 115, 138)");
   await expect(server).toHaveCSS("cursor", "not-allowed");
+});
+
+test("restricted NGFW role has a friendly modal and Close keeps diagnostics disabled", async ({ page }) => {
+  await openAccessRestrictedApp(page);
+
+  const modal = page.getByTestId("access-diagnostic-modal");
+  const details = modal.locator("details");
+  await expect(modal).toContainText("NGFW access needs attention");
+  await expect(modal).toHaveCSS("max-width", "420px");
+  await expect(details).not.toHaveAttribute("open");
+  await modal.getByText("Show details", { exact: true }).click();
+  await expect(details).toHaveAttribute("open", "");
+  await expect(modal).toContainText("Firewall administrator");
+  await expect(modal).toContainText("Traffic diagnostics");
+  await expect(modal).toContainText("Unavailable");
+  await expect(modal).not.toContainText("predefined_firewall_admin");
+  await expect(modal).not.toContainText("private whoami payload");
+  await expect(modal).not.toContainText("/web/whoami");
+
+  await page.getByTestId("access-close").click();
+  await expect(modal).toBeHidden();
+  await expect(page.getByTestId("access-warning")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Check address" })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Refresh" })).toBeDisabled();
+});
+
+test("restricted role Retry rechecks access and enables the normal snapshot flow", async ({ page }) => {
+  const diagnostic = await openAccessRestrictedApp(page, ALLOWED_ACCESS_PROFILE);
+
+  await page.getByTestId("access-retry").click();
+
+  await expect.poll(diagnostic.accessRefreshCalls).toBe(1);
+  await expect.poll(diagnostic.rulesRefreshCalls).toBe(1);
+  await expect(page.getByTestId("access-diagnostic-modal")).toBeHidden();
+  await expect(page.getByTestId("access-warning")).toBeHidden();
+  await page.getByPlaceholder("example.com:12345").fill("after-retry.example");
+  await expect(page.getByRole("button", { name: "Check address" })).toBeEnabled();
+});
+
+test("restricted role can sign out from the access diagnostic modal", async ({ page }) => {
+  const diagnostic = await openAccessRestrictedApp(page);
+
+  await page.getByTestId("access-logout").click();
+
+  await expect.poll(diagnostic.logoutCalls).toBe(1);
+  await expect(page.getByRole("button", { name: "Explore the demo" })).toBeVisible();
+  await expect(page.getByTestId("access-diagnostic-modal")).toBeHidden();
 });
 
 test("a preset value in the port field maps to its service and submits", async ({ page }) => {

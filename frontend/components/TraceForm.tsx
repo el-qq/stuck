@@ -19,6 +19,8 @@ export interface TraceSubmitPayload {
 
 interface Props {
   rulesLoaded: boolean;
+  /** False when the backend has identified a known insufficient NGFW role. */
+  traceAllowed: boolean;
   submitting: boolean;
   /** Iteration 3 (#9): bumped after a successful POST /api/rules/refresh —
    *  invalidates the local users cache so the picker re-fetches GET /api/users. */
@@ -26,7 +28,7 @@ interface Props {
   onSubmit: (payload: TraceSubmitPayload) => void;
 }
 
-export function TraceForm({ rulesLoaded, submitting, usersVersion, onSubmit }: Props) {
+export function TraceForm({ rulesLoaded, traceAllowed, submitting, usersVersion, onSubmit }: Props) {
   const { t } = useI18n();
   const session = useSession();
   const errorMessage = useApiErrorMessage();
@@ -125,7 +127,12 @@ export function TraceForm({ rulesLoaded, submitting, usersVersion, onSubmit }: P
   const selectedUser = users.find((u) => u.id === selectedUserId) ?? null;
   const sourceAddressReady = !sourceAddressesError && (sourceAddresses.length === 0 || !!selectedSourceIp);
   const canCheck =
-    rulesLoaded && address.trim().length > 0 && (mode === "all" || (!!selectedUser && sourceAddressReady)) && !sourceAddressesLoading && !submitting;
+    traceAllowed &&
+    rulesLoaded &&
+    address.trim().length > 0 &&
+    (mode === "all" || (!!selectedUser && sourceAddressReady)) &&
+    !sourceAddressesLoading &&
+    !submitting;
 
   // A colon typed straight into the address wins over the port block; otherwise
   // the block's value is used. The block only ever writes a host-only address.
@@ -381,8 +388,9 @@ export function TraceForm({ rulesLoaded, submitting, usersVersion, onSubmit }: P
         {submitting ? t("check.submitting") : mode === "user" && selectedUser ? t("check.submitAs", { name: selectedUser.name }) : t("check.submit")}
       </button>
 
-      {!rulesLoaded && (
+      {!traceAllowed && (
         <div
+          role="alert"
           style={{
             marginTop: 10,
             fontSize: 12.5,
@@ -393,9 +401,27 @@ export function TraceForm({ rulesLoaded, submitting, usersVersion, onSubmit }: P
             lineHeight: 1.45,
           }}
         >
-          {t("check.noRulesWarning")}
+          {t("access.traceDisabled")}
         </div>
       )}
+
+      {!traceAllowed
+        ? null
+        : !rulesLoaded && (
+            <div
+              style={{
+                marginTop: 10,
+                fontSize: 12.5,
+                color: "var(--warn)",
+                background: "var(--warn-soft)",
+                borderRadius: "var(--radius-sm)",
+                padding: "10px 12px",
+                lineHeight: 1.45,
+              }}
+            >
+              {t("check.noRulesWarning")}
+            </div>
+          )}
 
       <div
         style={{

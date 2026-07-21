@@ -18,11 +18,12 @@ from ..deps import (
     get_session_store,
 )
 from ..domain.binding_pool import BindingPool
+from ..domain.admin_access import AdminAccessProfile
 from ..domain.ngfw_access import normalize_server
 from ..domain.session_store import Session, SessionStore
 from ..errors import StuckError
 from ..logging_setup import log_event
-from ..ngfw.client import ngfw_login, ngfw_logout
+from ..ngfw.client import ngfw_login, ngfw_logout, ngfw_whoami
 
 _auth_log = logging.getLogger("stuck.auth")
 _pool_log = logging.getLogger("stuck.pool")
@@ -73,35 +74,53 @@ async def login(
     # Login ALWAYS validates the password against the NGFW (contract v2 §3.1),
     # even when the binding's rules snapshot is already pooled.
     ngfw_cookies = await ngfw_login(server, body.login, body.password)
+    try:
+        # Before a STUCK session exists, inspect the authenticated NGFW role.
+        # A 401/403 here is the documented provisional-cookie 2FA signal.
+        admin_access: AdminAccessProfile = await ngfw_whoami(server, ngfw_cookies, provisional=True)
+    except Exception:
+        # Do not leave a successful password-login session behind when role
+        # verification cannot complete.  No secret is logged or returned.
+        await ngfw_logout(server, ngfw_cookies)
+        raise
 
     # v2.1: NGFW cookies live only in the STUCK session; the pool keeps just
     # the rules snapshot (+ its timestamp) and survives logout.
-    session = store.create(body.login, server, ngfw_cookies)
+    # Use NGFW's canonical identity as the session/pool key.  The submitted
+    # spelling may differ by case or an authenticated directory alias.
+    session = store.create(admin_access.login, server, ngfw_cookies, admin_access)
     _set_session_cookie(response, session, settings)
 
-    binding, created = pool.ensure(body.login, server)
-    first_login = binding.snapshot is None
-    rules_updated_at = binding.rules_updated_at
-
-    log_event(
-        _pool_log,
-        "binding_created" if created else "binding_reused",
-        login=body.login,
-        server=server,
-        rules_updated_at=_iso(rules_updated_at) if rules_updated_at else None,
-    )
+    if admin_access.trace_allowed:
+        binding, created = pool.ensure(session.admin_login, server)
+        first_login = binding.snapshot is None
+        rules_updated_at = binding.rules_updated_at
+        log_event(
+            _pool_log,
+            "binding_created" if created else "binding_reused",
+            login=session.admin_login,
+            server=server,
+            rules_updated_at=_iso(rules_updated_at) if rules_updated_at else None,
+        )
+    else:
+        # Ensure no previous higher-privilege login for this pair remains in
+        # the in-memory pool while the current role is insufficient.
+        pool.discard(session.admin_login, server)
+        first_login = False
+        rules_updated_at = None
     log_event(
         _auth_log,
         "login_success",
-        login=body.login,
+        login=session.admin_login,
         server=server,
         first_login=first_login,
+        trace_allowed=admin_access.trace_allowed,
     )
 
     return {
         "ok": True,
         "session": {
-            "login": body.login,
+            "login": session.admin_login,
             "server": server,
             "expires_at": _iso(session.expires_at),
             "first_login": first_login,

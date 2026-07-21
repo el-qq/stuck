@@ -23,6 +23,7 @@ ERROR_HTTP_STATUS: dict[str, int] = {
     "ngfw_host_not_allowed": 403,
     "invalid_credentials": 401,
     "second_factor_required": 401,
+    "insufficient_ngfw_permissions": 403,
     "not_authenticated": 401,
     "session_expired": 401,
     "server_unreachable": 502,

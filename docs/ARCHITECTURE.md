@@ -50,7 +50,8 @@ evaluates traces locally.
   external NGFW paths.
 - `app/ngfw/schemas.py` validates required fields while allowing harmless new
   vendor fields.
-- `app/domain/session_store.py` stores active STUCK sessions and NGFW cookies.
+- `app/domain/session_store.py` stores active STUCK sessions, NGFW cookies and
+  the strict, non-secret current-admin role profile.
 - `app/domain/binding_pool.py` stores isolated rule snapshots without secrets.
 - `app/domain/trace_engine.py` performs deterministic, read-only rule matching.
 - `app/logging_setup.py` provides structured logging and centralized masking.
@@ -65,10 +66,10 @@ be imported or called by the STUCK application.
 
 Two in-memory stores have intentionally different lifetimes:
 
-| Store         | Key                              | Contains                                           | Removed by                                   |
-| ------------- | -------------------------------- | -------------------------------------------------- | -------------------------------------------- |
-| Session store | opaque `stuck_session`           | admin login, normalized host, NGFW cookies, expiry | logout, expiry, restart                      |
-| Binding pool  | `(admin login, normalized host)` | rule snapshot and load time                        | restart; snapshot replaced by manual refresh |
+| Store         | Key                              | Contains                                                                   | Removed by                                   |
+| ------------- | -------------------------------- | -------------------------------------------------------------------------- | -------------------------------------------- |
+| Session store | opaque `stuck_session`           | canonical admin login, normalized host, NGFW cookies, role profile, expiry | logout, expiry, restart                      |
+| Binding pool  | `(admin login, normalized host)` | rule snapshot and load time                                                | restart; snapshot replaced by manual refresh |
 
 Consequences:
 
@@ -88,12 +89,24 @@ Consequences:
 2. It enforces the installation's exact-host/CIDR policy before any outbound
    request. Unsafe special-purpose destinations are always rejected.
 3. It authenticates through `POST /web/auth/login` and captures NGFW cookies.
-4. It creates an opaque STUCK session and sets an HttpOnly cookie.
-5. The binding pool is inspected but rules are loaded lazily on first use.
+4. Before creating a STUCK session, it reads `GET /web/whoami` with those
+   provisional cookies and retains only login/name/role/competence metadata.
+   A provisional 401/403 is surfaced as a 2FA requirement; no STUCK session is
+   created.
+5. It creates an opaque STUCK session under the canonical `whoami` login and
+   sets an HttpOnly cookie. Only `predefined_admin_write` and
+   `predefined_admin_readonly` can load rules or trace traffic; a known
+   insufficient role remains logged in for a clear diagnostic, retry and
+   logout.
+6. The binding pool is inspected only for an allowed role; rules are loaded
+   lazily on first use.
 
 ### Snapshot load and refresh
 
-The first users, trace or export request loads the current pair's snapshot.
+The first users, trace or export request from an allowed role loads the current
+pair's snapshot. Known insufficient roles are rejected before a binding is
+created; a role refresh that becomes insufficient discards the pair's cached
+snapshot.
 Concurrent loads for the same pair share a lock; unrelated pairs proceed
 independently. Refresh replaces only the current pair's snapshot.
 
@@ -133,6 +146,11 @@ pre_filter → rate_limit → dns → dnat → content_filter → antivirus
 ## Security invariants
 
 - Never serialize passwords, STUCK cookie values or NGFW cookies.
+- Only the reduced `role_id`, `role_name` and boolean access decision may leave
+  the server. Raw `/web/whoami` data and competence values remain server-side.
+- A trace/snapshot is allowed only for the closed role set
+  `predefined_admin_write`, `predefined_admin_readonly`; competence strings are
+  diagnostic metadata, never an inferred permission grant.
 - Never log request bodies containing credentials. Mask sensitive keys and
   cookie-like values centrally.
 - Rules export derives the binding only from the authenticated server-side

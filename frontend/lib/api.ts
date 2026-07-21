@@ -1,6 +1,7 @@
 import { ApiError, logApiError, normalizeErrorCode } from "./errors";
 import {
   ErrorEnvelope,
+  AccessProfileRefreshResponse,
   HealthResponse,
   LoginRequest,
   LoginResponse,
@@ -144,8 +145,27 @@ export async function logout(): Promise<{ ok: true }> {
 export async function getSession(): Promise<SessionStatus> {
   const data = await request<SessionStatus>("/api/session", { method: "GET" });
   assertShape(
-    typeof data?.login === "string" && typeof data?.server === "string" && typeof data?.expires_at === "string" && "rules_updated_at" in data,
+    typeof data?.login === "string" &&
+      typeof data?.server === "string" &&
+      typeof data?.expires_at === "string" &&
+      "rules_updated_at" in data &&
+      (data.access_profile === undefined ||
+        (typeof data.access_profile.role_id === "string" &&
+          typeof data.access_profile.role_name === "string" &&
+          typeof data.access_profile.trace_allowed === "boolean")),
     "/api/session",
+  );
+  return data;
+}
+
+export async function refreshAccessProfile(): Promise<AccessProfileRefreshResponse> {
+  const data = await request<AccessProfileRefreshResponse>("/api/session/access/refresh", { method: "POST" });
+  assertShape(
+    data?.ok === true &&
+      typeof data?.access_profile?.role_id === "string" &&
+      typeof data.access_profile.role_name === "string" &&
+      typeof data.access_profile.trace_allowed === "boolean",
+    "/api/session/access/refresh",
   );
   return data;
 }

@@ -3,7 +3,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import * as api from "@/lib/api";
 import { ApiError, toApiError } from "@/lib/errors";
-import { SessionStatus } from "@/lib/types";
+import { AdminAccessProfile, SessionStatus } from "@/lib/types";
 
 type AuthStatus = "checking" | "authenticated" | "anonymous";
 
@@ -28,6 +28,8 @@ interface SessionContextValue {
   logout: () => Promise<void>;
   /** v2 (FR-2.5): record that the pair's rules snapshot is loaded and when. */
   markRulesUpdated: (rulesUpdatedAt: string) => void;
+  /** Re-evaluate the server-side NGFW role for the active session. */
+  refreshAccessProfile: () => Promise<AdminAccessProfile>;
   /** Call from any catch block. Returns true if this was an auth error and
    *  the session was reset accordingly (caller does not need to show its own
    *  error message in that case). */
@@ -149,6 +151,12 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     setSession((prev) => (prev ? { ...prev, rules_loaded: true, rules_updated_at: rulesUpdatedAt } : prev));
   }, []);
 
+  const refreshAccessProfile = useCallback(async (): Promise<AdminAccessProfile> => {
+    const result = await api.refreshAccessProfile();
+    setSession((prev) => (prev ? { ...prev, access_profile: result.access_profile } : prev));
+    return result.access_profile;
+  }, []);
+
   const handleAuthError = useCallback(
     (err: unknown): boolean => {
       const apiErr = toApiError(err);
@@ -183,9 +191,10 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       login,
       logout,
       markRulesUpdated,
+      refreshAccessProfile,
       handleAuthError,
     }),
-    [status, session, bootstrapError, expiredNotice, clearExpiredNotice, prefill, login, logout, markRulesUpdated, handleAuthError],
+    [status, session, bootstrapError, expiredNotice, clearExpiredNotice, prefill, login, logout, markRulesUpdated, refreshAccessProfile, handleAuthError],
   );
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;

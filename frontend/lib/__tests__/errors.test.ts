@@ -29,6 +29,7 @@ describe("lib/errors.ts", () => {
         "ngfw_host_not_allowed",
         "invalid_credentials",
         "second_factor_required",
+        "insufficient_ngfw_permissions",
         "not_authenticated",
         "session_expired",
         "server_unreachable",

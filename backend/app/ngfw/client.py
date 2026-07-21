@@ -16,6 +16,7 @@ from typing import Any
 import httpx
 
 from ..config import get_settings
+from ..domain.admin_access import AdminAccessProfile, parse_whoami
 from ..domain.ngfw_access import enforce_ngfw_access
 from ..errors import StuckError
 from ..logging_setup import log_event
@@ -152,6 +153,54 @@ async def ngfw_login(server: str, login: str, password: str) -> dict[str, str]:
         raise StuckError("ngfw_error", f"NGFW returned {resp.status_code} on login")
 
     raise StuckError("ngfw_error", f"Unexpected NGFW login status {resp.status_code}")
+
+
+async def ngfw_whoami(
+    server: str,
+    cookies: dict[str, str],
+    *,
+    provisional: bool = False,
+) -> AdminAccessProfile:
+    """Read the authenticated administrator profile from NGFW.
+
+    ``provisional`` is true only during password login, before a STUCK session
+    exists.  Some NGFW 2FA flows set provisional cookies and reject this call;
+    that must remain a 2FA prompt rather than an authenticated STUCK session.
+    """
+
+    await _enforce_current_access(server)
+    start = time.perf_counter()
+    try:
+        async with _new_client(server, cookies) as client:
+            resp = await client.get("/web/whoami")
+    except (httpx.ConnectError, httpx.ConnectTimeout, httpx.ReadTimeout, httpx.WriteTimeout, httpx.PoolTimeout) as exc:
+        _log_call(server, "GET", "/web/whoami", start, error=type(exc).__name__)
+        raise _unreachable(exc) from exc
+    except httpx.TransportError as exc:
+        _log_call(server, "GET", "/web/whoami", start, error=type(exc).__name__)
+        raise _unreachable(exc) from exc
+
+    _log_call(server, "GET", "/web/whoami", start, status=resp.status_code)
+
+    if resp.status_code in (401, 403):
+        if provisional:
+            raise StuckError("second_factor_required", "NGFW requires a second authentication factor")
+        raise StuckError("session_expired", "NGFW session expired or revoked")
+    if resp.status_code == 404 or 300 <= resp.status_code < 400:
+        # ``whoami`` is a required part of the supported login flow.  A
+        # missing or redirecting endpoint means this NGFW response shape is not
+        # compatible; do not guess another endpoint or follow a redirect.
+        raise StuckError("api_changed", "NGFW administrator profile is unavailable")
+    if 500 <= resp.status_code < 600:
+        raise StuckError("ngfw_error", f"NGFW returned {resp.status_code} for administrator profile")
+    if resp.status_code != 200:
+        raise StuckError("ngfw_error", f"Unexpected NGFW status {resp.status_code} for administrator profile")
+
+    # NGFW may rotate a session cookie while reporting the active profile.
+    # Keep only the allowlisted cookie names in the existing server-side
+    # dictionary; they never appear in responses or logs.
+    cookies.update(_extract_ngfw_cookies(resp))
+    return parse_whoami(_json_or_none(resp))
 
 
 async def ngfw_logout(server: str, cookies: dict[str, str]) -> None:

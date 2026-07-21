@@ -22,6 +22,8 @@ interface HeaderProps {
   exportEnabled?: boolean;
   exporting?: boolean;
   onExport?: () => void;
+  /** Prevent snapshot actions for a server-confirmed insufficient role. */
+  accessAllowed?: boolean;
 }
 
 /** UI-locale formatting; omitted timeZone intentionally uses the browser's current zone. */
@@ -45,6 +47,7 @@ export function Header({
   exportEnabled = false,
   exporting = false,
   onExport,
+  accessAllowed = true,
 }: HeaderProps) {
   const session = useSession();
   const { t, locale } = useI18n();
@@ -82,7 +85,7 @@ export function Header({
 
       <div className="app-header__actions">
         {!anonymous && (
-          <button onClick={onRefresh} disabled={refreshing} className="app-header__button btn-soft">
+          <button onClick={onRefresh} disabled={refreshing || !accessAllowed} className="app-header__button btn-soft">
             <span style={{ display: "inline-block", animation: refreshing ? "spin 1s linear infinite" : "none" }}>⟳</span>{" "}
             {refreshing ? t("header.refreshing") : t("header.refresh")}
           </button>

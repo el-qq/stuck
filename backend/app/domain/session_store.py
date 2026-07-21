@@ -19,6 +19,8 @@ import secrets
 import time
 from dataclasses import dataclass
 
+from .admin_access import AdminAccessProfile
+
 
 @dataclass
 class Session:
@@ -28,6 +30,7 @@ class Session:
     ngfw_cookies: dict[str, str]
     created_at: float
     expires_at: float
+    admin_access: AdminAccessProfile
 
     def is_expired(self, now: float | None = None) -> bool:
         return (now or time.time()) >= self.expires_at
@@ -38,7 +41,13 @@ class SessionStore:
         self._ttl = ttl_seconds
         self._by_id: dict[str, Session] = {}
 
-    def create(self, admin_login: str, server: str, ngfw_cookies: dict[str, str]) -> Session:
+    def create(
+        self,
+        admin_login: str,
+        server: str,
+        ngfw_cookies: dict[str, str],
+        admin_access: AdminAccessProfile,
+    ) -> Session:
         now = time.time()
         sid = secrets.token_urlsafe(32)
         sess = Session(
@@ -48,6 +57,7 @@ class SessionStore:
             ngfw_cookies=dict(ngfw_cookies),
             created_at=now,
             expires_at=now + self._ttl,
+            admin_access=admin_access,
         )
         self._by_id[sid] = sess
         return sess
