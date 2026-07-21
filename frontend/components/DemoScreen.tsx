@@ -4,6 +4,7 @@ import React, { useRef, useState } from "react";
 import { useI18n } from "@/i18n";
 import { DomainType, TraceResponse } from "@/lib/types";
 import { DEMO_TARGETS, DEFAULT_DEMO_TARGET, DEMO_USERS, runDemoTrace } from "@/lib/demoData";
+import { SERVICE_PRESETS } from "@/lib/servicePresets";
 import { Header } from "./Header";
 import { SettingsModal } from "./SettingsModal";
 import { UserPicker } from "./UserPicker";
@@ -60,25 +61,58 @@ export function DemoScreen({ onExit }: { onExit: () => void }) {
           <div className="check-panel">
             <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 16 }}>{t("check.panelTitle")}</div>
 
-            <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 12 }}>
-              <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--muted)" }}>{t("check.addressLabel")}</div>
-              {/* Iteration 5: read-only field; value changes only by clicking a
-                  demo target in the "recent addresses" block below. */}
-              <input
-                value={targetAddress}
-                disabled
-                readOnly
-                className="form-control mono"
-                style={{
-                  border: "1px solid var(--line)",
-                  background: "var(--skip-soft)",
-                  color: "var(--muted)",
-                  borderRadius: "var(--radius-sm)",
-                  padding: "11px 12px",
-                  fontSize: 14.5,
-                  cursor: "not-allowed",
-                }}
-              />
+            {/* Address and port share one row, mirroring the live check panel.
+                Both are read-only; the target is chosen from the chips below. */}
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "flex-end", marginBottom: 12 }}>
+              <div style={{ flex: "1 1 200px", minWidth: 0, display: "flex", flexDirection: "column", gap: 6 }}>
+                <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--muted)" }}>{t("check.addressLabel")}</div>
+                <input
+                  value={selectedTarget.host}
+                  disabled
+                  readOnly
+                  className="form-control mono"
+                  style={{
+                    border: "1px solid var(--line)",
+                    background: "var(--skip-soft)",
+                    color: "var(--muted)",
+                    borderRadius: "var(--radius-sm)",
+                    padding: "11px 12px",
+                    fontSize: 14.5,
+                    minHeight: 52,
+                    cursor: "not-allowed",
+                  }}
+                />
+              </div>
+
+              {/* The service is derived from the selected target's port; the name
+                  is shown on hover, matching the live panel's port field. */}
+              <div style={{ flex: "0 0 auto", display: "flex", flexDirection: "column", gap: 6 }}>
+                <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--muted)" }}>{t("check.portLabel")}</div>
+                {(() => {
+                  const matched = SERVICE_PRESETS.find((p) => p.port === selectedTarget.dst_port);
+                  return (
+                    <input
+                      value={selectedTarget.dst_port}
+                      disabled
+                      readOnly
+                      data-service-preset={matched?.name ?? ""}
+                      title={matched ? matched.name : t("check.servicePortHint", { port: selectedTarget.dst_port })}
+                      className="form-control mono"
+                      style={{
+                        border: "1px solid var(--line)",
+                        background: "var(--skip-soft)",
+                        color: "var(--muted)",
+                        borderRadius: "var(--radius-sm)",
+                        padding: "11px 12px",
+                        fontSize: 13.5,
+                        minHeight: 52,
+                        width: 132,
+                        cursor: "not-allowed",
+                      }}
+                    />
+                  );
+                })()}
+              </div>
             </div>
 
             {/* Iteration 5: the "recent addresses" block reused to hold the two

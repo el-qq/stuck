@@ -144,6 +144,90 @@ test("configured default server is locked on the login form", async ({ page }) =
   await expect(server).toHaveCSS("cursor", "not-allowed");
 });
 
+test("a preset value in the port field maps to its service and submits", async ({ page }) => {
+  let tracePayload: unknown;
+  await page.route("**/api/trace", async (route) => {
+    tracePayload = route.request().postDataJSON();
+    await route.fulfill({
+      status: 422,
+      contentType: "application/json",
+      body: JSON.stringify({ error: { code: "validation_error", message: "test response" } }),
+    });
+  });
+  await openAuthenticatedApp(page);
+
+  await page.getByPlaceholder("example.com:12345").fill("target.example");
+  const portField = page.getByLabel("Port / service");
+  await portField.fill("3389");
+  // The field holds the number; the matched service name shows on hover.
+  await expect(portField).toHaveAttribute("title", "RDP");
+
+  await page.getByRole("button", { name: "Check address" }).click();
+  await expect.poll(() => tracePayload).toEqual({ url: "target.example:3389" });
+});
+
+test("the port field accepts any custom port inline", async ({ page }) => {
+  let tracePayload: unknown;
+  await page.route("**/api/trace", async (route) => {
+    tracePayload = route.request().postDataJSON();
+    await route.fulfill({
+      status: 422,
+      contentType: "application/json",
+      body: JSON.stringify({ error: { code: "validation_error", message: "test response" } }),
+    });
+  });
+  await openAuthenticatedApp(page);
+
+  await page.getByPlaceholder("example.com:12345").fill("target.example");
+  const portField = page.getByLabel("Port / service");
+  await portField.fill("9443");
+  await expect(portField).toHaveAttribute("title", "Port 9443");
+
+  await page.getByRole("button", { name: "Check address" }).click();
+  await expect.poll(() => tracePayload).toEqual({ url: "target.example:9443" });
+});
+
+test("a port typed into the address moves into the port block on blur", async ({ page }) => {
+  await openAuthenticatedApp(page);
+
+  const address = page.getByPlaceholder("example.com:12345");
+  await address.fill("intranet.example:443");
+  await address.blur();
+  await expect(address).toHaveValue("intranet.example");
+  await expect(page.getByLabel("Port / service")).toHaveValue("443");
+});
+
+test("pasting a URL reduces it to its host and port", async ({ page }) => {
+  await openAuthenticatedApp(page);
+
+  const address = page.getByPlaceholder("example.com:12345");
+  await address.click();
+  await page.evaluate(() => {
+    const dt = new DataTransfer();
+    dt.setData("text/plain", "https://sub.example.com:8443/path?q=1#frag");
+    document.activeElement!.dispatchEvent(new ClipboardEvent("paste", { clipboardData: dt, bubbles: true, cancelable: true }));
+  });
+
+  await expect(address).toHaveValue("sub.example.com");
+  await expect(page.getByLabel("Port / service")).toHaveValue("8443");
+});
+
+test("demo derives the service from its selected target", async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 720 });
+  await openDemo(page);
+
+  const portField = page.locator("[data-service-preset]");
+  await expect(portField).toHaveValue("443");
+  await expect(portField).toHaveAttribute("title", "HTTPS");
+  await expect(portField).toHaveAttribute("data-service-preset", "HTTPS");
+
+  await page.getByRole("button", { name: "failure.com:8080" }).click();
+  await expect(portField).toHaveValue("8080");
+  await expect(portField).toHaveAttribute("title", "Port 8080");
+  await expect(portField).toHaveAttribute("data-service-preset", "");
+  await expectNoHorizontalOverflow(page);
+});
+
 test("failure result and long rule names wrap on a phone", async ({ page }) => {
   await page.setViewportSize({ width: 360, height: 800 });
   await openDemo(page);

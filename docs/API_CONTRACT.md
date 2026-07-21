@@ -188,6 +188,8 @@ configured addresses. One available address is selected automatically. Several
 addresses require an explicit selection. No address is valid and produces a
 trace with `source_ip: null`; user/group rules still apply.
 
+`dst_port`, when supplied, overrides an explicit port in `url`.
+
 ```ts
 type StageKey = "pre_filter" | "rate_limit" | "dns" | "dnat" | "content_filter" | "antivirus" | "firewall" | "app_control" | "ips" | "snat" | "destination";
 
