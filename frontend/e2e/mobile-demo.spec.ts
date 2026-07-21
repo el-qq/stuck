@@ -1,5 +1,7 @@
 import { expect, Page, test } from "@playwright/test";
 import { STAGE_ORDER } from "../lib/types";
+import { DEMO_TARGETS, runDemoTrace } from "../lib/demoData";
+import { MessageKey } from "../i18n/en";
 
 const MOBILE_WIDTHS = [320, 360, 390, 430, 768] as const;
 
@@ -52,12 +54,12 @@ async function openDemo(page: Page, traceAnimationEnabled = true) {
   await expect(page.getByText("Demo mode", { exact: true })).toBeVisible();
 }
 
-async function openAuthenticatedApp(page: Page) {
+async function openAuthenticatedApp(page: Page, traceAnimationEnabled = true) {
   await page.route("**/api/config", async (route) => {
     await route.fulfill({
       status: 200,
       contentType: "application/json",
-      body: JSON.stringify({ default_server: "", trace_animation_enabled: true }),
+      body: JSON.stringify({ default_server: "", trace_animation_enabled: traceAnimationEnabled }),
     });
   });
   await page.route("**/api/session", async (route) => {
@@ -70,6 +72,7 @@ async function openAuthenticatedApp(page: Page) {
         expires_at: "2099-01-01T00:00:00Z",
         rules_loaded: true,
         rules_updated_at: "2026-01-01T09:00:00Z",
+        ngfw_port: 8443,
       }),
     });
   });
@@ -226,6 +229,23 @@ test("demo derives the service from its selected target", async ({ page }) => {
   await expect(portField).toHaveAttribute("title", "Port 8080");
   await expect(portField).toHaveAttribute("data-service-preset", "");
   await expectNoHorizontalOverflow(page);
+});
+
+test("matched rules link to the relevant NGFW administration section", async ({ page }) => {
+  const blockedTarget = DEMO_TARGETS.find((target) => target.address === "failure.com:8080")!;
+  const traceResult = runDemoTrace(blockedTarget, null, (key: MessageKey) => key);
+  await page.route("**/api/trace", async (route) => {
+    await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(traceResult) });
+  });
+  await openAuthenticatedApp(page, false);
+
+  await page.getByPlaceholder("example.com:12345").fill("blocked.example");
+  await page.getByRole("button", { name: "Check address" }).click();
+
+  const link = page.getByRole("link", { name: /Open related section in NGFW/ });
+  await expect(link).toHaveAttribute("href", "https://ngfw-with-a-very-long-hostname.example.internal:8443/#/settings/access-rules/firewall");
+  await expect(link).toHaveAttribute("target", "_blank");
+  await expect(link).toHaveAttribute("rel", "noopener noreferrer");
 });
 
 test("failure result and long rule names wrap on a phone", async ({ page }) => {

@@ -135,6 +135,7 @@ export const fr: Record<keyof typeof en, string> = {
   "detail.moduleOn": "Activé",
   "detail.moduleOff": "Désactivé",
   "detail.noRule": "Aucune règle précise ne correspond à cette étape.",
+  "detail.openRuleInNgfw": "Ouvrir la section correspondante dans NGFW",
   "reason.cf_category_blocked": "Bloqué par catégorie d’URL.",
   "reason.rate_limit_applied": "Une règle correspondante limite le débit du trafic.",
   "reason.rate_limit_disabled": "La limitation de débit est désactivée.",

@@ -156,6 +156,7 @@ export const en = {
   "detail.moduleOn": "Enabled",
   "detail.moduleOff": "Disabled",
   "detail.noRule": "No specific rule matched at this stage.",
+  "detail.openRuleInNgfw": "Open related section in NGFW",
 
   // ---- reason_key fallbacks (server-defined, open vocabulary — see docs/API_CONTRACT.md) ----
   "reason.cf_category_blocked": "Blocked by URL category.",

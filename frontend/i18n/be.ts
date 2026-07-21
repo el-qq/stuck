@@ -124,6 +124,7 @@ export const be: Record<keyof typeof en, string> = {
   "detail.moduleOn": "Уключаны",
   "detail.moduleOff": "Выключаны",
   "detail.noRule": "На гэтым этапе не супала канкрэтнае правіла.",
+  "detail.openRuleInNgfw": "Адкрыць адпаведны раздзел у NGFW",
   "verdict.allowedTitle": "Доступ дазволены",
   "verdict.allowedSub": "Усе этапы прапускаюць трафік да прызначэння.",
   "verdict.blockedTitle": "Доступ заблакаваны",

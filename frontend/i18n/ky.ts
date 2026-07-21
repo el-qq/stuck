@@ -124,6 +124,7 @@ export const ky: Record<keyof typeof en, string> = {
   "detail.moduleOn": "Иштетилген",
   "detail.moduleOff": "Өчүрүлгөн",
   "detail.noRule": "Бул этапта эч бир белгилүү эреже дал келген жок.",
+  "detail.openRuleInNgfw": "NGFW'деги тиешелүү бөлүмдү ачуу",
   "verdict.allowedTitle": "Кирүүгө уруксат берилди",
   "verdict.allowedSub": "Бардык этаптар трафикти көздөгөн жерге өткөрөт.",
   "verdict.blockedTitle": "Кирүү бөгөттөлдү",

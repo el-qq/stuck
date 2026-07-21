@@ -73,6 +73,9 @@ export interface SessionStatus {
   /** Whether the rules-export feature is enabled on the backend.
    *  Optional — older backends omit it; treat absence as false. */
   rules_export_enabled?: boolean;
+  /** HTTPS port of the authenticated NGFW, used only for safe admin links.
+   *  Optional for compatibility with older backends. */
+  ngfw_port?: number;
 }
 
 export type DomainType = "local" | "ad" | "ald" | "freeipa" | "radius" | "device";

@@ -25,6 +25,9 @@ evaluates traces locally.
 - `frontend/components/` contains login, demo, trace and settings UI.
 - `frontend/lib/api.ts` is the only backend transport. Requests are same-origin,
   include credentials and use the typed envelope from `API_CONTRACT.md`.
+- A matched rule may link to its NGFW administration section. The URL is built
+  from the authenticated server and configured NGFW port, opens in a new tab
+  with `noopener noreferrer`, and contains no STUCK or NGFW session value.
 - `frontend/lib/types.ts` mirrors public response shapes and the fixed stage
   order.
 - `frontend/lib/storage.ts` stores only non-sensitive conveniences: the last

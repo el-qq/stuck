@@ -124,6 +124,7 @@ export const hy: Record<keyof typeof en, string> = {
   "detail.moduleOn": "Միացված",
   "detail.moduleOff": "Անջատված",
   "detail.noRule": "Այս փուլում ոչ մի հատուկ կանոն չի համընկել։",
+  "detail.openRuleInNgfw": "Բացել համապատասխան բաժինը NGFW-ում",
   "verdict.allowedTitle": "Մուտքը թույլատրված է",
   "verdict.allowedSub": "Բոլոր փուլերը երթևեկությունը փոխանցում են դեպի նպատակակետ։",
   "verdict.blockedTitle": "Մուտքն արգելափակված է",

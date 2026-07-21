@@ -142,6 +142,7 @@ export const ru: Record<keyof typeof en, string> = {
   "detail.moduleOn": "Включён",
   "detail.moduleOff": "Выключен",
   "detail.noRule": "На этом этапе не сработало конкретное правило.",
+  "detail.openRuleInNgfw": "Открыть раздел в NGFW",
 
   "reason.cf_category_blocked": "Заблокировано по категории URL.",
   "reason.rate_limit_applied": "Подходящее правило ограничивает скорость трафика.",

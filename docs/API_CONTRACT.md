@@ -121,6 +121,7 @@ best-effort closes its NGFW session. The non-secret rules snapshot remains.
   rules_loaded: boolean;
   rules_updated_at: string | null;
   rules_export_enabled?: boolean;
+  ngfw_port?: number;
 }
 ```
 

@@ -321,6 +321,13 @@ describe("lib/api.ts", () => {
       // The Header gate is `!anonymous && exportEnabled`; undefined is falsy.
       expect(Boolean(data.rules_export_enabled)).toBe(false);
     });
+
+    it("passes through ngfw_port for safe NGFW administration links", async () => {
+      vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse(sessionBody({ ngfw_port: 9443 }))));
+
+      const data = await getSession();
+      expect(data.ngfw_port).toBe(9443);
+    });
   });
 
   describe("export button visibility rule (mirrors Header.tsx: !anonymous && exportEnabled)", () => {

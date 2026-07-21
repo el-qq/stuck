@@ -2,8 +2,10 @@
 
 import React from "react";
 import { useI18n } from "@/i18n";
+import { useSession } from "@/contexts/SessionContext";
 import { MessageKey } from "@/i18n/en";
 import { TraceStage } from "@/lib/types";
+import { ngfwRuleSectionUrl } from "@/lib/ngfwRuleLink";
 import { STAGE_ABBR, STATUS_TONE } from "@/lib/stages";
 
 const TONE_COLOR: Record<string, string> = {
@@ -31,12 +33,14 @@ interface Props {
 
 export function StageNode({ stage, isLast, revealed, animate, flowingConnector }: Props) {
   const { t, tOptional } = useI18n();
+  const session = useSession();
 
   const tone = STATUS_TONE[stage.status];
   const color = TONE_COLOR[tone];
   const soft = TONE_SOFT[tone];
   const title = tOptional(stage.title_key) ?? t(`stage.${stage.key}` as MessageKey);
   const detail = stage.detail;
+  const ngfwRuleUrl = ngfwRuleSectionUrl(session.session?.server, session.session?.ngfw_port, stage.key, detail?.rule_id);
   const reasonText = detail?.reason_key ? tOptional(`reason.${detail.reason_key}`) : null;
 
   const detailRows: { k: string; v: string }[] = [];
@@ -163,6 +167,17 @@ export function StageNode({ stage, isLast, revealed, animate, flowingConnector }
                 <span className="mono breakable" style={{ fontSize: 13.5, fontWeight: 700 }}>
                   {detail?.rule_name ?? detail?.rule_id}
                 </span>
+                {ngfwRuleUrl && (
+                  <a
+                    href={ngfwRuleUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="link-btn"
+                    style={{ alignSelf: "flex-start", fontSize: 12.5, fontWeight: 600 }}
+                  >
+                    ↗ {t("detail.openRuleInNgfw")}
+                  </a>
+                )}
               </div>
             )}
             {detailRows.length > 0 && (
