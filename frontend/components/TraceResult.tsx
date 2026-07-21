@@ -68,12 +68,14 @@ export function TraceResult({ result }: { result: TraceResponse }) {
     <div className="trace-result">
       <div className="trace-result__header">
         <div className="trace-result__host mono breakable" style={{ fontSize: 18, fontWeight: 700 }}>
-          {result.target.host}
+          {result.target.host}:{result.target.dst_port}
         </div>
         <div className="breakable" style={{ fontSize: 13, color: "var(--muted)" }}>
           {result.user ? t("check.resultAsUser", { name: result.user.name, login: result.user.login }) : t("check.resultAllUsers")}
         </div>
-        {result.target.resolved_ip && (
+        {/* The resolved IP is only informative when it differs from the host;
+            for an IP target it just repeats the line above. */}
+        {result.target.resolved_ip && result.target.resolved_ip !== result.target.host && (
           <div className="mono breakable" style={{ fontSize: 12, color: "var(--muted)" }}>
             {t("verdict.resolvedIpLabel")}: {result.target.resolved_ip}
           </div>
