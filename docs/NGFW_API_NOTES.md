@@ -14,13 +14,19 @@ source files are indexed by `docs/source/toc.yaml`.
   every mode.
 - `POST /web/auth/login` receives `{login, password, rest_path}` and returns
   session cookies through `Set-Cookie`.
+- `GET /web/whoami` is a UI-observed, read-only post-login preflight. STUCK
+  accepts only its `login`, `name`, `role_id`, `role_name` and `competence`
+  fields, then stores a reduced role decision in the STUCK session. A 401/403
+  when called with provisional post-password cookies is treated as a 2FA
+  requirement; STUCK does not guess a WebSocket or OTP completion protocol.
 - Every subsequent NGFW call forwards those cookies from backend memory.
 - `DELETE /web/auth/login` closes only the session identified by those cookies.
 - NGFW's session lifetime is independent of STUCK's configured browser session.
   A rejected NGFW cookie maps to `session_expired` without deleting the cached
   rule snapshot.
 - 2FA response details are not stable enough to complete the flow; STUCK maps a
-  detected challenge to `second_factor_required`.
+  detected challenge, or a provisional `whoami` 401/403, to
+  `second_factor_required`.
 
 ## Snapshot endpoints
 
@@ -58,6 +64,21 @@ These are read for each relevant trace and are not cached:
 An address present in both user endpoints is returned once with `active=true`
 and `assigned=true`. `always_logged` changes the authorization module label but
 is not required for an enabled binding to be considered assigned.
+
+## Administrator access preflight
+
+The local administrator-session documentation records the role and competence
+shape used by the NGFW UI. After password login, STUCK reads `GET /web/whoami`
+with the provisional cookies before issuing its own session. This endpoint is
+not present in the supplied REST reference, so it remains explicitly
+UI-observed and is guarded by strict mocks. Missing, redirecting or malformed
+responses are `api_changed`, never a fallback to another endpoint.
+
+STUCK grants snapshot/trace access only to `predefined_admin_write` and
+`predefined_admin_readonly`. Other known roles receive the typed
+`insufficient_ngfw_permissions` diagnostic without loading any rules. The
+browser receives only role id/name and the boolean decision; it never sees a
+cookie, raw payload, endpoint path or competence values.
 
 ## Trace pipeline
 
@@ -113,6 +134,7 @@ server-side NGFW cookies or make an NGFW API request.
 - rejected login → `invalid_credentials`;
 - rejected established cookie → `session_expired`;
 - detected second-factor challenge → `second_factor_required`;
+- known insufficient administrator role → `insufficient_ngfw_permissions`;
 - required response shape mismatch → `api_changed`;
 - other NGFW failure → `ngfw_error`.
 

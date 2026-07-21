@@ -157,6 +157,18 @@ class TestLogin:
                 headers=[("set-cookie", "insecure-ideco-session=tok; Path=/")],
             )
         )
+        ngfw_mock.router.get("https://ngfw.corp.local:8443/web/whoami").mock(
+            return_value=httpx.Response(
+                200,
+                json={
+                    "login": "admin",
+                    "name": "Read-only Admin",
+                    "role_id": "predefined_admin_readonly",
+                    "role_name": "Read-only administrator",
+                    "competence": ["admin_read"],
+                },
+            )
+        )
 
         async def resolve_test_host(host, port):
             assert host == "ngfw.corp.local"

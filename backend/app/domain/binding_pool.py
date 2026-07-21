@@ -106,6 +106,18 @@ class BindingPool:
             return binding, True
         return binding, False
 
+    def discard(self, admin_login: str, server: str) -> None:
+        """Remove a cached pair when its current role cannot use STUCK.
+
+        A former administrator must not retain a process-local rules snapshot
+        after signing in with a known insufficient role.  Locks are only
+        synchronization metadata and can be discarded with the binding.
+        """
+
+        key = self._key(admin_login, server)
+        self._by_key.pop(key, None)
+        self._load_locks.pop(key, None)
+
     def set_snapshot(self, binding: Binding, snapshot: RulesSnapshot) -> None:
         binding.snapshot = snapshot
 

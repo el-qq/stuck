@@ -9,6 +9,7 @@ export type ErrorCode =
   | "ngfw_host_not_allowed"
   | "invalid_credentials"
   | "second_factor_required"
+  | "insufficient_ngfw_permissions"
   | "not_authenticated"
   | "session_expired"
   | "server_unreachable"
@@ -24,6 +25,7 @@ export const KNOWN_ERROR_CODES: readonly ErrorCode[] = [
   "ngfw_host_not_allowed",
   "invalid_credentials",
   "second_factor_required",
+  "insufficient_ngfw_permissions",
   "not_authenticated",
   "session_expired",
   "server_unreachable",
@@ -57,6 +59,13 @@ export interface SessionInfo {
   rules_updated_at: string | null;
 }
 
+/** The small, non-secret access decision derived server-side from NGFW whoami. */
+export interface AdminAccessProfile {
+  role_id: string;
+  role_name: string;
+  trace_allowed: boolean;
+}
+
 export interface LoginResponse {
   ok: true;
   session: SessionInfo;
@@ -70,12 +79,20 @@ export interface SessionStatus {
   rules_loaded: boolean;
   /** v2: when the pair's rules snapshot was last loaded; null if never. */
   rules_updated_at: string | null;
+  /** Optional only for compatibility with an older backend. New backends
+   * always verify this before creating the STUCK session. */
+  access_profile?: AdminAccessProfile;
   /** Whether the rules-export feature is enabled on the backend.
    *  Optional — older backends omit it; treat absence as false. */
   rules_export_enabled?: boolean;
   /** HTTPS port of the authenticated NGFW, used only for safe admin links.
    *  Optional for compatibility with older backends. */
   ngfw_port?: number;
+}
+
+export interface AccessProfileRefreshResponse {
+  ok: true;
+  access_profile: AdminAccessProfile;
 }
 
 export type DomainType = "local" | "ad" | "ald" | "freeipa" | "radius" | "device";

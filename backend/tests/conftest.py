@@ -43,6 +43,7 @@ BASE_URL = f"https://{NGFW_SERVER}:{NGFW_PORT}"
 # Cookie name must match a prefix from app/ngfw/client.py:_NGFW_COOKIE_PREFIXES.
 NGFW_SESSION_COOKIE = "insecure-ideco-session"
 NGFW_SESSION_VALUE = "mock-ngfw-session-token"
+ROTATED_NGFW_SESSION_VALUE = "rotated-ngfw-session-token"
 
 DEFAULT_USERS = [
     {
@@ -69,6 +70,18 @@ def default_state() -> dict[str, Any]:
     return {
         # auth (app/ngfw/client.py)
         "login": (200, {"success": True}),
+        # The access diagnostic must stay private to the backend.  This is a
+        # full read-only administrator profile, which is allowed to trace.
+        "whoami": (
+            200,
+            {
+                "login": "admin",
+                "name": "Read-only Admin",
+                "role_id": "predefined_admin_readonly",
+                "role_name": "Read-only administrator",
+                "competence": ["admin_read"],
+            },
+        ),
         "logout": (200, {}),
         # snapshot endpoints (app/ngfw/endpoints.py:load_snapshot)
         "users": (200, DEFAULT_USERS),
@@ -181,6 +194,8 @@ def _make_handler(state: dict[str, Any], key: str, *, login: bool = False):
         if login and status == 200 and state.get("login_sets_cookie", True):
             # NB: one header pair per Set-Cookie; never comma-join cookies.
             headers.append(("set-cookie", f"{NGFW_SESSION_COOKIE}={NGFW_SESSION_VALUE}; Path=/"))
+        if key == "whoami" and status == 200 and state.get("whoami_sets_cookie", False):
+            headers.append(("set-cookie", f"{NGFW_SESSION_COOKIE}={ROTATED_NGFW_SESSION_VALUE}; Path=/"))
         if isinstance(body, str):
             return httpx.Response(status, text=body, headers=headers)
         return httpx.Response(status, json=body, headers=headers)
@@ -205,6 +220,7 @@ def ngfw_mock():
             )
 
         reg("login", "POST", "/web/auth/login", login=True)
+        reg("whoami", "GET", "/web/whoami")
         reg("logout", "DELETE", "/web/auth/login")
         reg("users", "GET", "/user_backend/users")
         reg("aliases", "GET", "/aliases/all")

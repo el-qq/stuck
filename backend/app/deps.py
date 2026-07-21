@@ -16,6 +16,7 @@ import logging
 from fastapi import Depends, Request
 
 from .domain.binding_pool import Binding, BindingPool, RulesSnapshot
+from .domain.admin_access import require_trace_access
 from .domain.session_store import Session, SessionStore
 from .errors import not_authenticated, session_expired
 from .logging_setup import log_event
@@ -80,6 +81,9 @@ async def get_or_load_snapshot(
     UI re-prompts for credentials. No TTL: without ``force`` an existing
     snapshot is served as-is until process restart (contract v2 invariant 9).
     """
+    # This guard is intentionally before ``binding_for``: a known insufficient
+    # role must not create a binding or begin snapshot I/O.
+    require_trace_access(session.admin_access)
     binding = binding_for(session, pool)
     if not force and binding.snapshot is not None:
         return binding.snapshot

@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { exportRules, getPublicConfig, getSession, getUsers, health, login, trace } from "../api";
+import { exportRules, getPublicConfig, getSession, getUsers, health, login, refreshAccessProfile, trace } from "../api";
 import { ApiError } from "../errors";
 
 /**
@@ -132,6 +132,25 @@ describe("lib/api.ts", () => {
 
     it("session response with missing fields maps to api_changed", async () => {
       vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse({ authenticated: true })));
+
+      await expectApiError(getSession(), "api_changed");
+    });
+
+    it("rejects a malformed public access profile", async () => {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValue(
+          jsonResponse({
+            authenticated: true,
+            login: "admin",
+            server: "gw",
+            expires_at: "2026-07-09T20:00:00Z",
+            rules_loaded: false,
+            rules_updated_at: null,
+            access_profile: { role_id: "predefined_admin_readonly", role_name: "Read-only", trace_allowed: "yes" },
+          }),
+        ),
+      );
 
       await expectApiError(getSession(), "api_changed");
     });
@@ -327,6 +346,59 @@ describe("lib/api.ts", () => {
 
       const data = await getSession();
       expect(data.ngfw_port).toBe(9443);
+    });
+
+    it("passes through the reduced access profile without any raw NGFW permission list", async () => {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValue(
+          jsonResponse(
+            sessionBody({
+              access_profile: {
+                role_id: "predefined_admin_readonly",
+                role_name: "Read-only administrator",
+                trace_allowed: true,
+              },
+            }),
+          ),
+        ),
+      );
+
+      const data = await getSession();
+      expect(data.access_profile).toEqual({
+        role_id: "predefined_admin_readonly",
+        role_name: "Read-only administrator",
+        trace_allowed: true,
+      });
+      expect(JSON.stringify(data)).not.toContain("competence");
+    });
+  });
+
+  describe("refreshAccessProfile", () => {
+    it("rechecks the active session and returns only the safe role profile", async () => {
+      const fetchMock = vi.fn().mockResolvedValue(
+        jsonResponse({
+          ok: true,
+          access_profile: {
+            role_id: "predefined_admin_readonly",
+            role_name: "Read-only administrator",
+            trace_allowed: true,
+          },
+        }),
+      );
+      vi.stubGlobal("fetch", fetchMock);
+
+      const data = await refreshAccessProfile();
+
+      expect(data.access_profile.trace_allowed).toBe(true);
+      expect(JSON.stringify(data)).not.toContain("competence");
+      expect(fetchMock).toHaveBeenCalledWith("/api/session/access/refresh", expect.objectContaining({ method: "POST", credentials: "include" }));
+    });
+
+    it("rejects a malformed refresh response", async () => {
+      vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse({ ok: true, access_profile: { role_id: "role" } })));
+
+      await expectApiError(refreshAccessProfile(), "api_changed");
     });
   });
 

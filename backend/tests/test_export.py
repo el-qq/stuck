@@ -27,6 +27,19 @@ from app.ngfw.client import NgfwClient
 
 PASSWORD = "s3cret-Passw0rd"
 
+
+def _whoami(login: str) -> dict[str, object]:
+    """Minimal valid canonical administrator profile for a mocked NGFW."""
+
+    return {
+        "login": login,
+        "name": f"{login} display name",
+        "role_id": "predefined_admin_readonly",
+        "role_name": "Read-only administrator",
+        "competence": ["admin_read"],
+    }
+
+
 # A content-filter rule denying category "cat.blocked" for user.id.1 only.
 CF_DENY_RULE = {
     "id": 3,
@@ -358,6 +371,7 @@ class TestExportIsolation:
         """Two admins on the same server: export always reflects the caller's binding."""
         with _client(export_app) as client_a, _client(export_app) as client_b:
             # Admin A loads a 2-user snapshot.
+            ngfw_mock.state["whoami"] = (200, _whoami("adminA"))
             _login(client_a, login="adminA")
             assert len(client_a.get("/api/rules/export").json()["snapshot"]["users"]) == 2
 
@@ -366,6 +380,7 @@ class TestExportIsolation:
                 200,
                 DEFAULT_USERS + [{"id": "user.id.3", "name": "New", "login": "new"}],
             )
+            ngfw_mock.state["whoami"] = (200, _whoami("adminB"))
             _login(client_b, login="adminB")
 
             export_a = client_a.get("/api/rules/export").json()
@@ -380,8 +395,10 @@ class TestExportIsolation:
     def test_query_params_cannot_reach_another_binding(self, export_app, ngfw_mock):
         """No request param overrides the binding (admin/server come from the session)."""
         with _client(export_app) as client_a, _client(export_app) as client_b:
+            ngfw_mock.state["whoami"] = (200, _whoami("adminA"))
             _login(client_a, login="adminA")
             client_a.get("/api/rules/export")  # binding A exists in the pool
+            ngfw_mock.state["whoami"] = (200, _whoami("adminB"))
             _login(client_b, login="adminB")
 
             # Even hostile-looking params only ever act within B's binding.
@@ -401,9 +418,11 @@ class TestExportIsolation:
                 headers=[("set-cookie", "insecure-ideco-session=tok2; Path=/")],
             )
         )
+        ngfw_mock.router.get(f"{base2}/web/whoami").mock(return_value=httpx.Response(200, json=_whoami("admin")))
         _register_data_endpoints(ngfw_mock.router, base2)
 
         with _client(export_app) as client1, _client(export_app) as client2:
+            ngfw_mock.state["whoami"] = (200, _whoami("admin"))
             _login(client1, login="admin", server=NGFW_SERVER)
             assert client1.get("/api/rules/export").json()["binding"]["server"] == NGFW_SERVER
 
