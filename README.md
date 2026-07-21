@@ -117,7 +117,7 @@ with the same name; environment variables take precedence.
 
 | Parameter                      | Default             | Purpose                                                                                                                                                       |
 | ------------------------------ | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `STUCK_DEFAULT_SERVER`         | `gateway`           | Legacy default NGFW host for compatible clients.                                                                                                              |
+| `STUCK_DEFAULT_SERVER`         | empty               | Optional NGFW host locked in the login form and API; an environment value overrides the configuration file.                                                   |
 | `STUCK_NGFW_PORT`              | `8443`              | HTTPS port used to connect to NGFW.                                                                                                                           |
 | `STUCK_ALLOWED_NGFW_HOSTS`     | empty               | Comma-separated exact allowed NGFW hostnames or IPv4 addresses.                                                                                               |
 | `STUCK_ALLOWED_NGFW_CIDRS`     | empty               | Comma-separated allowed IPv4 or IPv6 networks.                                                                                                                |
@@ -136,6 +136,23 @@ with the same name; environment variables take precedence.
 | `STUCK_LOG_FILE`               | empty               | Log-file path; empty writes logs to standard output.                                                                                                          |
 | `STUCK_ENABLE_RULES_EXPORT`    | `true`              | Make the authenticated rules-snapshot export available.                                                                                                       |
 | `STUCK_ENABLE_TRACE_ANIMATION` | `true`              | Reveal desktop trace stages one at a time and show **Skip animation**; set `false` to show the complete result immediately. Also applies to the offline demo. |
+
+To lock STUCK to one NGFW host for a local development run:
+
+```bash
+STUCK_DEFAULT_SERVER=ngfw.example.local npm start
+```
+
+For Docker Compose, set the value in `.env` or pass it with the command:
+
+```bash
+STUCK_DEFAULT_SERVER=ngfw.example.local \
+  STUCK_ALLOWED_NGFW_HOSTS=ngfw.example.local \
+  docker compose up --build
+```
+
+The value must be a bare hostname or IPv4 address, without a scheme, port or
+path. A non-empty value fixes that server in both the login form and API.
 
 IBM Plex is self-hosted from exact npm packages; the built UI contacts neither
 Google Fonts nor another font CDN, and the OFL license is included.

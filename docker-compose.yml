@@ -27,6 +27,7 @@ services:
       STUCK_ALLOWED_NGFW_HOSTS: "${STUCK_ALLOWED_NGFW_HOSTS:-}"
       STUCK_ALLOWED_NGFW_CIDRS: "${STUCK_ALLOWED_NGFW_CIDRS:-}"
       STUCK_ALLOW_ANY_NGFW: "${STUCK_ALLOW_ANY_NGFW:-false}"
+      STUCK_DEFAULT_SERVER: "${STUCK_DEFAULT_SERVER:-}"
       # stdout logging, docker-friendly (see backend/conf/stuck.conf for keys).
       STUCK_LOG_LEVEL: INFO
       STUCK_LOG_FORMAT: text

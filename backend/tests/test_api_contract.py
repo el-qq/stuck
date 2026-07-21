@@ -114,12 +114,24 @@ class TestHealthEndpoint:
             # Don't leak the custom port into other tests' cached settings.
             get_settings.cache_clear()
 
-    def test_deprecated_public_config_still_responds(self, client: TestClient):
+    def test_public_config_returns_empty_unlocked_server_by_default(self, client: TestClient):
         """GET /api/config exposes non-sensitive UI bootstrap settings."""
         resp = client.get("/api/config")
         assert resp.status_code == 200
-        assert "default_server" in resp.json()
+        assert resp.json()["default_server"] == ""
         assert resp.json()["trace_animation_enabled"] is True
+
+    def test_public_config_returns_default_server_from_environment(self, monkeypatch):
+        from app.config import get_settings
+        from app.main import create_app
+
+        monkeypatch.setenv("STUCK_DEFAULT_SERVER", "locked-ngfw.example")
+        get_settings.cache_clear()
+        try:
+            client = TestClient(create_app())
+            assert client.get("/api/config").json()["default_server"] == "locked-ngfw.example"
+        finally:
+            get_settings.cache_clear()
 
     def test_public_config_reports_trace_animation_disabled(self, monkeypatch):
         from app.config import get_settings

@@ -10,14 +10,14 @@ import { isValidServerFormat } from "@/lib/validate";
 import { getLastServer, setLastServer } from "@/lib/storage";
 import { Header } from "./Header";
 import { SettingsModal } from "./SettingsModal";
+import { usePublicConfig } from "@/contexts/PublicConfigContext";
 
 export function LoginScreen({ onEnterDemo }: { onEnterDemo: () => void }) {
   const session = useSession();
   const { t } = useI18n();
+  const { defaultServer } = usePublicConfig();
   const errorMessage = useApiErrorMessage();
 
-  // Iteration 3 (#1): no built-in default. The field is pre-filled with the
-  // last successfully used server (localStorage) and is empty on first visit.
   const [server, setServer] = useState("");
   const [loginName, setLoginName] = useState("");
   const [password, setPassword] = useState("");
@@ -31,10 +31,16 @@ export function LoginScreen({ onEnterDemo }: { onEnterDemo: () => void }) {
   const [ngfwPort, setNgfwPort] = useState<number | null>(null);
   const [unrestrictedNgfw, setUnrestrictedNgfw] = useState(false);
 
+  const defaultServerLocked = defaultServer.length > 0;
+
   useEffect(() => {
+    if (defaultServerLocked) {
+      setServer(defaultServer);
+      return;
+    }
     const last = getLastServer();
     if (last) setServer(last);
-  }, []);
+  }, [defaultServer, defaultServerLocked]);
 
   useEffect(() => {
     let cancelled = false;
@@ -58,12 +64,11 @@ export function LoginScreen({ onEnterDemo }: { onEnterDemo: () => void }) {
   // notice below explains why (localized); it stays until re-login succeeds.
   useEffect(() => {
     if (session.prefill) {
-      setServer(session.prefill.server);
+      setServer(defaultServerLocked ? defaultServer : session.prefill.server);
       setLoginName(session.prefill.login);
       setPassword("");
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session.prefill]);
+  }, [defaultServer, defaultServerLocked, session.prefill]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -197,9 +202,20 @@ export function LoginScreen({ onEnterDemo }: { onEnterDemo: () => void }) {
                 <input
                   value={server}
                   onChange={(e) => setServer(e.target.value)}
+                  disabled={defaultServerLocked}
                   placeholder={t("login.serverPlaceholder")}
                   className="form-control mono"
-                  style={{ ...inputStyle, flex: 1, paddingRight: ngfwPort !== null ? 64 : 12 }}
+                  style={{
+                    ...inputStyle,
+                    flex: 1,
+                    paddingRight: ngfwPort !== null ? 64 : 12,
+                    ...(defaultServerLocked && {
+                      background: "var(--skip-soft)",
+                      color: "var(--muted)",
+                      cursor: "not-allowed",
+                      opacity: 1,
+                    }),
+                  }}
                   autoComplete="off"
                   spellCheck={false}
                 />

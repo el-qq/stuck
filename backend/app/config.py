@@ -36,9 +36,10 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    # (v2) Host only — IP or domain WITHOUT port; the NGFW API port is appended
-    # by the backend from STUCK_NGFW_PORT (contract v2 §3.1 / invariant 6).
-    STUCK_DEFAULT_SERVER: str = "gateway"
+    # Optional host lock for the login UI. A non-empty value is exposed to the
+    # browser and prevents selecting another host. It is host-only: the NGFW
+    # API port is appended from STUCK_NGFW_PORT.
+    STUCK_DEFAULT_SERVER: str = ""
     STUCK_NGFW_PORT: int = Field(default=8443, ge=1, le=65535)
     STUCK_ALLOWED_NGFW_HOSTS: str = ""
     STUCK_ALLOWED_NGFW_CIDRS: str = ""

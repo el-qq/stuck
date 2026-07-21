@@ -82,6 +82,17 @@ class TestLogin:
         assert resp.json()["error"]["code"] == "ngfw_host_not_allowed"
         assert not ngfw_mock.routes["login"].called
 
+    def test_configured_default_server_rejects_a_different_api_server(
+        self, client: TestClient, ngfw_mock, valid_login_data, settings, monkeypatch
+    ):
+        monkeypatch.setattr(settings, "STUCK_DEFAULT_SERVER", "192.168.1.99")
+
+        resp = client.post("/api/auth/login", json=valid_login_data)
+
+        assert resp.status_code == 403
+        assert resp.json()["error"]["code"] == "ngfw_host_not_allowed"
+        assert not ngfw_mock.routes["login"].called
+
     def test_server_unreachable(self, client: TestClient, ngfw_mock, valid_login_data):
         """Connect error to NGFW → error.code=server_unreachable (502)."""
         ngfw_mock.state["login"] = httpx.ConnectError("connection refused")

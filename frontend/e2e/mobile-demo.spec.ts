@@ -3,7 +3,12 @@ import { STAGE_ORDER } from "../lib/types";
 
 const MOBILE_WIDTHS = [320, 360, 390, 430, 768] as const;
 
-async function mockAnonymousBootstrap(page: Page, ngfwAccessMode: "allowlist" | "unrestricted" = "allowlist", traceAnimationEnabled = true) {
+async function mockAnonymousBootstrap(
+  page: Page,
+  ngfwAccessMode: "allowlist" | "unrestricted" = "allowlist",
+  traceAnimationEnabled = true,
+  defaultServer = "",
+) {
   await page.route("**/api/**", async (route) => {
     const path = new URL(route.request().url()).pathname;
     if (path === "/api/session") {
@@ -30,7 +35,7 @@ async function mockAnonymousBootstrap(page: Page, ngfwAccessMode: "allowlist" | 
       await route.fulfill({
         status: 200,
         contentType: "application/json",
-        body: JSON.stringify({ default_server: "", trace_animation_enabled: traceAnimationEnabled }),
+        body: JSON.stringify({ default_server: defaultServer, trace_animation_enabled: traceAnimationEnabled }),
       });
       return;
     }
@@ -123,6 +128,20 @@ test("login warns when unrestricted NGFW lab mode is enabled", async ({ page }) 
 
   await expect(page.getByText(/Lab mode is enabled/i)).toBeVisible();
   await expectNoHorizontalOverflow(page);
+});
+
+test("configured default server is locked on the login form", async ({ page }) => {
+  await mockAnonymousBootstrap(page, "allowlist", true, "locked-ngfw.example");
+  const configLoaded = page.waitForResponse((response) => new URL(response.url()).pathname === "/api/config");
+  await page.goto("/");
+  await configLoaded;
+
+  const server = page.getByLabel("Server");
+  await expect(server).toHaveValue("locked-ngfw.example");
+  await expect(server).toBeDisabled();
+  await expect(server).toHaveCSS("background-color", "rgb(238, 240, 244)");
+  await expect(server).toHaveCSS("color", "rgb(102, 115, 138)");
+  await expect(server).toHaveCSS("cursor", "not-allowed");
 });
 
 test("failure result and long rule names wrap on a phone", async ({ page }) => {

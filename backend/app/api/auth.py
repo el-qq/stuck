@@ -20,6 +20,7 @@ from ..deps import (
 from ..domain.binding_pool import BindingPool
 from ..domain.ngfw_access import normalize_server
 from ..domain.session_store import Session, SessionStore
+from ..errors import StuckError
 from ..logging_setup import log_event
 from ..ngfw.client import ngfw_login, ngfw_logout
 
@@ -60,6 +61,14 @@ async def login(
     pool: BindingPool = Depends(get_binding_pool),
 ):
     server = normalize_server(body.server)
+    configured_server = (
+        normalize_server(settings.STUCK_DEFAULT_SERVER) if settings.STUCK_DEFAULT_SERVER.strip() else None
+    )
+    if configured_server is not None and server != configured_server:
+        raise StuckError(
+            "ngfw_host_not_allowed",
+            "This STUCK server is locked to its configured default NGFW host",
+        )
 
     # Login ALWAYS validates the password against the NGFW (contract v2 §3.1),
     # even when the binding's rules snapshot is already pooled.

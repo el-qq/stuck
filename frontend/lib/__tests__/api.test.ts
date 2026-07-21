@@ -190,6 +190,13 @@ describe("lib/api.ts", () => {
   });
 
   describe("public configuration", () => {
+    it("parses a configured default server", async () => {
+      vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse({ default_server: "locked-ngfw.example" })));
+
+      const data = await getPublicConfig();
+      expect(data.default_server).toBe("locked-ngfw.example");
+    });
+
     it("parses the trace-animation feature flag", async () => {
       vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse({ default_server: "", trace_animation_enabled: false })));
 
