@@ -65,7 +65,9 @@ No authentication required. Optional fields keep older clients compatible.
 ```
 
 Compatibility endpoint for non-sensitive bootstrap configuration. The current
-UI remembers the last entered host and does not depend on this value.
+UI uses a non-empty `default_server` as the selected NGFW host and disables
+the server field, so the administrator cannot select another host. An empty
+value leaves the field editable and permits the last entered host to be used.
 `trace_animation_enabled` controls the trace-stage reveal for both live and
 demo results; absence preserves the enabled default for older backends.
 
@@ -95,9 +97,12 @@ demo results; absence preserves the enabled default for older backends.
 ```
 
 `server` is a bare IPv4 address or RFC-style hostname without scheme, port or
-path. The backend appends the configured NGFW API port. Login always validates
-the destination policy before sending credentials. Exact host/CIDR mismatch or
-an unsafe destination returns `ngfw_host_not_allowed` without an NGFW request.
+path. The backend appends the configured NGFW API port. When
+`STUCK_DEFAULT_SERVER` is non-empty, `server` must equal that configured host;
+a different API request returns `ngfw_host_not_allowed` without an NGFW
+request. Login always validates the destination policy before sending
+credentials. Exact host/CIDR mismatch or an unsafe destination also returns
+`ngfw_host_not_allowed` without an NGFW request.
 Success sets `stuck_session`; no NGFW cookie is returned.
 
 ### `POST /api/auth/logout`

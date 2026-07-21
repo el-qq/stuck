@@ -4,14 +4,17 @@ import React, { createContext, useContext, useEffect, useMemo, useState } from "
 import * as api from "@/lib/api";
 
 interface PublicConfigContextValue {
+  /** A non-empty configured host locks the server field on the login form. */
+  defaultServer: string;
   /** Defaults to true to preserve the historical UI when an older backend or
    * a temporarily unavailable bootstrap endpoint does not provide the flag. */
   traceAnimationEnabled: boolean;
 }
 
-const PublicConfigContext = createContext<PublicConfigContextValue>({ traceAnimationEnabled: true });
+const PublicConfigContext = createContext<PublicConfigContextValue>({ defaultServer: "", traceAnimationEnabled: true });
 
 export function PublicConfigProvider({ children }: { children: React.ReactNode }) {
+  const [defaultServer, setDefaultServer] = useState("");
   const [traceAnimationEnabled, setTraceAnimationEnabled] = useState(true);
 
   useEffect(() => {
@@ -19,9 +22,9 @@ export function PublicConfigProvider({ children }: { children: React.ReactNode }
     void api
       .getPublicConfig()
       .then((config) => {
-        if (!cancelled && typeof config.trace_animation_enabled === "boolean") {
-          setTraceAnimationEnabled(config.trace_animation_enabled);
-        }
+        if (cancelled) return;
+        setDefaultServer(config.default_server.trim());
+        if (typeof config.trace_animation_enabled === "boolean") setTraceAnimationEnabled(config.trace_animation_enabled);
       })
       .catch(() => {
         // Keep the enabled default when bootstrapping configuration is not
@@ -32,7 +35,7 @@ export function PublicConfigProvider({ children }: { children: React.ReactNode }
     };
   }, []);
 
-  const value = useMemo(() => ({ traceAnimationEnabled }), [traceAnimationEnabled]);
+  const value = useMemo(() => ({ defaultServer, traceAnimationEnabled }), [defaultServer, traceAnimationEnabled]);
   return <PublicConfigContext.Provider value={value}>{children}</PublicConfigContext.Provider>;
 }
 

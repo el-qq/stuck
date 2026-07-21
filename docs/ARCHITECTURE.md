@@ -153,6 +153,12 @@ control; when false, every stage and the verdict appear immediately. The
 non-sensitive value is exposed through `GET /api/config`, so it also applies to
 the offline demo.
 
+`STUCK_DEFAULT_SERVER` is an optional host-only login lock. A non-empty value
+is delivered in the public bootstrap configuration and fixes the server field
+in the browser; the login API independently rejects any other host. An empty
+value leaves the field editable. As with every `STUCK_*` value, a process
+environment variable overrides the configuration file.
+
 NGFW destination controls:
 
 - `STUCK_ALLOWED_NGFW_HOSTS` — comma-separated exact IPv4/hostnames;

@@ -31,6 +31,16 @@ def test_settings_accept_explicit_lab_mode(monkeypatch):
     assert settings.ngfw_access_mode == "unrestricted"
 
 
+def test_default_server_environment_overrides_config_file(tmp_path, monkeypatch):
+    conf = tmp_path / "stuck.conf"
+    conf.write_text("STUCK_ALLOW_ANY_NGFW=true\nSTUCK_DEFAULT_SERVER=from-config.example\n", encoding="utf-8")
+    monkeypatch.setenv("STUCK_DEFAULT_SERVER", "from-environment.example")
+
+    settings = Settings(_env_file=conf)
+
+    assert settings.STUCK_DEFAULT_SERVER == "from-environment.example"
+
+
 @pytest.mark.asyncio
 async def test_exact_host_and_cidr_are_allowed():
     await enforce_ngfw_access(
