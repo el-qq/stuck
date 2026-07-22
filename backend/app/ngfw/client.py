@@ -311,6 +311,11 @@ class NgfwClient:
         self._client: httpx.AsyncClient | None = None
         self._access_checked = False
         self._access_lock = asyncio.Lock()
+        # Snapshot loading issues many requests concurrently.  If the role is
+        # denied, all of them can receive 403 at once; coalesce the safe
+        # whoami recheck rather than multiplying requests with the NGFW cookie.
+        self._forbidden_lock = asyncio.Lock()
+        self._forbidden_role_id: str | None = None
 
     async def _ensure_access(self) -> None:
         if self._access_checked:
@@ -320,6 +325,25 @@ class NgfwClient:
                 return
             await _enforce_current_access(self.server)
             self._access_checked = True
+
+    async def _raise_forbidden(self) -> None:
+        """Raise the typed result of a diagnostic-endpoint 403.
+
+        A successful profile read proves the session remains active and makes
+        this an authorization error.  ``ngfw_whoami`` raises
+        ``session_expired`` itself when the cookie was actually rejected.
+        """
+
+        async with self._forbidden_lock:
+            if self._forbidden_role_id is None:
+                profile = await ngfw_whoami(self.server, self.cookies)
+                self._forbidden_role_id = profile.role_id
+            role_id = self._forbidden_role_id
+        raise StuckError(
+            "insufficient_ngfw_permissions",
+            "NGFW administrator role cannot access diagnostic data",
+            details={"role_id": role_id},
+        )
 
     async def __aenter__(self) -> "NgfwClient":
         self._client = _new_client(self.server, self.cookies)
@@ -384,9 +408,15 @@ class NgfwClient:
 
         _log_call(self.server, method, path, start, status=resp.status_code)
 
-        # An expired/revoked NGFW cookie surfaces as our session_expired.
-        if resp.status_code in (401, 403):
+        # A 401 is an expired/revoked NGFW cookie.  A 403 is ambiguous: it can
+        # mean the same thing, or a still-valid administrator session without
+        # access to this particular read-only diagnostic endpoint.  Re-read
+        # the safe, reduced profile to distinguish those cases instead of
+        # misleading the UI into asking for a password again.
+        if resp.status_code == 401:
             raise StuckError("session_expired", "NGFW session expired or revoked")
+        if resp.status_code == 403:
+            await self._raise_forbidden()
 
         if resp.status_code == 404:
             raise StuckError("ngfw_error", f"NGFW endpoint not found: {path}")

@@ -77,6 +77,40 @@ class TestAccessDiagnostic:
         assert trace.status_code == 200
         assert ngfw_mock.routes["users"].called
 
+    def test_endpoint_forbidden_with_an_active_session_is_a_permission_error(
+        self, client: TestClient, ngfw_mock, valid_login_data
+    ):
+        assert client.post("/api/auth/login", json=valid_login_data).status_code == 200
+        ngfw_mock.state["users"] = (403, {"private": "vendor detail"})
+
+        response = client.get("/api/users")
+
+        assert response.status_code == 403
+        assert response.json()["error"] == {
+            "code": "insufficient_ngfw_permissions",
+            "message": "NGFW administrator role cannot access diagnostic data",
+            "details": {"role_id": "predefined_admin_readonly"},
+        }
+        # The profile check proves that the cookie is still valid, rather than
+        # incorrectly turning an endpoint permission denial into logout.
+        assert ngfw_mock.routes["whoami"].call_count == 2
+        assert "vendor detail" not in response.text
+
+    def test_concurrent_forbidden_snapshot_reads_share_one_profile_recheck(
+        self, client: TestClient, ngfw_mock, valid_login_data
+    ):
+        assert client.post("/api/auth/login", json=valid_login_data).status_code == 200
+        ngfw_mock.state["users"] = (403, {})
+        ngfw_mock.state["aliases"] = (403, {})
+
+        response = client.get("/api/users")
+
+        assert response.status_code == 403
+        assert response.json()["error"]["code"] == "insufficient_ngfw_permissions"
+        # One profile request happened at login; the two concurrent 403s add
+        # exactly one shared recheck, not one request per denied endpoint.
+        assert ngfw_mock.routes["whoami"].call_count == 2
+
     def test_session_and_binding_use_the_canonical_whoami_login_not_the_submitted_alias(
         self, client: TestClient, ngfw_mock, valid_login_data, binding_pool
     ):

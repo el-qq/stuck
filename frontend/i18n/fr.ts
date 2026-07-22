@@ -60,6 +60,8 @@ export const fr: Record<keyof typeof en, string> = {
   "rules.stepAliases": "Objets et alias",
   "rules.stepFirewallPreFilter": "Règles de filtrage préliminaire",
   "rules.stepHardware": "Règles de filtrage matériel",
+  "rules.stepLanNetworks": "Réseaux locaux (LAN)",
+  "rules.stepDnsZones": "Zones DNS locales",
   "rules.stepFirewallDnat": "Règles de pare-feu (DNAT)",
   "rules.stepFirewallForward": "Règles de pare-feu (FORWARD)",
   "rules.stepFirewallInput": "Règles de pare-feu (INPUT)",
@@ -212,6 +214,10 @@ export const fr: Record<keyof typeof en, string> = {
   "reason.hw_destination_unknown": "Une règle par IP de destination pourrait correspondre, mais l’IP de destination n’est pas résolue.",
   "reason.hw_mac_unknown": "Le filtrage matériel s’appuie sur l’adresse MAC, inconnue de cette trace.",
   "reason.hw_not_supported": "Le filtrage matériel n’est pas disponible sur ce NGFW.",
+  "reason.fw_default_allow": "Aucune règle correspondante ; la politique FORWARD par défaut documentée autorise le trafic des utilisateurs.",
+  "reason.dns_zone_forward": "L’hôte relève d’une zone DNS forward locale — le NGFW le résout via les serveurs de la zone.",
+  "reason.dns_zone_master": "L’hôte relève d’une zone DNS master locale — le NGFW répond de façon autoritaire.",
+  "reason.dns_zone_unresolved": "Une zone DNS locale du NGFW couvre l’hôte, mais sa réponse est invisible pour STUCK — l’adresse résolue est inconnue.",
   "reason.pre_filter_disabled": "Le filtrage préliminaire est désactivé avec les règles pare-feu utilisateur.",
   "reason.pre_filter_source_unknown": "Une règle préliminaire de blocage peut correspondre, mais aucune IP source n’a été choisie.",
   "reason.pre_filter_conditions_unknown":
@@ -251,6 +257,12 @@ export const fr: Record<keyof typeof en, string> = {
   "reason.cf_action_unknown": "La règle de filtrage de contenu correspondante utilise une action que cette version de STUCK ne reconnaît pas.",
   "reason.fw_conditions_unknown":
     "La règle pare-feu correspondante requiert des données de port source, d’interface, de HIP ou de calendrier indisponibles pour cette trace.",
+  "reason.fw_destination_unknown": "Une règle de trafic peut correspondre à la destination, mais son adresse IP réelle est indisponible.",
+  "reason.fw_object_unknown": "La règle de trafic correspondante référence un objet absent ou non pris en charge dans l’instantané chargé.",
+  "reason.fw_port_unknown": "La règle de trafic correspondante référence un objet de port de destination impossible à résoudre.",
+  "reason.fw_rule_accept": "La première règle pare-feu correspondante autorise le trafic.",
+  "reason.fw_rule_blocked": "La première règle pare-feu correspondante bloque le trafic.",
+  "reason.fw_action_unknown": "La règle pare-feu correspondante utilise une action que cette version de STUCK ne reconnaît pas.",
   "reason.fw_default_policy_unknown": "Aucune règle pare-feu ne correspond ; la politique par défaut du NGFW n’est pas confirmée.",
   "reason.destination_unknown":
     "Aucune règle de blocage n’a été confirmée, mais au moins une étape d’inspection du trafic ne peut pas être déterminée hors ligne.",

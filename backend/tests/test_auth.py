@@ -371,9 +371,12 @@ class TestNgfwSessionExpired:
         assert resp.json()["error"]["code"] == "session_expired"
 
     def test_refresh_with_expired_ngfw_cookie(self, authenticated_client: TestClient, ngfw_mock):
-        # Load the snapshot first, then expire the NGFW cookie (403 variant).
+        # Load the snapshot first, then expire the NGFW cookie. A diagnostic
+        # endpoint's 403 is ambiguous, so the client verifies that whoami is
+        # also rejected before reporting session_expired.
         assert authenticated_client.get("/api/users").status_code == 200
         ngfw_mock.state["users"] = (403, {"message": "forbidden"})
+        ngfw_mock.state["whoami"] = (403, {"message": "forbidden"})
 
         resp = authenticated_client.post("/api/rules/refresh")
 

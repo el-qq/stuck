@@ -328,6 +328,26 @@ class TestExtendedFirewallPipeline:
         assert snat["status"] == "applied"
         assert snat["detail"]["translated_source_ip"] == "198.51.100.99"
 
+    def test_dnat_with_unknown_destination_port_object_is_unknown(self, authenticated_client: TestClient, ngfw_mock):
+        ngfw_mock.state["fw_dnat"] = (
+            200,
+            [
+                {
+                    "id": "dnat.missing-port",
+                    "action": "dnat",
+                    "destinations": [{"addresses": ["any"]}],
+                    "destination_ports": ["port.missing"],
+                }
+            ],
+        )
+
+        response = authenticated_client.post("/api/trace", json={"url": "203.0.113.5", "user_id": "user.id.1"})
+
+        assert response.status_code == 200
+        dnat = next(stage for stage in response.json()["stages"] if stage["key"] == "dnat")
+        assert dnat["status"] == "unknown"
+        assert dnat["detail"]["reason_key"] == "fw_port_unknown"
+
     def test_user_source_addresses_are_live_and_user_scoped(self, authenticated_client: TestClient, ngfw_mock):
         ngfw_mock.state["auth_sessions"] = (
             200,
@@ -522,20 +542,297 @@ class TestTraceStages:
         stages = resp.json()["stages"]
         assert [s["key"] for s in stages] == STAGE_KEYS
 
-    def test_no_firewall_rule_is_unknown(self, authenticated_client: TestClient):
-        """Without a confirmed default NGFW policy, no rule match is not an allow."""
-        resp = authenticated_client.post("/api/trace", json={"url": "example.com"})
+    def test_no_forward_rule_defaults_to_allow_for_a_user(self, authenticated_client: TestClient):
+        """Documented FORWARD default is ALLOW *for users*
+        (docs/source/docs-ru-ngfw-firewall-tables.md): with a selected user and
+        no matching rule the firewall passes."""
+        resp = authenticated_client.post("/api/trace", json={"url": "example.com", "user_id": "user.id.1"})
 
         assert resp.status_code == 200
         data = resp.json()
         summary = data["summary"]
-        assert summary["verdict"] == "unknown"
-        assert summary["reached_destination"] is False
+        # DNS policy has no dry-run → the honest end verdict stays conditional,
+        # but the firewall itself now passes by the documented default policy.
+        assert summary["verdict"] == "conditional"
         assert summary["blocked_at"] is None
         by_key = {s["key"]: s for s in data["stages"]}
-        assert by_key["firewall"]["status"] == "unknown"
-        assert by_key["destination"]["status"] == "unknown"
+        assert by_key["firewall"]["status"] == "pass"
+        assert by_key["firewall"]["detail"]["reason_key"] == "fw_default_allow"
+        assert by_key["destination"]["status"] == "conditional"
         assert not any(s["status"] == "block" for s in data["stages"])
+
+    def test_forward_default_allow_requires_a_user_subject(self, authenticated_client: TestClient):
+        """Without a selected user the direction is unprovable (WAN→LAN is
+        blocked by a system tail rule) → conservative unknown, never a pass."""
+        resp = authenticated_client.post("/api/trace", json={"url": "example.com"})
+
+        assert resp.status_code == 200
+        by_key = {s["key"]: s for s in resp.json()["stages"]}
+        assert by_key["firewall"]["status"] == "unknown"
+        assert by_key["firewall"]["detail"]["reason_key"] == "fw_default_policy_unknown"
+
+    def test_lan_source_without_user_defaults_to_allow(self, authenticated_client: TestClient):
+        """A source IP inside a LAN interface network proves the user side even
+        without a selected user → the documented default ALLOW applies."""
+        resp = authenticated_client.post("/api/trace", json={"url": "example.com", "source_ip": "192.0.2.77"})
+
+        assert resp.status_code == 200
+        by_key = {s["key"]: s for s in resp.json()["stages"]}
+        assert by_key["firewall"]["status"] == "pass"
+        assert by_key["firewall"]["detail"]["reason_key"] == "fw_default_allow"
+
+    def test_single_connection_settings_object_is_accepted(self, authenticated_client: TestClient, ngfw_mock):
+        """The documented single-object form remains safe to reduce to CIDRs."""
+        ngfw_mock.state["connection_settings"] = (
+            200,
+            {"id": "if.lan", "enabled": True, "role": "lan", "l3": ["192.0.2.254/24"], "config": {"secret": "x"}},
+        )
+
+        resp = authenticated_client.post("/api/trace", json={"url": "example.com", "source_ip": "192.0.2.77"})
+
+        assert resp.status_code == 200
+        firewall = next(stage for stage in resp.json()["stages"] if stage["key"] == "firewall")
+        assert firewall["detail"]["reason_key"] == "fw_default_allow"
+
+    def test_invalid_lan_enabled_value_fails_closed(self, authenticated_client: TestClient, ngfw_mock):
+        ngfw_mock.state["connection_settings"] = (
+            200,
+            [{"id": "if.lan", "enabled": "false", "role": "lan", "l3": ["192.0.2.254/24"]}],
+        )
+
+        resp = authenticated_client.post("/api/trace", json={"url": "example.com", "source_ip": "192.0.2.77"})
+
+        assert resp.status_code == 502
+        assert resp.json()["error"]["code"] == "api_changed"
+
+    def test_non_lan_source_without_user_stays_unknown(self, authenticated_client: TestClient):
+        """A source outside every LAN network cannot prove the direction."""
+        resp = authenticated_client.post("/api/trace", json={"url": "example.com", "source_ip": "198.51.100.77"})
+
+        assert resp.status_code == 200
+        by_key = {s["key"]: s for s in resp.json()["stages"]}
+        assert by_key["firewall"]["status"] == "unknown"
+        assert by_key["firewall"]["detail"]["reason_key"] == "fw_default_policy_unknown"
+
+    def test_dns_forward_zone_is_recognized(self, authenticated_client: TestClient, ngfw_mock):
+        """A host under a local forward zone: the NGFW resolves it itself; the
+        machine-local resolver cannot see that answer → honest unknown."""
+        ngfw_mock.state["dns_zones_forward"] = (
+            200,
+            [{"id": "zone.1", "name": "stuck-dns.test", "enabled": True, "servers": ["192.0.2.53"], "comment": ""}],
+        )
+        resp = authenticated_client.post("/api/trace", json={"url": "host.stuck-dns.test", "user_id": "user.id.1"})
+
+        assert resp.status_code == 200
+        dns = next(s for s in resp.json()["stages"] if s["key"] == "dns")
+        assert dns["status"] == "unknown"
+        assert dns["detail"]["reason_key"] == "dns_zone_unresolved"
+        assert dns["detail"]["rule_id"] == "zone.1"
+        assert dns["detail"]["rule_name"] == "stuck-dns.test"
+
+    def test_dns_zone_disabled_is_ignored(self, authenticated_client: TestClient, ngfw_mock):
+        ngfw_mock.state["dns_zones_master"] = (
+            200,
+            [{"id": "zone.2", "name": "stuck-dns.test", "enabled": False, "config": "x", "comment": ""}],
+        )
+        resp = authenticated_client.post("/api/trace", json={"url": "host.stuck-dns.test", "user_id": "user.id.1"})
+
+        dns = next(s for s in resp.json()["stages"] if s["key"] == "dns")
+        assert dns["detail"]["reason_key"] != "dns_zone_unresolved"
+
+    def test_dns_master_zone_does_not_reuse_or_query_the_system_resolver(
+        self, authenticated_client: TestClient, ngfw_mock, monkeypatch
+    ):
+        """A resolvable name can have a different NGFW master-zone answer, so
+        neither the local result nor downstream IP-rule evaluation may use it."""
+        ngfw_mock.state["dns_zones_master"] = (
+            200,
+            [{"id": "zone.3", "name": "localhost", "enabled": True, "config": "x", "comment": ""}],
+        )
+        ngfw_mock.state["aliases"] = (
+            200,
+            [
+                {"id": "country.rs", "type": "country", "value": "RS"},
+                {"id": "ip.loopback", "type": "ip", "value": "127.0.0.1"},
+            ],
+        )
+        ngfw_mock.state["fw_forward"] = (
+            200,
+            [
+                {
+                    "id": "fw.country",
+                    "enabled": True,
+                    "action": "drop",
+                    "destinations": [{"addresses": ["country.rs"]}],
+                },
+                {
+                    "id": "fw.loopback",
+                    "enabled": True,
+                    "action": "drop",
+                    "destinations": [{"addresses": ["ip.loopback"]}],
+                },
+            ],
+        )
+
+        async def system_dns_must_not_run(_: str) -> str:
+            raise AssertionError("local NGFW zone must not query STUCK system DNS")
+
+        monkeypatch.setattr("app.domain.trace_engine.resolve_ip", system_dns_must_not_run)
+
+        # "localhost" would resolve locally, but that is not evidence of the
+        # answer from the NGFW master zone and must not even be looked up.
+        resp = authenticated_client.post("/api/trace", json={"url": "localhost", "user_id": "user.id.1"})
+
+        data = resp.json()
+        dns = next(s for s in data["stages"] if s["key"] == "dns")
+        firewall = next(s for s in data["stages"] if s["key"] == "firewall")
+        assert data["target"]["resolved_ip"] is None
+        assert dns["status"] == "unknown"
+        assert dns["detail"]["reason_key"] == "dns_zone_unresolved"
+        assert dns["detail"]["rule_id"] == "zone.3"
+        assert "resolved_ip" not in dns["detail"]
+        assert firewall["status"] == "unknown"
+        assert firewall["detail"]["rule_id"] == "fw.country"
+        assert firewall["detail"]["reason_key"] == "fw_destination_unknown"
+
+    def test_unknown_destination_object_stops_at_the_earlier_rule(self, authenticated_client: TestClient, ngfw_mock):
+        ngfw_mock.state["fw_forward"] = (
+            200,
+            [
+                {
+                    "id": "fw.missing-object",
+                    "enabled": True,
+                    "action": "drop",
+                    "destinations": [{"addresses": ["ip.missing"]}],
+                }
+            ],
+        )
+
+        resp = authenticated_client.post("/api/trace", json={"url": "198.51.100.10", "user_id": "user.id.1"})
+
+        assert resp.status_code == 200
+        firewall = next(stage for stage in resp.json()["stages"] if stage["key"] == "firewall")
+        assert firewall["status"] == "unknown"
+        assert firewall["detail"]["rule_id"] == "fw.missing-object"
+        assert firewall["detail"]["reason_key"] == "fw_object_unknown"
+
+    def test_country_ip_list_without_geoip_data_stops_at_the_earlier_rule(
+        self, authenticated_client: TestClient, ngfw_mock
+    ):
+        # The documented list_of_iplists object contains GeoIP list IDs, not
+        # CIDRs. STUCK has no matching read-only GeoIP dataset.
+        ngfw_mock.state["aliases"] = (
+            200,
+            [{"id": "list_of_iplists.id.ru", "type": "list_of_iplists", "values": ["iplist.ru"]}],
+        )
+        ngfw_mock.state["fw_forward"] = (
+            200,
+            [
+                {
+                    "id": "fw.country-list",
+                    "enabled": True,
+                    "action": "drop",
+                    "destinations": [{"addresses": ["list_of_iplists.id.ru"]}],
+                }
+            ],
+        )
+
+        resp = authenticated_client.post("/api/trace", json={"url": "198.51.100.10", "user_id": "user.id.1"})
+
+        assert resp.status_code == 200
+        firewall = next(stage for stage in resp.json()["stages"] if stage["key"] == "firewall")
+        assert firewall["status"] == "unknown"
+        assert firewall["detail"]["rule_id"] == "fw.country-list"
+        assert firewall["detail"]["reason_key"] == "fw_object_unknown"
+
+    def test_unknown_source_object_stops_at_the_earlier_rule(self, authenticated_client: TestClient, ngfw_mock):
+        ngfw_mock.state["fw_forward"] = (
+            200,
+            [
+                {
+                    "id": "fw.missing-source-object",
+                    "enabled": True,
+                    "action": "drop",
+                    "sources": [{"addresses": ["ip.missing"]}],
+                }
+            ],
+        )
+
+        resp = authenticated_client.post(
+            "/api/trace",
+            json={"url": "198.51.100.10", "user_id": "user.id.1", "source_ip": "192.0.2.10"},
+        )
+
+        assert resp.status_code == 200
+        firewall = next(stage for stage in resp.json()["stages"] if stage["key"] == "firewall")
+        assert firewall["status"] == "unknown"
+        assert firewall["detail"]["rule_id"] == "fw.missing-source-object"
+        assert firewall["detail"]["reason_key"] == "fw_object_unknown"
+
+    def test_unknown_destination_port_object_stops_at_the_earlier_rule(
+        self, authenticated_client: TestClient, ngfw_mock
+    ):
+        ngfw_mock.state["fw_forward"] = (
+            200,
+            [{"id": "fw.missing-port", "enabled": True, "action": "drop", "destination_ports": ["port.missing"]}],
+        )
+
+        resp = authenticated_client.post("/api/trace", json={"url": "198.51.100.10", "user_id": "user.id.1"})
+
+        assert resp.status_code == 200
+        firewall = next(stage for stage in resp.json()["stages"] if stage["key"] == "firewall")
+        assert firewall["status"] == "unknown"
+        assert firewall["detail"]["rule_id"] == "fw.missing-port"
+        assert firewall["detail"]["reason_key"] == "fw_port_unknown"
+
+    def test_unknown_firewall_action_is_not_reported_as_a_block(self, authenticated_client: TestClient, ngfw_mock):
+        ngfw_mock.state["fw_forward"] = (200, [{"id": "fw.future-action", "enabled": True, "action": "future_action"}])
+
+        resp = authenticated_client.post("/api/trace", json={"url": "198.51.100.10", "user_id": "user.id.1"})
+
+        assert resp.status_code == 200
+        firewall = next(stage for stage in resp.json()["stages"] if stage["key"] == "firewall")
+        assert firewall["status"] == "unknown"
+        assert firewall["detail"]["reason_key"] == "fw_action_unknown"
+        assert resp.json()["summary"]["blocked_at"] is None
+
+    def test_refresh_counts_include_lan_and_dns(self, authenticated_client: TestClient, ngfw_mock):
+        counts = authenticated_client.post("/api/rules/refresh").json()["counts"]
+        assert counts["lan_networks"] == 1
+        assert counts["dns_zones"] == 0
+
+    def test_non_matching_drop_rule_still_defaults_to_allow(self, authenticated_client: TestClient, ngfw_mock):
+        """The default applies when rules EXIST but none matches — not only for
+        an empty table."""
+        ngfw_mock.state["fw_forward"] = (
+            200,
+            [
+                {
+                    "id": "fwd.1",
+                    "action": "drop",
+                    "sources": [{"addresses": ["user.id.1"]}],
+                    "destinations": [{"addresses": ["203.0.113.99"]}],
+                    "enabled": True,
+                }
+            ],
+        )
+        resp = authenticated_client.post("/api/trace", json={"url": "example.com", "user_id": "user.id.1"})
+
+        assert resp.status_code == 200
+        by_key = {s["key"]: s for s in resp.json()["stages"]}
+        assert by_key["firewall"]["status"] == "pass"
+        assert by_key["firewall"]["detail"]["reason_key"] == "fw_default_allow"
+
+    def test_empty_input_table_stays_unknown(self, authenticated_client: TestClient, ngfw_mock):
+        """INPUT (traffic to the NGFW itself) never borrows the FORWARD default:
+        system rules guarding NGFW services are invisible to the read-only API."""
+        resp = authenticated_client.post("/api/trace", json={"url": "192.0.2.254", "user_id": "user.id.1"})
+
+        assert resp.status_code == 200
+        by_key = {s["key"]: s for s in resp.json()["stages"]}
+        assert by_key["firewall"]["detail"]["firewall_table"] == "input"
+        assert by_key["firewall"]["status"] == "unknown"
+        assert by_key["firewall"]["detail"]["reason_key"] == "fw_default_policy_unknown"
 
     def test_blocked_by_content_filter_as_user(self, authenticated_client: TestClient, ngfw_mock):
         """CF rule denies the URL category for the chosen user → block at content_filter."""
@@ -578,6 +875,7 @@ class TestTraceStages:
         resp = authenticated_client.post("/api/trace", json={"url": "rts.rs"})
 
         assert resp.status_code == 200
+        # No user selected → the FORWARD default is not applied → unknown.
         assert resp.json()["summary"]["verdict"] == "unknown"
 
     def test_ips_bypass_for_user(self, authenticated_client: TestClient, ngfw_mock):
@@ -595,9 +893,10 @@ class TestTraceStages:
         assert ips["status"] == "bypass"
         assert ips["detail"]["rule_id"] == "bypass.1"
         assert ips["detail"]["reason_key"] == "ips_bypass"
-        # Bypass is not a block, but an empty firewall rule set does not prove
-        # the default NGFW policy is permissive.
-        assert data["summary"]["verdict"] == "unknown"
+        # Bypass is not a block; the empty FORWARD table falls back to the
+        # documented default ALLOW for the selected user, and the DNS stage
+        # keeps the end verdict conditional.
+        assert data["summary"]["verdict"] == "conditional"
 
     def test_content_filter_disabled_is_skip(self, authenticated_client: TestClient, ngfw_mock):
         """CF module off → content_filter stage status=skip."""

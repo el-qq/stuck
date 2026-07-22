@@ -43,6 +43,11 @@ class RulesSnapshot:
     hw_rules_src_ip: list[S.HwRuleSrcIp] = field(default_factory=list)
     hw_rules_dst_ip: list[S.HwRuleDstIp] = field(default_factory=list)
     hw_rules_src_dst_ip: list[S.HwRuleSrcDstIp] = field(default_factory=list)
+    # LAN-side subnets (reduced from /l2manager/connection_settings; the raw
+    # payload is never stored — it contains tunnel credentials) and the local
+    # DNS zones (forward + master) recognized by the DNS stage.
+    lan_networks: list[str] = field(default_factory=list)
+    dns_zones: list[S.DnsZone] = field(default_factory=list)
     fw_dnat: list[S.FirewallRule] = field(default_factory=list)
     fw_snat: list[S.FirewallRule] = field(default_factory=list)
     fw_settings: S.FirewallSettings = field(default_factory=S.FirewallSettings)
@@ -67,6 +72,8 @@ class RulesSnapshot:
                 + len(self.hw_rules_dst_ip)
                 + len(self.hw_rules_src_dst_ip)
             ),
+            "lan_networks": len(self.lan_networks),
+            "dns_zones": len(self.dns_zones),
             "firewall_dnat": len(self.fw_dnat),
             "firewall_snat": len(self.fw_snat),
             "content_filter_rules": len(self.cf_rules),

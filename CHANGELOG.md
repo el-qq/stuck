@@ -14,6 +14,16 @@ All notable user-visible changes are recorded here. The project follows
 
 ### Changed
 
+- A trace with no matching FORWARD rule now reports the vendor-documented
+  default ALLOW policy when the subject is provably user-side (a selected user
+  or a source IP inside a LAN interface network); other cases and the INPUT
+  table stay unknown.
+- The DNS stage recognizes local NGFW DNS zones (forward and master) and
+  reports the matched zone instead of a generic policy-unknown; matching names
+  are not sent to STUCK's system resolver.
+- A rule that depends on an unavailable object, port object, GeoIP list or
+  unsupported firewall action now reports an explicit unknown result instead
+  of deriving a later allow/block verdict.
 - Rules and trace JSON exports now remove user-identifying display data and
   rule comments. Rules export asks for confirmation before downloading.
 
