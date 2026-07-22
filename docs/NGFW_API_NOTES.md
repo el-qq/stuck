@@ -16,17 +16,33 @@ source files are indexed by `docs/source/toc.yaml`.
   session cookies through `Set-Cookie`.
 - `GET /web/whoami` is a UI-observed, read-only post-login preflight. STUCK
   accepts only its `login`, `name`, `role_id`, `role_name` and `competence`
-  fields, then stores a reduced role decision in the STUCK session. A 401/403
-  when called with provisional post-password cookies is treated as a 2FA
-  requirement; STUCK does not guess a WebSocket or OTP completion protocol.
+  fields, then stores a reduced role decision in the STUCK session.
 - Every subsequent NGFW call forwards those cookies from backend memory.
 - `DELETE /web/auth/login` closes only the session identified by those cookies.
 - NGFW's session lifetime is independent of STUCK's configured browser session.
   A rejected NGFW cookie maps to `session_expired` without deleting the cached
   rule snapshot.
-- 2FA response details are not stable enough to complete the flow; STUCK maps a
-  detected challenge, or a provisional `whoami` 401/403, to
-  `second_factor_required`.
+
+### Second-factor (2FA) challenge
+
+A 2FA administrator receives session cookies from `POST /web/auth/login` (200)
+like anyone else, but `GET /web/whoami` returns a _blocked_ profile —
+`blocked_flags` bit 0 set, empty `role_id`/`role_name` — until the second factor
+is completed. STUCK detects this and drives the challenge over a WebSocket:
+
+- `wss://<host>:<port>/web/two_factor/challenge`, authenticated with the same
+  provisional cookies. The `wss://` destination passes the same allowlist/CIDR
+  fail-closed check as HTTP before it is opened.
+- Frames (JSON text): server sends `{"type":"2fa_start","payload":{}}` then
+  `{"type":"2fa_challenge","payload":{"message":"<optional hint>"}}`; the client
+  replies `{"type":"2fa_challenge","payload":{"2fa_code":"<code>"}}`.
+- Terminal frames: `{"type":"2fa_error","payload":{"message":"...",
+"can_retry":true|false}}` on a bad code, and
+  `{"type":"2fa_success","payload":{}}` on success (confirmed on live NGFW).
+- After a success frame (or a clean close), STUCK re-reads `whoami`;
+  `blocked_flags == 0` with a real `role_id` is the source of truth for a
+  completed login. A `whoami` 401/403 on the provisional cookies (no challenge
+  possible) still maps to `second_factor_required`.
 
 ## Snapshot endpoints
 

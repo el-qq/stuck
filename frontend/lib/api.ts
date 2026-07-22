@@ -4,13 +4,17 @@ import {
   AccessProfileRefreshResponse,
   HealthResponse,
   LoginRequest,
+  LoginOutcome,
   LoginResponse,
   PublicConfig,
   RulesRefreshResponse,
   SessionStatus,
+  SessionBootstrap,
   STAGE_ORDER,
   TraceRequest,
   TraceResponse,
+  TwoFactorRequiredResponse,
+  TwoFactorSubmitResponse,
   UserSourceAddressesResponse,
   UsersResponse,
 } from "./types";
@@ -123,13 +127,61 @@ async function requestInner<T>(path: string, init?: RequestInit): Promise<T> {
   return body as T;
 }
 
-export async function login(payload: LoginRequest): Promise<LoginResponse> {
-  const data = await request<LoginResponse>("/api/auth/login", {
+/**
+ * Sign in. Resolves to a discriminated {@link LoginOutcome}: either the created
+ * session, or a "second factor required" signal (the backend has set the
+ * HttpOnly `stuck_2fa` cookie and the caller must show the code form and call
+ * {@link submit2fa}). Never returns or stores any secret.
+ *
+ * NOTE: the mapping below is intentionally thin plumbing so normal login keeps
+ * working; the genuinely-new operations ({@link submit2fa}/{@link cancel2fa})
+ * and the form UI are the stubbed parts of this feature.
+ */
+export async function login(payload: LoginRequest): Promise<LoginOutcome> {
+  const data = await request<LoginResponse | TwoFactorRequiredResponse>("/api/auth/login", {
     method: "POST",
     body: JSON.stringify(payload),
   });
-  assertShape(!!data?.session && typeof data.session.login === "string" && "rules_updated_at" in data.session, "/api/auth/login");
+  if ((data as TwoFactorRequiredResponse).two_factor_required === true) {
+    const tfa = data as TwoFactorRequiredResponse;
+    assertShape(typeof tfa.expires_at === "string", "/api/auth/login");
+    return { twoFactorRequired: true, expiresAt: tfa.expires_at, message: tfa.message ?? null };
+  }
+  const ok = data as LoginResponse;
+  assertShape(!!ok?.session && typeof ok.session.login === "string" && "rules_updated_at" in ok.session, "/api/auth/login");
+  return { twoFactorRequired: false, session: ok.session };
+}
+
+/**
+ * Submit the second-factor code for the in-flight challenge (located by the
+ * HttpOnly `stuck_2fa` cookie; the code is never persisted). On success the
+ * backend swaps `stuck_2fa` for `stuck_session` and returns the session.
+ *
+ * A rejected-but-retryable code surfaces as a thrown ApiError with code
+ * `second_factor_invalid` and `details.can_retry === true` (keep the form open);
+ * a closed/expired challenge throws `second_factor_expired` (return to login).
+ *
+ * TODO(impl): POST /api/auth/2fa with `{ code }`, assertShape on `session`,
+ * return the session. Let the shared `request` funnel raise the typed errors.
+ */
+export async function submit2fa(code: string): Promise<TwoFactorSubmitResponse> {
+  const data = await request<TwoFactorSubmitResponse>("/api/auth/2fa", {
+    method: "POST",
+    body: JSON.stringify({ code }),
+  });
+  assertShape(!!data?.session && typeof data.session.login === "string" && "rules_updated_at" in data.session, "/api/auth/2fa");
   return data;
+}
+
+/**
+ * Cancel the in-flight 2FA challenge (idempotent; mirrors {@link logout}).
+ * Always resolves so the UI can return to the login screen.
+ *
+ * TODO(impl): POST /api/auth/2fa/cancel and return `{ ok: true }`.
+ */
+export async function cancel2fa(): Promise<{ ok: true }> {
+  await request<{ ok: true }>("/api/auth/2fa/cancel", { method: "POST" });
+  return { ok: true };
 }
 
 export async function getPublicConfig(): Promise<PublicConfig> {
@@ -142,8 +194,12 @@ export async function logout(): Promise<{ ok: true }> {
   return request<{ ok: true }>("/api/auth/logout", { method: "POST" });
 }
 
-export async function getSession(): Promise<SessionStatus> {
-  const data = await request<SessionStatus>("/api/session", { method: "GET" });
+export async function getSession(): Promise<SessionBootstrap> {
+  const data = await request<SessionStatus & { two_factor_pending?: boolean; expires_at?: string }>("/api/session", { method: "GET" });
+  if (data?.two_factor_pending === true) {
+    assertShape(typeof data.expires_at === "string", "/api/session");
+    return { twoFactorPending: true, expiresAt: data.expires_at };
+  }
   assertShape(
     typeof data?.login === "string" &&
       typeof data?.server === "string" &&

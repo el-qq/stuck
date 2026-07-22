@@ -9,6 +9,8 @@ export type ErrorCode =
   | "ngfw_host_not_allowed"
   | "invalid_credentials"
   | "second_factor_required"
+  | "second_factor_invalid"
+  | "second_factor_expired"
   | "insufficient_ngfw_permissions"
   | "not_authenticated"
   | "session_expired"
@@ -25,6 +27,8 @@ export const KNOWN_ERROR_CODES: readonly ErrorCode[] = [
   "ngfw_host_not_allowed",
   "invalid_credentials",
   "second_factor_required",
+  "second_factor_invalid",
+  "second_factor_expired",
   "insufficient_ngfw_permissions",
   "not_authenticated",
   "session_expired",
@@ -66,7 +70,31 @@ export interface AdminAccessProfile {
   trace_allowed: boolean;
 }
 
+/** Raw success shape of ``POST /api/auth/login`` (session was created). */
 export interface LoginResponse {
+  ok: true;
+  session: SessionInfo;
+}
+
+/** Raw shape of ``POST /api/auth/login`` when NGFW demands a second factor.
+ *  No session/secret is present; the ``stuck_2fa`` cookie is set HttpOnly. */
+export interface TwoFactorRequiredResponse {
+  ok: true;
+  two_factor_required: true;
+  /** ISO-8601 UTC instant the challenge expires (drives the UI countdown). */
+  expires_at: string;
+  /** Optional NGFW-provided hint shown above the code field; may be absent/empty. */
+  message?: string | null;
+}
+
+/** Discriminated result of the client ``login()`` wrapper (see lib/api.ts).
+ *  The UI branches on ``twoFactorRequired`` to render the code form vs. proceed. */
+export type LoginOutcome = { twoFactorRequired: false; session: SessionInfo } | { twoFactorRequired: true; expiresAt: string; message?: string | null };
+
+/** Result of ``submit2fa`` (client wrapper). Success carries the created
+ *  session; a rejected-but-retryable code is surfaced via a thrown ApiError
+ *  (code ``second_factor_invalid`` with ``details.can_retry``), not here. */
+export interface TwoFactorSubmitResponse {
   ok: true;
   session: SessionInfo;
 }
@@ -89,6 +117,17 @@ export interface SessionStatus {
    *  Optional for compatibility with older backends. */
   ngfw_port?: number;
 }
+
+/** `GET /api/session` when there is no session yet but a live 2FA challenge
+ *  exists (the page was reloaded between the password and the code). Lets the
+ *  browser restore the code form from backend-held state. */
+export interface TwoFactorPendingStatus {
+  twoFactorPending: true;
+  expiresAt: string;
+}
+
+/** Discriminated bootstrap result of `getSession()`. */
+export type SessionBootstrap = SessionStatus | TwoFactorPendingStatus;
 
 export interface AccessProfileRefreshResponse {
   ok: true;
