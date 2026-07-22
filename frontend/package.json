@@ -14,15 +14,15 @@
   "dependencies": {
     "@ibm/plex-mono": "2.5.0",
     "@ibm/plex-sans": "1.1.0",
-    "react": "19.2.7",
-    "react-dom": "19.2.7"
+    "react": "19.2.8",
+    "react-dom": "19.2.8"
   },
   "devDependencies": {
     "@playwright/test": "1.61.1",
     "@types/node": "26.1.1",
     "@types/react": "19.2.17",
     "@types/react-dom": "19.2.3",
-    "@vitejs/plugin-react": "6.0.3",
+    "@vitejs/plugin-react": "6.0.4",
     "@vitest/ui": "4.1.10",
     "happy-dom": "20.11.0",
     "typescript": "7.0.2",
