@@ -220,9 +220,10 @@ jobs:
         with:
           node-version: "24"
 
-      # npm audit reads the lockfiles; no npm ci needed.
+      # npm audit reads the lockfile; the wrapper permits one reviewed,
+      # non-reachable dev-only advisory while preserving all other high/critical alerts.
       - name: Audit root npm dependencies
-        run: npm audit --audit-level=high
+        run: npm run deps:audit:root
 
       - name: Audit frontend npm dependencies
         run: npm --prefix frontend audit --audit-level=high
