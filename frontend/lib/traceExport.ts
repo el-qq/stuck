@@ -1,19 +1,29 @@
 import { downloadBlob } from "./download";
-import { StageDetail, TraceResponse } from "./types";
+import { StageDetail, TraceResponse, TraceStage } from "./types";
 
 /** Stable, self-describing format for a single trace attachment. */
-export const TRACE_EXPORT_FORMAT = "stuck.trace/v1";
+export const TRACE_EXPORT_FORMAT = "stuck.trace/v2";
+
+type ExportedStageDetail = Omit<StageDetail, "rule_name">;
+type ExportedTraceStage = Omit<TraceStage, "detail"> & { detail?: ExportedStageDetail };
 
 export interface TraceExport {
   format: typeof TRACE_EXPORT_FORMAT;
   exported_at: string;
-  trace: TraceResponse;
+  trace: {
+    target: TraceResponse["target"];
+    user: { id: string } | null;
+    categories: string[];
+    stages: ExportedTraceStage[];
+    summary: TraceResponse["summary"];
+    rules_updated_at: string;
+  };
 }
 
 /**
- * Builds the ticket attachment from an allowlist of the public trace fields.
- * Do not export a session object here: it can contain administrator and
- * connection state that is unrelated to a traffic diagnosis.
+ * Builds a formatted, privacy-minimized ticket attachment from allowlisted
+ * trace fields. User display data and rule comments are intentionally absent;
+ * the technical user ID is retained to identify the checked subject.
  */
 export function createTraceExport(trace: TraceResponse, exportedAt = new Date()): TraceExport {
   return {
@@ -31,7 +41,7 @@ export function createTraceExport(trace: TraceResponse, exportedAt = new Date())
         effective_destination_ip: trace.target.effective_destination_ip,
         effective_destination_port: trace.target.effective_destination_port,
       },
-      user: trace.user ? { id: trace.user.id, name: trace.user.name, login: trace.user.login } : null,
+      user: trace.user ? { id: trace.user.id } : null,
       categories: [...trace.categories],
       stages: trace.stages.map((stage) => ({
         key: stage.key,
@@ -64,10 +74,9 @@ export function downloadTraceExport(trace: TraceResponse, exportedAt = new Date(
   downloadBlob(blob, defaultTraceExportFilename(trace.target.host, exportedAt));
 }
 
-function copyStageDetail(detail: StageDetail): StageDetail {
+function copyStageDetail(detail: StageDetail): ExportedStageDetail {
   return {
     ...(detail.rule_id !== undefined ? { rule_id: detail.rule_id } : {}),
-    ...(detail.rule_name !== undefined ? { rule_name: detail.rule_name } : {}),
     ...(detail.hw_mode !== undefined ? { hw_mode: detail.hw_mode } : {}),
     ...(detail.action !== undefined ? { action: detail.action } : {}),
     ...(detail.matched_category !== undefined ? { matched_category: detail.matched_category } : {}),

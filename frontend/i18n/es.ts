@@ -49,6 +49,10 @@ export const es: Record<keyof typeof en, string> = {
   "header.refreshing": "Actualizando…",
   "header.exportRules": "Exportar reglas",
   "header.exporting": "Exportando…",
+  "rulesExport.title": "¿Descargar todas las reglas?",
+  "rulesExport.message":
+    "Se descargarán todas las reglas del NGFW actual. Los datos de usuarios están anonimizados: sin inicios de sesión, nombres ni comentarios.",
+  "rulesExport.download": "Descargar",
   "header.settings": "Ajustes",
   "header.logout": "Cerrar sesión",
   "header.sessionExpires": "Sesión hasta las {time}",

@@ -384,16 +384,26 @@ Query parameters:
 - `refresh=true` — refresh before export.
 
 The feature is controlled by backend configuration. Disabled behaves as 404.
-The response is downloaded JSON:
+The response is a two-space-indented JSON attachment. It deliberately excludes
+administrator login and all user display data (`login`, `name`, comments,
+titles and directory names). User and group IDs are replaced by stable opaque
+`user-N` / `group-N` values throughout the attachment, so rule links remain
+usable without identifying a person.
 
 ```ts
 {
-  binding: { admin: string; server: string };
-  rules_updated_at: string;
+  format: "stuck.rules/v2";
   exported_at: string;
-  filtered_by_user_id: string | null;
+  rules_updated_at: string;
+  binding: { server: string };
+  filtered_by_user_id: `user-${number}` | null;
   snapshot: {
-    users: object[];
+    users: Array<{
+      id: `user-${number}`;
+      parent_id: `group-${number}` | null;
+      enabled: boolean;
+      domain_type: string;
+    }>;
     aliases: object[];
     objects: object[];
     firewall_forward: object[];
@@ -421,8 +431,8 @@ The response is downloaded JSON:
 ```
 
 The binding is derived exclusively from `stuck_session`; request parameters
-cannot select another administrator or server. Exports contain no credentials
-or cookies.
+cannot select another administrator or server. Exports contain no credentials,
+cookies or user-identifying display data.
 
 ### `GET /api/rules/hygiene`
 

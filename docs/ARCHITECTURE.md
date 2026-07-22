@@ -29,9 +29,10 @@ evaluates traces locally.
   from the authenticated server and configured NGFW port, opens in a new tab
   with `noopener noreferrer`, and contains no STUCK or NGFW session value.
 - A single trace can be downloaded as a browser-generated JSON attachment or
-  printed for a ticket. Both use only an allowlisted copy of the already
-  received `TraceResponse`; neither action sends another request or exports
-  STUCK/NGFW session state.
+  printed for a ticket. The attachment uses an allowlisted, privacy-minimized
+  copy of the completed trace: it retains only the selected user's technical
+  ID and excludes user display data and rule comments. Neither action sends
+  another request or exports STUCK/NGFW session state.
 - `frontend/lib/types.ts` mirrors public response shapes and the fixed stage
   order.
 - `frontend/lib/storage.ts` stores only non-sensitive conveniences: the last
@@ -155,7 +156,8 @@ hw_filter → pre_filter → rate_limit → dns → dnat → content_filter
   cookie-like values centrally.
 - Rules export derives the binding only from the authenticated server-side
   session. Request parameters may filter within that snapshot, never select a
-  different binding.
+  different binding. The attachment contains no administrator login or user
+  display data; stable opaque user/group IDs preserve rule references.
 - Application NGFW calls are GET/read-only except login/logout session control.
 - Production startup is fail-closed unless an exact host/CIDR allowlist is
   configured. `STUCK_ALLOW_ANY_NGFW=true` is an explicit lab mode, logged at

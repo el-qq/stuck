@@ -13,6 +13,7 @@ import { Header } from "./Header";
 import { WorkspaceTabs } from "./WorkspaceTabs";
 import { SettingsModal } from "./SettingsModal";
 import { RulesRefreshModal } from "./RulesRefreshModal";
+import { RulesExportConfirmModal } from "./RulesExportConfirmModal";
 import { HygieneCounters, HygieneTable, RuleHygieneReportView, hygieneBadgeColor } from "./RuleHygieneReportView";
 import { AccessDiagnosticModal } from "./AccessDiagnosticModal";
 import { TraceForm, TraceSubmitPayload } from "./TraceForm";
@@ -38,6 +39,7 @@ export function MainScreen() {
   // ---- rules export ----
   const exportEnabled = (session.session?.rules_export_enabled ?? false) && traceAllowed;
   const [exporting, setExporting] = useState(false);
+  const [exportConfirmOpen, setExportConfirmOpen] = useState(false);
 
   // ---- rule hygiene (top-level workspace tab) ----
   const hygieneEnabled = (session.session?.rule_hygiene_enabled ?? false) && traceAllowed;
@@ -84,6 +86,7 @@ export function MainScreen() {
       // The export can be large — hand it straight to the browser download
       // instead of parsing it into state.
       downloadBlob(blob, filename ?? defaultRulesExportFilename(server));
+      setExportConfirmOpen(false);
     } catch (e) {
       const apiErr = toApiError(e);
       if (!session.handleAuthError(apiErr)) {
@@ -230,7 +233,7 @@ export function MainScreen() {
         onOpenSettings={() => setSettingsOpen(true)}
         exportEnabled={exportEnabled}
         exporting={exporting}
-        onExport={() => void runExport()}
+        onExport={() => setExportConfirmOpen(true)}
       />
 
       {workspaceTabs}
@@ -390,6 +393,13 @@ export function MainScreen() {
         result={refreshResult}
         onClose={() => setRefreshOpen(false)}
         onRetry={() => void runRefresh()}
+      />
+
+      <RulesExportConfirmModal
+        open={exportConfirmOpen}
+        downloading={exporting}
+        onCancel={() => setExportConfirmOpen(false)}
+        onDownload={() => void runExport()}
       />
 
       {accessProfile && !traceAllowed && (

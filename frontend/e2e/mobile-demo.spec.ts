@@ -614,7 +614,7 @@ test("a completed demo trace can be attached as JSON or printed without an API r
   let contents = "";
   for await (const chunk of stream!) contents += chunk.toString();
   expect(JSON.parse(contents)).toMatchObject({
-    format: "stuck.trace/v1",
+    format: "stuck.trace/v2",
     trace: { target: { host: "success.com", dst_port: 443 }, summary: { verdict: "allowed" } },
   });
 

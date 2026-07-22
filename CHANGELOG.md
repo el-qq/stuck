@@ -12,6 +12,11 @@ All notable user-visible changes are recorded here. The project follows
   destination-IP and source+destination-IP modes are evaluated against the
   NGFW's active mode; the MAC mode honestly reports `unknown`.
 
+### Changed
+
+- Rules and trace JSON exports now remove user-identifying display data and
+  rule comments. Rules export asks for confirmation before downloading.
+
 ## [0.1.1] - 2026-07-20
 
 ### Added
