@@ -13,7 +13,7 @@ export const SEVERITY_COLOR: Record<HygieneSeverity, string> = {
   info: "var(--info)",
 };
 
-const TABLES = ["fw_forward", "fw_input"] as const;
+const TABLES = ["fw_forward", "fw_input", "hw_filter"] as const;
 export type HygieneTable = (typeof TABLES)[number];
 
 interface Props {
@@ -93,7 +93,9 @@ export function RuleHygieneReportView({ report, port, listMaxHeight, showCounter
         {groups.map((g) => (
           <details className="hygiene-group" open key={g.table}>
             <summary>
-              {t("hygiene.sectionFirewall")} · {t(g.table === "fw_forward" ? "hygiene.tableForward" : "hygiene.tableInput")}
+              {g.table === "hw_filter"
+                ? t("stage.hw_filter")
+                : `${t("hygiene.sectionFirewall")} · ${t(g.table === "fw_forward" ? "hygiene.tableForward" : "hygiene.tableInput")}`}
               <span className="hygiene-group__count">{g.findings.length}</span>
             </summary>
             <div className="hygiene-group__body">
@@ -120,7 +122,7 @@ function Counter({ color, label }: { color: string; label: string }) {
 function FindingRow({ finding, server, port }: { finding: HygieneFinding; server: string; port?: number }) {
   const { t } = useI18n();
   const color = SEVERITY_COLOR[finding.severity];
-  const link = ngfwRuleSectionUrl(server, port, "firewall", finding.rule.id);
+  const link = ngfwRuleSectionUrl(server, port, finding.table === "hw_filter" ? "hw_filter" : "firewall", finding.rule.id);
   const coverer = finding.related[0];
 
   return (
@@ -189,6 +191,8 @@ function kindLabel(t: TFn, kind: HygieneFinding["kind"]): string {
       return t("hygiene.kindUnreachable");
     case "overly_broad":
       return t("hygiene.kindOverlyBroad");
+    case "hw_inactive":
+      return t("hygiene.kindHwInactive");
   }
 }
 
@@ -197,6 +201,7 @@ function explain(t: TFn, f: HygieneFinding, coverer?: HygieneFinding["related"][
     case "shadowed":
       return t("hygiene.explainShadowed", { position: coverer?.position ?? "?" });
     case "redundant":
+      if (f.table === "hw_filter") return t("hygiene.explainHwDuplicate", { position: coverer?.position ?? "?" });
       return t("hygiene.explainRedundant", { position: coverer?.position ?? "?" });
     case "unreachable_after_any":
       return t("hygiene.explainUnreachable", { position: f.rule.position, count: f.extra?.unreachable_count ?? f.related.length });
@@ -206,6 +211,12 @@ function explain(t: TFn, f: HygieneFinding, coverer?: HygieneFinding["related"][
       if (f.severity === "risk") return t("hygiene.explainOverlyBroadFirst");
       if (f.severity === "info") return t("hygiene.explainOverlyBroadTail");
       return t("hygiene.explainOverlyBroad");
+    case "hw_inactive":
+      return t("hygiene.explainHwInactive", {
+        count: f.extra?.inactive_count ?? f.related.length + 1,
+        list: f.extra?.list_mode ?? "?",
+        mode: f.extra?.active_mode ?? "?",
+      });
   }
 }
 

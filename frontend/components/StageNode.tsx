@@ -53,6 +53,7 @@ export function StageNode({ stage, isLast, revealed, animate, flowingConnector }
       k: t("detail.limitScope"),
       v: detail.limit_scope === "user" ? t("detail.scopeUser") : detail.limit_scope === "group" ? t("detail.scopeGroup") : detail.limit_scope,
     });
+  if (detail?.hw_mode) detailRows.push({ k: t("detail.hwMode"), v: detail.hw_mode });
   if (detail?.resolved_ip) detailRows.push({ k: t("detail.resolvedIp"), v: detail.resolved_ip });
   if (detail?.firewall_table) detailRows.push({ k: t("detail.firewallTable"), v: detail.firewall_table.toUpperCase() });
   if (detail?.translated_destination_ip)

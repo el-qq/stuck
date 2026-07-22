@@ -3,6 +3,7 @@ import { StageKey } from "./types";
 // Console routes: #/firewall/firewall-users (forward/input), #/firewall/dnat,
 // #/firewall/prefiltering, #/firewall/hardware-filtering (no STUCK stage yet).
 const SECTION_BY_STAGE: Partial<Record<StageKey, string>> = {
+  hw_filter: "firewall/hardware-filtering",
   pre_filter: "firewall/prefiltering",
   dnat: "firewall/dnat",
   content_filter: "settings/access-rules/content-filter",

@@ -135,6 +135,11 @@ def _register_data_endpoints(router, base: str) -> None:
         "/firewall/rules/dnat": [],
         "/firewall/rules/snat": [],
         "/firewall/settings": {"automatic_snat_enabled": False},
+        "/firewall/hw_settings": {"mode": "src-ip"},
+        "/firewall/hw_rules_mac": [],
+        "/firewall/hw_rules_src_ip": [],
+        "/firewall/hw_rules_dst_ip": [],
+        "/firewall/hw_rules_src_dst_ip": [],
         "/l2manager/connection_state": [],
         "/firewall/state": {"enabled": True},
         "/content-filter/state": {"enabled": True},
@@ -442,7 +447,13 @@ def _snapshot_from_export(exp_snapshot: dict) -> RulesSnapshot:
     aliases = {a["id"]: S.Alias.model_validate(a) for a in exp_snapshot["aliases"] if isinstance(a, dict) and "id" in a}
     cf = exp_snapshot["content_filter"]
     speed_limit = exp_snapshot["speed_limit"]
+    hardware = exp_snapshot["hardware"]
     return RulesSnapshot(
+        hw_settings=(S.HwFilterSettings.model_validate(hardware["settings"]) if hardware["settings"] else None),
+        hw_rules_mac=S.parse_list(S.HwRuleMac, hardware["rules_mac"], what="hw"),
+        hw_rules_src_ip=S.parse_list(S.HwRuleSrcIp, hardware["rules_src_ip"], what="hw"),
+        hw_rules_dst_ip=S.parse_list(S.HwRuleDstIp, hardware["rules_dst_ip"], what="hw"),
+        hw_rules_src_dst_ip=S.parse_list(S.HwRuleSrcDstIp, hardware["rules_src_dst_ip"], what="hw"),
         users=S.parse_list(S.NgfwUser, exp_snapshot["users"], what="users"),
         aliases=aliases,
         fw_forward=S.parse_list(S.FirewallRule, exp_snapshot["firewall_forward"], what="fw"),
@@ -515,6 +526,6 @@ class TestExportAsFixture:
         )
 
         # Same verdict and same per-stage statuses: the export is a faithful fixture.
-        assert len(recon["stages"]) == 11
+        assert len(recon["stages"]) == 12
         assert recon["summary"]["verdict"] == live["summary"]["verdict"]
         assert [s["status"] for s in recon["stages"]] == [s["status"] for s in live["stages"]]

@@ -27,8 +27,9 @@ Strictly read-only: a pure function of the snapshot. No NGFW calls, no mutation.
 
 from __future__ import annotations
 
+import ipaddress
 from dataclasses import dataclass, field
-from typing import Literal, Optional
+from typing import Any, Literal, Optional
 
 from ..ngfw import schemas as S
 from .binding_pool import RulesSnapshot
@@ -302,11 +303,97 @@ def _analyze_chain(table: str, rules: list[S.FirewallRule]) -> list[HygieneFindi
     return findings
 
 
+_HW_LISTS: tuple[str, ...] = ("mac", "src-ip", "dst-ip", "src-and-dst-ip")
+
+
+def _hw_rules(snap: RulesSnapshot, mode: str) -> list:
+    return {
+        "mac": snap.hw_rules_mac,
+        "src-ip": snap.hw_rules_src_ip,
+        "dst-ip": snap.hw_rules_dst_ip,
+        "src-and-dst-ip": snap.hw_rules_src_dst_ip,
+    }[mode]
+
+
+def _hw_match_key(mode: str, rule) -> str:
+    """Normalized identity of a rule's match target inside one list."""
+    if mode == "mac":
+        return (rule.mac or "").strip().lower()
+    if mode == "src-ip":
+        return str(ipaddress.ip_address(rule.source_ip))
+    if mode == "dst-ip":
+        return str(ipaddress.ip_address(rule.destination_ip))
+    return f"{ipaddress.ip_address(rule.source_ip)}>{ipaddress.ip_address(rule.destination_ip)}"
+
+
+def _analyze_hw(snap: RulesSnapshot) -> list[HygieneFinding]:
+    """Hardware-filtering hygiene. Ordering-based checks do not apply (flat
+    drop lists, one implicit action); what DOES matter:
+
+    * ``hw_inactive`` — enabled rules configured in a list whose mode is NOT
+      active silently do nothing (easy to miss in the console) → warning.
+    * duplicates inside the ACTIVE list (same normalized address / pair) →
+      ``redundant`` (info), attributed to the first occurrence.
+    """
+    if snap.hw_settings is None:
+        return []  # the NGFW does not expose the feature — nothing to check
+    active = snap.hw_settings.mode
+    findings: list[HygieneFinding] = []
+
+    for mode in _HW_LISTS:
+        if mode == active:
+            continue
+        rules = _hw_rules(snap, mode)
+        enabled = [(i + 1, r) for i, r in enumerate(rules) if r.enabled]
+        if not enabled:
+            continue
+        (first_pos, first), *rest = enabled
+        findings.append(
+            HygieneFinding(
+                kind="hw_inactive",
+                severity="warning",
+                tier="certain",
+                table="hw_filter",
+                rule_id=str(first.id),
+                rule_name=first.comment or None,
+                rule_position=first_pos,
+                reason_key="hygiene_hw_inactive",
+                related=[{"id": str(r.id), "name": r.comment or None, "position": pos} for pos, r in rest],
+                extra={"inactive_count": len(enabled), "list_mode": mode, "active_mode": active},
+            )
+        )
+
+    seen: dict[str, tuple[int, Any]] = {}
+    for idx, rule in enumerate(_hw_rules(snap, active)):
+        if not rule.enabled:
+            continue
+        key = _hw_match_key(active, rule)
+        if key in seen:
+            first_pos, first = seen[key]
+            findings.append(
+                HygieneFinding(
+                    kind="redundant",
+                    severity="info",
+                    tier="certain",
+                    table="hw_filter",
+                    rule_id=str(rule.id),
+                    rule_name=rule.comment or None,
+                    rule_position=idx + 1,
+                    reason_key="hygiene_hw_duplicate",
+                    related=[{"id": str(first.id), "name": first.comment or None, "position": first_pos}],
+                )
+            )
+        else:
+            seen[key] = (idx + 1, rule)
+    return findings
+
+
 def analyze_snapshot(snap: RulesSnapshot) -> dict:
     """Run every hygiene check over ``snap`` and return the contract shape."""
     findings: list[HygieneFinding] = []
     for table in _CHAINS:
         findings.extend(_analyze_chain(table, getattr(snap, table)))
+    findings.extend(_analyze_hw(snap))
 
     summary = {"total": len(findings), "risk": 0, "warning": 0, "info": 0, "possible": 0}
     for f in findings:

@@ -283,7 +283,8 @@ trace with `source_ip: null`; user/group rules still apply.
 `dst_port`, when supplied, overrides an explicit port in `url`.
 
 ```ts
-type StageKey = "pre_filter" | "rate_limit" | "dns" | "dnat" | "content_filter" | "antivirus" | "firewall" | "app_control" | "ips" | "snat" | "destination";
+type StageKey =
+  "hw_filter" | "pre_filter" | "rate_limit" | "dns" | "dnat" | "content_filter" | "antivirus" | "firewall" | "app_control" | "ips" | "snat" | "destination";
 
 type StageStatus = "pass" | "block" | "limited" | "resolved" | "active" | "applied" | "conditional" | "skip" | "bypass" | "unknown" | "na";
 
@@ -340,8 +341,8 @@ interface TraceStage {
 `stages` always contains every key in this exact order:
 
 ```text
-pre_filter, rate_limit, dns, dnat, content_filter, antivirus,
-firewall, app_control, ips, snat, destination
+hw_filter, pre_filter, rate_limit, dns, dnat, content_filter,
+antivirus, firewall, app_control, ips, snat, destination
 ```
 
 Status intent:
@@ -401,6 +402,13 @@ The response is downloaded JSON:
     firewall_dnat: object[];
     firewall_snat: object[];
     firewall_settings: object;
+    hardware: {
+      settings: object | null; // { mode: "mac" | ... }; null = feature absent on this NGFW
+      rules_mac: object[];
+      rules_src_ip: object[];
+      rules_dst_ip: object[];
+      rules_src_dst_ip: object[];
+    };
     firewall_state: object;
     ngfw_addresses: string[];
     content_filter: { state: object; rules: object[]; categories: unknown };
@@ -447,17 +455,17 @@ behaves as 404 and the flag is surfaced as `rule_hygiene_enabled` in
     possible: number;
   }
   findings: Array<{
-    kind: "shadowed" | "redundant" | "unreachable_after_any" | "overly_broad";
+    kind: "shadowed" | "redundant" | "unreachable_after_any" | "overly_broad" | "hw_inactive";
     severity: "risk" | "warning" | "info";
     // "certain" = coverage is provable; "possible" = plausible but an opaque
     // condition (negated set, multiple blocks, source-port/interface/schedule)
     // prevented a proof. The analysis never over-claims a certain finding.
     tier: "certain" | "possible";
-    table: "fw_forward" | "fw_input";
+    table: "fw_forward" | "fw_input" | "hw_filter";
     reason_key: string;
     rule: { id: string; name: string | null; position: number };
     related: Array<{ id: string; name: string | null; position: number }>;
-    extra?: { unreachable_count?: number };
+    extra?: { unreachable_count?: number; inactive_count?: number; list_mode?: string; active_mode?: string };
   }>;
 }
 ```
@@ -465,6 +473,12 @@ behaves as 404 and the flag is surfaced as `rule_hygiene_enabled` in
 Address / port coverage uses literal token-superset containment, so the analysis
 can only under-report (e.g. it does not yet treat `10.0.0.0/8` as covering
 `10.1.0.0/16`), never over-report. The binding comes only from `stuck_session`.
+
+Hardware filtering is checked too (`table: "hw_filter"`): enabled rules in a
+list whose mode is not active are reported once per list as `hw_inactive`
+(warning, `extra.list_mode`/`extra.active_mode`), and duplicates inside the
+active list are `redundant` (info). When the NGFW does not expose hardware
+filtering, the section is skipped entirely.
 
 An `overly_broad` finding (a universal any→any accept) is graded by context:
 `risk` when it is the first enabled rule of its chain (all traffic allowed

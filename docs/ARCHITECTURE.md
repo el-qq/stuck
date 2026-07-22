@@ -127,8 +127,8 @@ dynamic and never cached in the snapshot.
 ## Trace semantics
 
 ```text
-pre_filter → rate_limit → dns → dnat → content_filter → antivirus
-→ firewall → app_control → ips → snat → destination
+hw_filter → pre_filter → rate_limit → dns → dnat → content_filter
+→ antivirus → firewall → app_control → ips → snat → destination
 ```
 
 - Ordered tables stop at the first definite match.

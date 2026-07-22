@@ -3,6 +3,7 @@ import { ngfwRuleSectionUrl } from "../ngfwRuleLink";
 
 describe("ngfwRuleSectionUrl", () => {
   it.each([
+    ["hw_filter", "https://ngfw.example:8443/#/firewall/hardware-filtering"],
     ["pre_filter", "https://ngfw.example:8443/#/firewall/prefiltering"],
     ["dnat", "https://ngfw.example:8443/#/firewall/dnat"],
     ["firewall", "https://ngfw.example:8443/#/firewall/firewall-users"],

@@ -22,6 +22,7 @@ const STEPS: Step[] = [
   { labelKey: "rules.stepUsers", count: (r) => r.counts.users },
   { labelKey: "rules.stepAliases", count: (r) => r.counts.aliases },
   { labelKey: "rules.stepFirewallPreFilter", count: (r) => r.counts.firewall_pre_filter },
+  { labelKey: "rules.stepHardware", count: (r) => r.counts.hardware_rules ?? NaN },
   { labelKey: "rules.stepFirewallDnat", count: (r) => r.counts.firewall_dnat },
   { labelKey: "rules.stepFirewallForward", count: (r) => r.counts.firewall_forward },
   { labelKey: "rules.stepFirewallInput", count: (r) => r.counts.firewall_input },

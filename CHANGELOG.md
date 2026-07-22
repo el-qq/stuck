@@ -4,6 +4,14 @@ All notable user-visible changes are recorded here. The project follows
 [Semantic Versioning](https://semver.org/) and the structure of
 [Keep a Changelog](https://keepachangelog.com/).
 
+## [Unreleased]
+
+### Added
+
+- Hardware (NIC-level) filtering as the first trace stage: the source-IP,
+  destination-IP and source+destination-IP modes are evaluated against the
+  NGFW's active mode; the MAC mode honestly reports `unknown`.
+
 ## [0.1.1] - 2026-07-20
 
 ### Added

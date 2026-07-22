@@ -11,9 +11,10 @@ ValidationError into a StuckError(api_changed).
 
 from __future__ import annotations
 
-from typing import Any, TypeVar
+import ipaddress
+from typing import Any, Literal, TypeVar
 
-from pydantic import BaseModel, ConfigDict, Field, ValidationError
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 
 from ..errors import StuckError
 
@@ -91,6 +92,77 @@ class PreliminaryRule(_Base):
 
 class FirewallSettings(_Base):
     automatic_snat_enabled: bool = False
+
+
+HwFilterMode = Literal["mac", "src-ip", "dst-ip", "src-and-dst-ip"]
+
+
+class HwFilterSettings(_Base):
+    """``GET /firewall/hw_settings`` — the single ACTIVE hardware-filtering
+    mode. Only the matching rule list applies; a matching enabled rule drops at
+    the NIC. The mode is a closed set on purpose: an unknown value must surface
+    as ``api_changed``, never as a silent fail-open pass."""
+
+    mode: HwFilterMode
+
+
+def _require_ip(value: str) -> str:
+    """Hardware rules carry exact single addresses; anything else is api_changed."""
+    ipaddress.ip_address(str(value).strip())
+    return str(value).strip()
+
+
+class HwRuleMac(_Base):
+    """One row of ``/firewall/hw_rules_mac``."""
+
+    id: str
+    enabled: bool = True
+    mac: str
+    protocol: int | None = None
+    comment: str = ""
+
+
+class HwRuleSrcIp(_Base):
+    """One row of ``/firewall/hw_rules_src_ip``."""
+
+    id: str
+    enabled: bool = True
+    source_ip: str
+    comment: str = ""
+
+    @field_validator("source_ip")
+    @classmethod
+    def _source_ip(cls, v: str) -> str:
+        return _require_ip(v)
+
+
+class HwRuleDstIp(_Base):
+    """One row of ``/firewall/hw_rules_dst_ip``."""
+
+    id: str
+    enabled: bool = True
+    destination_ip: str
+    comment: str = ""
+
+    @field_validator("destination_ip")
+    @classmethod
+    def _destination_ip(cls, v: str) -> str:
+        return _require_ip(v)
+
+
+class HwRuleSrcDstIp(_Base):
+    """One row of ``/firewall/hw_rules_src_dst_ip``."""
+
+    id: str
+    enabled: bool = True
+    source_ip: str
+    destination_ip: str
+    comment: str = ""
+
+    @field_validator("source_ip", "destination_ip")
+    @classmethod
+    def _ips(cls, v: str) -> str:
+        return _require_ip(v)
 
 
 class InterfaceState(_Base):

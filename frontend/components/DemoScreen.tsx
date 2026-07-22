@@ -2,6 +2,7 @@
 
 import React, { useRef, useState } from "react";
 import { useI18n } from "@/i18n";
+import { PipelineOrder } from "./PipelineOrder";
 import { DomainType, TraceResponse } from "@/lib/types";
 import { DEMO_HYGIENE_REPORT, DEMO_TARGETS, DEFAULT_DEMO_TARGET, DEMO_USERS, runDemoTrace } from "@/lib/demoData";
 import { SERVICE_PRESETS } from "@/lib/servicePresets";
@@ -142,6 +143,15 @@ export function DemoScreen({ onExit }: { onExit: () => void }) {
               >
                 {t("hygiene.tableInput")}
                 <span className="hygiene-nav__count">{hygieneTableCount("fw_input")}</span>
+              </button>
+              <button
+                className="hygiene-nav__item"
+                style={{ marginTop: 6 }}
+                aria-pressed={hygieneSection === "hw_filter"}
+                onClick={() => setHygieneSection("hw_filter")}
+              >
+                {t("stage.hw_filter")}
+                <span className="hygiene-nav__count">{hygieneTableCount("hw_filter")}</span>
               </button>
             </div>
           </div>
@@ -305,8 +315,7 @@ export function DemoScreen({ onExit }: { onExit: () => void }) {
                   lineHeight: 1.55,
                 }}
               >
-                <div style={{ fontWeight: 700, color: "var(--text)", marginBottom: 6, fontSize: 13 }}>{t("check.orderTitle")}</div>
-                {t("check.orderText")}
+                <PipelineOrder />
               </div>
             </div>
           }

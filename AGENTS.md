@@ -24,8 +24,8 @@ TypeScript frontend. An offline demo mirrors the UI without contacting NGFW.
 5. A logout destroys the STUCK session and its NGFW cookie but leaves the
    pair's rule snapshot cached. Restart clears all in-memory state.
 6. The trace pipeline order is fixed:
-   `pre_filter → rate_limit → dns → dnat → content_filter → antivirus →`
-   `firewall → app_control → ips → snat → destination`.
+   `hw_filter → pre_filter → rate_limit → dns → dnat → content_filter →`
+   `antivirus → firewall → app_control → ips → snat → destination`.
 7. Ordered rule tables use the first possible match. Missing source IP,
    interface, schedule, source port, payload or other required context must
    produce `unknown`; never skip an earlier possible rule to claim a later

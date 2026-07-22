@@ -474,6 +474,37 @@ button {
   background: var(--panel);
 }
 
+/* Collapsible "processing order" reference block (collapsed by default). */
+.pipeline-order > summary {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--text);
+}
+
+.pipeline-order > summary::-webkit-details-marker {
+  display: none;
+}
+
+.pipeline-order > summary::before {
+  content: "▸";
+  color: var(--muted);
+  transition: transform 0.15s ease;
+}
+
+.pipeline-order[open] > summary::before {
+  transform: rotate(90deg);
+}
+
+.pipeline-order__body {
+  margin-top: 8px;
+}
+
 /* Collapsible findings group (one firewall chain). */
 .hygiene-group {
   background: var(--panel);

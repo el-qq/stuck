@@ -5,6 +5,7 @@ from fastapi.testclient import TestClient
 from conftest import DEFAULT_USERS, NGFW_SERVER
 
 STAGE_KEYS = [
+    "hw_filter",
     "pre_filter",
     "rate_limit",
     "dns",
@@ -48,6 +49,179 @@ class TestTraceAuth:
         assert resp.json()["error"]["code"] == "not_authenticated"
 
 
+class TestHardwareFilterStage:
+    """hw_filter — NIC-level drop, the FIRST stage of the pipeline."""
+
+    def _trace(self, client, ngfw_mock, *, source_ip=None):
+        body = {"url": "198.51.100.1", "user_id": "user.id.1"}
+        if source_ip:
+            body["source_ip"] = source_ip
+        resp = client.post("/api/trace", json=body)
+        assert resp.status_code == 200, resp.text
+        return resp.json()
+
+    def test_stage_is_first_and_passes_without_rules(self, authenticated_client: TestClient, ngfw_mock):
+        data = self._trace(authenticated_client, ngfw_mock)
+        first = data["stages"][0]
+        assert first["key"] == "hw_filter"
+        assert first["status"] == "pass"
+        assert first["detail"]["reason_key"] == "hw_no_matching_rule"
+
+    def test_src_ip_mode_blocks_matching_source(self, authenticated_client: TestClient, ngfw_mock):
+        ngfw_mock.state["hw_rules_src_ip"] = (
+            200,
+            [{"id": "hw.1", "enabled": True, "source_ip": "192.0.2.10", "comment": "Bad host"}],
+        )
+        data = self._trace(authenticated_client, ngfw_mock, source_ip="192.0.2.10")
+        first = data["stages"][0]
+        assert first["status"] == "block"
+        assert first["detail"]["rule_id"] == "hw.1"
+        assert first["detail"]["reason_key"] == "hw_rule_blocked"
+        assert data["summary"]["blocked_at"] == "hw_filter"
+        # Everything after the hardware drop is not reached.
+        assert {s["status"] for s in data["stages"][1:]} == {"na"}
+
+    def test_src_ip_mode_passes_other_source(self, authenticated_client: TestClient, ngfw_mock):
+        # user.id.1 gets a second active session so the OTHER source is valid
+        # for the trace (invariant #8) while missing the hardware rule.
+        ngfw_mock.state["auth_sessions"] = (
+            200,
+            [
+                {"id": "s1", "user_object_id": "user.id.1", "subnet": "192.0.2.10/32"},
+                {"id": "s3", "user_object_id": "user.id.1", "subnet": "192.0.2.20/32"},
+            ],
+        )
+        ngfw_mock.state["hw_rules_src_ip"] = (
+            200,
+            [{"id": "hw.1", "enabled": True, "source_ip": "192.0.2.10", "comment": ""}],
+        )
+        data = self._trace(authenticated_client, ngfw_mock, source_ip="192.0.2.20")
+        assert data["stages"][0]["status"] == "pass"
+
+    def test_src_ip_mode_without_source_is_unknown(self, authenticated_client: TestClient, ngfw_mock):
+        # Invariant #7: an enabled source rule may match; no source IP → unknown.
+        ngfw_mock.state["hw_rules_src_ip"] = (
+            200,
+            [{"id": "hw.1", "enabled": True, "source_ip": "192.0.2.10", "comment": ""}],
+        )
+        resp = authenticated_client.post("/api/trace", json={"url": "198.51.100.1"})
+        first = resp.json()["stages"][0]
+        assert first["status"] == "unknown"
+        assert first["detail"]["reason_key"] == "hw_source_ip_unknown"
+
+    def test_dst_ip_mode_blocks_matching_destination(self, authenticated_client: TestClient, ngfw_mock):
+        ngfw_mock.state["hw_settings"] = (200, {"mode": "dst-ip"})
+        ngfw_mock.state["hw_rules_dst_ip"] = (
+            200,
+            [{"id": "hw.2", "enabled": True, "destination_ip": "198.51.100.1", "comment": "Blocked dst"}],
+        )
+        data = self._trace(authenticated_client, ngfw_mock)
+        assert data["stages"][0]["status"] == "block"
+        assert data["stages"][0]["detail"]["rule_id"] == "hw.2"
+
+    def test_src_and_dst_mode_requires_both_to_match(self, authenticated_client: TestClient, ngfw_mock):
+        ngfw_mock.state["hw_settings"] = (200, {"mode": "src-and-dst-ip"})
+        ngfw_mock.state["hw_rules_src_dst_ip"] = (
+            200,
+            [
+                {
+                    "id": "hw.3",
+                    "enabled": True,
+                    "source_ip": "192.0.2.10",
+                    "destination_ip": "198.51.100.1",
+                    "comment": "",
+                }
+            ],
+        )
+        ngfw_mock.state["auth_sessions"] = (
+            200,
+            [
+                {"id": "s1", "user_object_id": "user.id.1", "subnet": "192.0.2.10/32"},
+                {"id": "s3", "user_object_id": "user.id.1", "subnet": "192.0.2.20/32"},
+            ],
+        )
+        # Pair matches → block.
+        data = self._trace(authenticated_client, ngfw_mock, source_ip="192.0.2.10")
+        assert data["stages"][0]["status"] == "block"
+        # Source differs → pass (destination alone is not enough).
+        data = self._trace(authenticated_client, ngfw_mock, source_ip="192.0.2.20")
+        assert data["stages"][0]["status"] == "pass"
+
+    def test_only_active_mode_rules_apply(self, authenticated_client: TestClient, ngfw_mock):
+        # A dst rule exists, but the active mode is src-ip → the dst list is inert.
+        ngfw_mock.state["hw_rules_dst_ip"] = (
+            200,
+            [{"id": "hw.2", "enabled": True, "destination_ip": "198.51.100.1", "comment": ""}],
+        )
+        data = self._trace(authenticated_client, ngfw_mock, source_ip="192.0.2.10")
+        assert data["stages"][0]["status"] == "pass"
+
+    def test_disabled_rule_is_ignored(self, authenticated_client: TestClient, ngfw_mock):
+        ngfw_mock.state["hw_rules_src_ip"] = (
+            200,
+            [{"id": "hw.1", "enabled": False, "source_ip": "192.0.2.10", "comment": ""}],
+        )
+        data = self._trace(authenticated_client, ngfw_mock, source_ip="192.0.2.10")
+        assert data["stages"][0]["status"] == "pass"
+
+    def test_mac_mode_with_rules_is_unknown(self, authenticated_client: TestClient, ngfw_mock):
+        # The trace has no MAC context — an enabled MAC rule may match anything.
+        ngfw_mock.state["hw_settings"] = (200, {"mode": "mac"})
+        ngfw_mock.state["hw_rules_mac"] = (
+            200,
+            [{"id": "hw.4", "enabled": True, "mac": "11:22:33:aa:bb:cc", "protocol": 2054, "comment": ""}],
+        )
+        data = self._trace(authenticated_client, ngfw_mock, source_ip="192.0.2.10")
+        first = data["stages"][0]
+        assert first["status"] == "unknown"
+        assert first["detail"]["reason_key"] == "hw_mac_unknown"
+
+    def test_unknown_mode_is_api_changed(self, authenticated_client: TestClient, ngfw_mock):
+        # A future/unknown mode must NOT silently pass (fail-open): the closed
+        # Literal turns it into api_changed at snapshot load.
+        ngfw_mock.state["hw_settings"] = (200, {"mode": "quantum-filtering"})
+        resp = authenticated_client.post("/api/trace", json={"url": "198.51.100.1"})
+        assert resp.status_code == 502
+        assert resp.json()["error"]["code"] == "api_changed"
+
+    def test_rule_with_invalid_ip_is_api_changed(self, authenticated_client: TestClient, ngfw_mock):
+        ngfw_mock.state["hw_rules_src_ip"] = (
+            200,
+            [{"id": "hw.1", "enabled": True, "source_ip": "999.9.9.9", "comment": ""}],
+        )
+        resp = authenticated_client.post("/api/trace", json={"url": "198.51.100.1"})
+        assert resp.status_code == 502
+        assert resp.json()["error"]["code"] == "api_changed"
+
+    def test_rule_missing_ip_field_is_api_changed(self, authenticated_client: TestClient, ngfw_mock):
+        ngfw_mock.state["hw_rules_src_ip"] = (200, [{"id": "hw.1", "enabled": True, "comment": ""}])
+        resp = authenticated_client.post("/api/trace", json={"url": "198.51.100.1"})
+        assert resp.status_code == 502
+        assert resp.json()["error"]["code"] == "api_changed"
+
+    def test_missing_endpoints_mean_not_supported(self, authenticated_client: TestClient, ngfw_mock):
+        # Pre-v22 NGFW: the hw endpoints do not exist. The snapshot still loads
+        # and the stage honestly reports "not supported" instead of failing.
+        for key in ("hw_settings", "hw_rules_mac", "hw_rules_src_ip", "hw_rules_dst_ip", "hw_rules_src_dst_ip"):
+            ngfw_mock.state[key] = (404, {"error": "not found"})
+        data = self._trace(authenticated_client, ngfw_mock)
+        first = data["stages"][0]
+        assert first["key"] == "hw_filter"
+        assert first["status"] == "skip"
+        assert first["detail"]["reason_key"] == "hw_not_supported"
+        # The rest of the pipeline still runs.
+        assert data["stages"][1]["key"] == "pre_filter"
+        assert data["stages"][1]["status"] != "na"
+
+    def test_refresh_counts_include_hardware_rules(self, authenticated_client: TestClient, ngfw_mock):
+        ngfw_mock.state["hw_rules_src_ip"] = (
+            200,
+            [{"id": "hw.1", "enabled": True, "source_ip": "192.0.2.10", "comment": ""}],
+        )
+        counts = authenticated_client.post("/api/rules/refresh").json()["counts"]
+        assert counts["hardware_rules"] == 1
+
+
 class TestExtendedFirewallPipeline:
     def test_preliminary_filter_blocks_first(self, authenticated_client: TestClient, ngfw_mock):
         ngfw_mock.state["fw_pre_filter"] = (
@@ -70,8 +244,9 @@ class TestExtendedFirewallPipeline:
 
         assert response.status_code == 200
         data = response.json()
-        assert data["stages"][0]["key"] == "pre_filter"
-        assert data["stages"][0]["status"] == "block"
+        # hw_filter passes (no hardware rules); pre_filter is the second stage.
+        assert data["stages"][1]["key"] == "pre_filter"
+        assert data["stages"][1]["status"] == "block"
         assert data["summary"]["blocked_at"] == "pre_filter"
 
     def test_dnat_selects_input_for_translated_ngfw_address(self, authenticated_client: TestClient, ngfw_mock):

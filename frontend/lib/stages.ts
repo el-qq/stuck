@@ -6,6 +6,7 @@ import { StageKey, StageStatus } from "./types";
  * same in every locale; the full stage name comes from `title_key` via i18n.
  */
 export const STAGE_ABBR: Record<StageKey, string> = {
+  hw_filter: "HW",
   pre_filter: "PRE",
   rate_limit: "RL",
   dns: "DNS",

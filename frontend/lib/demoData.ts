@@ -168,8 +168,27 @@ export const DEMO_HYGIENE_REPORT: RuleHygieneReport = {
   binding: { admin: "demo", server: "demo.local" },
   rules_updated_at: DEMO_RULES_UPDATED_AT,
   generated_at: DEMO_RULES_UPDATED_AT,
-  summary: { total: 5, risk: 1, warning: 3, info: 1, possible: 1 },
+  summary: { total: 7, risk: 1, warning: 4, info: 2, possible: 1 },
   findings: [
+    {
+      kind: "hw_inactive",
+      severity: "warning",
+      tier: "certain",
+      table: "hw_filter",
+      reason_key: "hygiene_hw_inactive",
+      rule: { id: "hwd1", name: "Block scanner (old)", position: 1 },
+      related: [{ id: "hwd2", name: "Block bruteforce (old)", position: 2 }],
+      extra: { inactive_count: 2, list_mode: "dst-ip", active_mode: "src-ip" },
+    },
+    {
+      kind: "redundant",
+      severity: "info",
+      tier: "certain",
+      table: "hw_filter",
+      reason_key: "hygiene_hw_duplicate",
+      rule: { id: "hws3", name: "Drop 203.0.113.66 (again)", position: 3 },
+      related: [{ id: "hws1", name: "Drop 203.0.113.66", position: 1 }],
+    },
     {
       kind: "overly_broad",
       severity: "risk",

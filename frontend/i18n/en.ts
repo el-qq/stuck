@@ -79,6 +79,7 @@ export const en = {
   "rules.stepUsers": "Users and groups",
   "rules.stepAliases": "Objects and aliases",
   "rules.stepFirewallPreFilter": "Preliminary filtering rules",
+  "rules.stepHardware": "Hardware filtering rules",
   "rules.stepFirewallDnat": "Firewall rules (DNAT)",
   "rules.stepFirewallForward": "Firewall rules (forward)",
   "rules.stepFirewallInput": "Firewall rules (input)",
@@ -122,6 +123,9 @@ export const en = {
   "hygiene.explainOverlyBroadFirst":
     "This rule accepts any source, destination, port and protocol and is the first match — all traffic is allowed unconditionally.",
   "hygiene.explainOverlyBroadTail": "This rule allows everything after narrower rules — the usual “allow the rest” tail. Make sure that is intended.",
+  "hygiene.kindHwInactive": "Inactive-mode rules",
+  "hygiene.explainHwInactive": "Enabled rules in the “{list}” list ({count}) have no effect — the active mode is “{mode}”.",
+  "hygiene.explainHwDuplicate": "Duplicates rule #{position} with the same address.",
 
   // ---- administrator access diagnostic ----
   "access.modalTitle": "NGFW access needs attention",
@@ -168,8 +172,7 @@ export const en = {
   "check.submitting": "Checking…",
   "check.noRulesWarning": "Rules are not loaded yet — click “Refresh rules” above to fetch them from the server.",
   "check.orderTitle": "Processing order",
-  "check.orderText":
-    "Preliminary filtering → Rate limiting → DNS → DNAT → Content filter → Antivirus → FORWARD/INPUT → Application control → Intrusion prevention → SNAT → Destination. Ordered rule tables stop at the first match.",
+  "check.orderText": "In rule tables the first matching rule wins.",
   "check.emptyTitle": "Enter an address and run the check",
   "check.emptySubtitle": "The traffic path through NGFW modules and the final verdict will appear here.",
   "check.resultAllUsers": "scenario: no specific user",
@@ -178,6 +181,7 @@ export const en = {
   "check.validation.userRequired": "Choose a user for this scenario.",
 
   // ---- stage titles (also used as fallback for server-supplied title_key) ----
+  "stage.hw_filter": "Hardware filtering",
   "stage.pre_filter": "Preliminary filtering",
   "stage.rate_limit": "Rate limiting",
   "stage.dns": "DNS",
@@ -213,6 +217,7 @@ export const en = {
   "detail.limitScope": "Limit scope",
   "detail.scopeUser": "Per user",
   "detail.scopeGroup": "Shared",
+  "detail.hwMode": "Filtering mode",
   "detail.resolvedIp": "Resolved IP",
   "detail.firewallTable": "Firewall table",
   "detail.translatedDestination": "Translated destination",
@@ -230,6 +235,12 @@ export const en = {
   "reason.dns_not_required": "The destination is already an IP address; DNS is not required.",
   "reason.dns_lookup_failed": "The backend could not resolve the domain name.",
   "reason.dns_policy_unknown": "The address resolved locally, but NGFW has no read-only API to verify DNS policy for the selected user.",
+  "reason.hw_no_matching_rule": "No hardware-filtering rule matched.",
+  "reason.hw_rule_blocked": "A hardware-filtering rule drops this traffic at the network card.",
+  "reason.hw_source_ip_unknown": "A hardware source-IP rule may match, but no source IP was selected.",
+  "reason.hw_destination_unknown": "A hardware destination-IP rule may match, but the destination IP is unresolved.",
+  "reason.hw_mac_unknown": "Hardware filtering works by MAC address, which this trace does not know.",
+  "reason.hw_not_supported": "Hardware filtering is not available on this NGFW.",
   "reason.pre_filter_disabled": "Preliminary filtering is disabled with user firewall rules.",
   "reason.pre_filter_source_unknown": "A preliminary blocking rule may match, but no source IP was selected.",
   "reason.pre_filter_conditions_unknown": "A preliminary blocking rule also checks source port, TCP flags or packet length, which this trace does not know.",

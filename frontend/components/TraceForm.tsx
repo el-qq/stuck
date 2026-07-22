@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { useI18n } from "@/i18n";
+import { PipelineOrder } from "./PipelineOrder";
 import { useSession } from "@/contexts/SessionContext";
 import { useApiErrorMessage } from "@/hooks/useApiErrorMessage";
 import * as api from "@/lib/api";
@@ -435,8 +436,7 @@ export function TraceForm({ rulesLoaded, traceAllowed, submitting, usersVersion,
           lineHeight: 1.55,
         }}
       >
-        <div style={{ fontWeight: 700, color: "var(--text)", marginBottom: 6, fontSize: 13 }}>{t("check.orderTitle")}</div>
-        {t("check.orderText")}
+        <PipelineOrder />
       </div>
     </div>
   );

@@ -59,7 +59,7 @@ def _rule(
     )
 
 
-def _snap(fw_forward=None, fw_input=None) -> RulesSnapshot:
+def _snap(fw_forward=None, fw_input=None, **hw) -> RulesSnapshot:
     return RulesSnapshot(
         users=[],
         aliases={},
@@ -72,6 +72,7 @@ def _snap(fw_forward=None, fw_input=None) -> RulesSnapshot:
         ips_state=S.StateFlag(),
         ips_bypass=[],
         av_enabled=False,
+        **hw,
     )
 
 
@@ -364,6 +365,75 @@ class TestBroadAndCatchAll:
         kinds = _kinds(report)
         assert "overly_broad" in kinds
         assert "unreachable_after_any" in kinds
+
+
+# --- hardware filtering ------------------------------------------------------
+
+
+class TestHardwareHygiene:
+    def test_inactive_list_rules_are_reported_once(self):
+        # Active mode is src-ip; enabled dst-ip rules silently do nothing.
+        report = rule_hygiene.analyze_snapshot(
+            _snap(
+                hw_settings=S.HwFilterSettings(mode="src-ip"),
+                hw_rules_dst_ip=[
+                    S.HwRuleDstIp(id="d1", destination_ip="203.0.113.1", comment="Old block"),
+                    S.HwRuleDstIp(id="d2", destination_ip="203.0.113.2"),
+                ],
+            )
+        )
+        found = [f for f in report["findings"] if f["kind"] == "hw_inactive"]
+        assert len(found) == 1
+        assert found[0]["severity"] == "warning"
+        assert found[0]["table"] == "hw_filter"
+        assert found[0]["extra"] == {"inactive_count": 2, "list_mode": "dst-ip", "active_mode": "src-ip"}
+        assert found[0]["rule"]["id"] == "d1"
+        assert [r["id"] for r in found[0]["related"]] == ["d2"]
+
+    def test_disabled_inactive_rules_are_not_reported(self):
+        report = rule_hygiene.analyze_snapshot(
+            _snap(
+                hw_settings=S.HwFilterSettings(mode="src-ip"),
+                hw_rules_dst_ip=[S.HwRuleDstIp(id="d1", destination_ip="203.0.113.1", enabled=False)],
+            )
+        )
+        assert [f for f in report["findings"] if f["table"] == "hw_filter"] == []
+
+    def test_duplicate_in_active_list_is_redundant(self):
+        report = rule_hygiene.analyze_snapshot(
+            _snap(
+                hw_settings=S.HwFilterSettings(mode="src-ip"),
+                hw_rules_src_ip=[
+                    S.HwRuleSrcIp(id="s1", source_ip="192.0.2.10", comment="Bad host"),
+                    S.HwRuleSrcIp(id="s2", source_ip="192.0.2.10", comment="Bad host again"),
+                ],
+            )
+        )
+        found = [f for f in report["findings"] if f["reason_key"] == "hygiene_hw_duplicate"]
+        assert len(found) == 1
+        assert found[0]["kind"] == "redundant"
+        assert found[0]["severity"] == "info"
+        assert found[0]["rule"]["id"] == "s2"
+        assert found[0]["related"][0]["id"] == "s1"
+
+    def test_active_list_without_duplicates_is_clean(self):
+        report = rule_hygiene.analyze_snapshot(
+            _snap(
+                hw_settings=S.HwFilterSettings(mode="src-and-dst-ip"),
+                hw_rules_src_dst_ip=[
+                    S.HwRuleSrcDstIp(id="p1", source_ip="192.0.2.10", destination_ip="203.0.113.1"),
+                    # Same source, DIFFERENT destination — not a duplicate pair.
+                    S.HwRuleSrcDstIp(id="p2", source_ip="192.0.2.10", destination_ip="203.0.113.2"),
+                ],
+            )
+        )
+        assert [f for f in report["findings"] if f["table"] == "hw_filter"] == []
+
+    def test_unavailable_feature_produces_no_findings(self):
+        # hw_settings=None (pre-v22 NGFW) — even configured-looking lists are
+        # not judged; the feature simply is not there.
+        report = rule_hygiene.analyze_snapshot(_snap(hw_rules_src_ip=[S.HwRuleSrcIp(id="s1", source_ip="192.0.2.10")]))
+        assert [f for f in report["findings"] if f["table"] == "hw_filter"] == []
 
 
 # --- chain isolation ---------------------------------------------------------

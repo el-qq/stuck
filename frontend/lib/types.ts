@@ -182,10 +182,12 @@ export interface UserSourceAddressesResponse {
 }
 
 export type StageKey =
-  "pre_filter" | "rate_limit" | "dns" | "dnat" | "content_filter" | "antivirus" | "firewall" | "app_control" | "ips" | "snat" | "destination";
+  "hw_filter" | "pre_filter" | "rate_limit" | "dns" | "dnat" | "content_filter" | "antivirus" | "firewall" | "app_control" | "ips" | "snat" | "destination";
 
-/** Fixed read-only pipeline order, including packet filtering and NAT. */
+/** Fixed read-only pipeline order: hardware filtering drops at the NIC before
+ *  any software stage, then packet filtering and NAT. */
 export const STAGE_ORDER: readonly StageKey[] = [
+  "hw_filter",
   "pre_filter",
   "rate_limit",
   "dns",
@@ -204,6 +206,8 @@ export type StageStatus = "pass" | "block" | "limited" | "resolved" | "active" |
 export interface StageDetail {
   rule_id?: string;
   rule_name?: string;
+  /** Active hardware-filtering mode (hw_filter stage only). */
+  hw_mode?: "mac" | "src-ip" | "dst-ip" | "src-and-dst-ip" | null;
   action?: string;
   matched_category?: string;
   redirect_url?: string;
@@ -271,6 +275,8 @@ export interface RulesRefreshResponse {
     firewall_forward: number;
     firewall_input: number;
     firewall_pre_filter: number;
+    /** Optional — older backends do not report hardware-filtering rules. */
+    hardware_rules?: number;
     firewall_dnat: number;
     firewall_snat: number;
     content_filter_rules: number;
@@ -301,7 +307,7 @@ export interface PublicConfig {
 
 // --- Rule hygiene (GET /api/rules/hygiene) ----------------------------------
 
-export type HygieneKind = "shadowed" | "redundant" | "unreachable_after_any" | "overly_broad";
+export type HygieneKind = "shadowed" | "redundant" | "unreachable_after_any" | "overly_broad" | "hw_inactive";
 export type HygieneSeverity = "risk" | "warning" | "info";
 export type HygieneTier = "certain" | "possible";
 
@@ -317,13 +323,13 @@ export interface HygieneFinding {
   kind: HygieneKind;
   severity: HygieneSeverity;
   tier: HygieneTier;
-  /** Firewall chain the rule lives in. */
-  table: "fw_forward" | "fw_input";
+  /** Section the rule lives in: a firewall chain or hardware filtering. */
+  table: "fw_forward" | "fw_input" | "hw_filter";
   reason_key: string;
   rule: HygieneRuleRef;
   /** Other rules involved (e.g. the shadowing rule, or the rules rendered dead). */
   related: HygieneRuleRef[];
-  extra?: { unreachable_count?: number };
+  extra?: { unreachable_count?: number; inactive_count?: number; list_mode?: string; active_mode?: string };
 }
 
 export interface HygieneSummary {
