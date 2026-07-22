@@ -64,6 +64,8 @@ export const es: Record<keyof typeof en, string> = {
   "rules.stepAliases": "Objetos y alias",
   "rules.stepFirewallPreFilter": "Reglas de filtrado preliminar",
   "rules.stepHardware": "Reglas de filtrado por hardware",
+  "rules.stepLanNetworks": "Redes locales (LAN)",
+  "rules.stepDnsZones": "Zonas DNS locales",
   "rules.stepFirewallDnat": "Reglas de cortafuegos (DNAT)",
   "rules.stepFirewallForward": "Reglas de cortafuegos (forward)",
   "rules.stepFirewallInput": "Reglas de cortafuegos (input)",
@@ -222,6 +224,10 @@ export const es: Record<keyof typeof en, string> = {
   "reason.hw_destination_unknown": "Una regla por IP de destino podría coincidir, pero la IP de destino no está resuelta.",
   "reason.hw_mac_unknown": "El filtrado por hardware funciona por dirección MAC, que esta traza no conoce.",
   "reason.hw_not_supported": "El filtrado por hardware no está disponible en este NGFW.",
+  "reason.fw_default_allow": "Sin regla coincidente; la política FORWARD por defecto documentada permite el tráfico de usuarios.",
+  "reason.dns_zone_forward": "El host pertenece a una zona DNS forward local: el NGFW lo resuelve mediante los servidores de la zona.",
+  "reason.dns_zone_master": "El host pertenece a una zona DNS master local: el NGFW responde de forma autoritativa.",
+  "reason.dns_zone_unresolved": "Una zona DNS local del NGFW cubre el host, pero su respuesta no es visible para STUCK: la dirección resuelta es desconocida.",
   "reason.pre_filter_disabled": "El filtrado preliminar está desactivado junto con las reglas de usuario del cortafuegos.",
   "reason.pre_filter_source_unknown": "Una regla preliminar puede coincidir, pero no se seleccionó una IP de origen.",
   "reason.pre_filter_conditions_unknown":
@@ -261,6 +267,12 @@ export const es: Record<keyof typeof en, string> = {
   "reason.cf_action_unknown": "La regla de filtro de contenido coincidente usa una acción que esta versión de STUCK no reconoce.",
   "reason.fw_conditions_unknown":
     "La regla de cortafuegos coincidente necesita datos de puerto de origen, interfaz, HIP u horario que no están disponibles para esta traza.",
+  "reason.fw_destination_unknown": "Una regla de tráfico podría coincidir con el destino, pero su dirección IP real no está disponible.",
+  "reason.fw_object_unknown": "La regla de tráfico coincidente hace referencia a un objeto ausente o no compatible con la instantánea cargada.",
+  "reason.fw_port_unknown": "La regla de tráfico coincidente hace referencia a un objeto de puerto de destino que no se puede resolver.",
+  "reason.fw_rule_accept": "La primera regla de cortafuegos coincidente permite el tráfico.",
+  "reason.fw_rule_blocked": "La primera regla de cortafuegos coincidente bloquea el tráfico.",
+  "reason.fw_action_unknown": "La regla de cortafuegos coincidente usa una acción que esta versión de STUCK no reconoce.",
   "reason.fw_default_policy_unknown": "Ninguna regla de cortafuegos coincidió; la política predeterminada de NGFW no está confirmada.",
   "reason.destination_unknown": "No se confirmó ningún bloqueo, pero al menos una etapa de inspección no se puede determinar sin tráfico real.",
   "reason.destination_conditional":

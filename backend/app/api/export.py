@@ -134,6 +134,10 @@ def _build_snapshot(
             "rules_dst_ip": _dump(snap.hw_rules_dst_ip),
             "rules_src_dst_ip": _dump(snap.hw_rules_src_dst_ip),
         },
+        # Bare LAN CIDRs only — the interface-settings payload itself is never
+        # stored or exported (it contains tunnel credentials).
+        "lan_networks": list(snap.lan_networks),
+        "dns_zones": _dump(snap.dns_zones),
         "ngfw_addresses": list(snap.ngfw_addresses),
         # Module on/off flag (engine input); additive to the firewall rule lists.
         "firewall_state": _dump_one(snap.fw_state),

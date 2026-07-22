@@ -103,6 +103,17 @@ def default_state() -> dict[str, Any]:
         "hw_rules_src_ip": (200, []),
         "hw_rules_dst_ip": (200, []),
         "hw_rules_src_dst_ip": (200, []),
+        # Interface settings reduced to LAN networks (192.0.2.0/24 is the lab
+        # LAN in these fixtures) + local DNS zones (empty by default).
+        "connection_settings": (
+            200,
+            [
+                {"id": "if.lan", "enabled": True, "role": "lan", "l3": ["192.0.2.254/24"], "type": "ethernet"},
+                {"id": "if.wan", "enabled": True, "role": "wan", "l3": ["198.51.100.2/30"], "type": "ethernet"},
+            ],
+        ),
+        "dns_zones_forward": (200, []),
+        "dns_zones_master": (200, []),
         "interface_state": (200, [{"id": "lan", "l3": ["192.0.2.254/24"], "status": "up"}]),
         "fw_state": (200, {"enabled": True}),
         "cf_state": (200, {"enabled": True}),
@@ -241,6 +252,9 @@ def ngfw_mock():
         reg("hw_rules_src_ip", "GET", "/firewall/hw_rules_src_ip")
         reg("hw_rules_dst_ip", "GET", "/firewall/hw_rules_dst_ip")
         reg("hw_rules_src_dst_ip", "GET", "/firewall/hw_rules_src_dst_ip")
+        reg("connection_settings", "GET", "/l2manager/connection_settings")
+        reg("dns_zones_forward", "GET", "/dns/zones/forward")
+        reg("dns_zones_master", "GET", "/dns/zones/master")
         reg("interface_state", "GET", "/l2manager/connection_state")
         reg("fw_state", "GET", "/firewall/state")
         reg("cf_state", "GET", "/content-filter/state")

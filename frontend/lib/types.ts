@@ -277,6 +277,9 @@ export interface RulesRefreshResponse {
     firewall_pre_filter: number;
     /** Optional — older backends do not report hardware-filtering rules. */
     hardware_rules?: number;
+    /** Optional — LAN interface networks / local DNS zones (newer backends). */
+    lan_networks?: number;
+    dns_zones?: number;
     firewall_dnat: number;
     firewall_snat: number;
     content_filter_rules: number;

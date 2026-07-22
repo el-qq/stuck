@@ -58,7 +58,7 @@ prefix isolates another dataset.
 | `192.0.2.78 → 203.0.113.78` pair rule  | Hardware filtering by source+destination   |
 | `cf-block.example` category/rule       | Content-filter deny                        |
 | `cf-redirect.example` category/rule    | Content-filter redirect                    |
-| optional `stuck-dns.test` forward zone | NGFW DNS forwarding                        |
+| optional `stuck-dns.test` forward zone | DNS stage recognizes the local zone        |
 
 All addresses and domains are documentation ranges. After applying, refresh
 rules in STUCK because the application snapshot is intentionally not

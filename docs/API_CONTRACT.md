@@ -374,7 +374,10 @@ Count keys describe snapshot collections and are not a stable UI layout.
 Snapshot-loading endpoints (`/api/rules/refresh`, users, trace and rules
 export) require `access_profile.trace_allowed`. A known insufficient role gets
 `403 insufficient_ngfw_permissions` with the safe detail
-`{ role_id: string }`; no partial trace is returned.
+`{ role_id: string }`; no partial trace is returned. If a snapshot endpoint
+itself returns 403, STUCK rechecks the server-side NGFW session with
+`GET /web/whoami`: an active profile produces the same permission error,
+whereas a rejected profile produces `session_expired`.
 
 ### `GET /api/rules/export`
 
@@ -420,6 +423,8 @@ usable without identifying a person.
       rules_src_dst_ip: object[];
     };
     firewall_state: object;
+    lan_networks: string[]; // bare LAN CIDRs; interface payload is never exported
+    dns_zones: object[];
     ngfw_addresses: string[];
     content_filter: { state: object; rules: object[]; categories: unknown };
     speed_limit: { state: object; rules: object[] };

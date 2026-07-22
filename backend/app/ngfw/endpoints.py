@@ -10,8 +10,10 @@ from __future__ import annotations
 import asyncio
 import csv
 import io
+import ipaddress
 from typing import Any
 
+from ..errors import StuckError
 from . import schemas as S
 from .client import NgfwClient
 
@@ -150,6 +152,56 @@ async def get_hw_rules_dst_ip(client: NgfwClient) -> list[S.HwRuleDstIp] | None:
 
 async def get_hw_rules_src_dst_ip(client: NgfwClient) -> list[S.HwRuleSrcDstIp] | None:
     return await _get_hw_rules(client, "/firewall/hw_rules_src_dst_ip", S.HwRuleSrcDstIp, "hw_rules_src_dst_ip")
+
+
+async def get_lan_networks(client: NgfwClient) -> list[str]:
+    """LAN-side subnets from ``GET /l2manager/connection_settings``.
+
+    Used to prove a source IP is on the user (LAN) side of the box, which is
+    what the documented default-ALLOW FORWARD policy applies to.
+
+    SECURITY (invariant #3): the raw payload carries PPPoE/L2TP/PPTP
+    credentials inside ``config`` — it is reduced RIGHT HERE to bare CIDR
+    strings of enabled ``role == "lan"`` interfaces and is never stored,
+    exported or logged in any richer form.
+    """
+    data = await client.get_json("/l2manager/connection_settings")
+    # The local vendor corpus describes one connection object, while deployed
+    # versions also return a list.  Both forms carry the same schema; reject
+    # envelopes or arbitrary objects rather than silently treating them as an
+    # empty LAN set (which could affect the default FORWARD verdict).
+    if isinstance(data, list):
+        items = data
+    elif isinstance(data, dict):
+        items = [data]
+    else:
+        raise StuckError("api_changed", "NGFW returned an unexpected shape for connection_settings")
+    networks: list[str] = []
+    for item in items:
+        settings = S.parse(S.ConnectionSettings, item, what="connection_settings")
+        if settings.role != "lan" or not settings.enabled:
+            continue
+        for cidr in settings.l3:
+            # ConnectionSettings has already strictly validated each value.
+            networks.append(str(ipaddress.ip_interface(cidr).network))
+    return networks
+
+
+async def get_dns_zones(client: NgfwClient) -> list[S.DnsZone]:
+    """Enabled local DNS zones: forward (conditional forwarding) + master
+    (authoritative). Lets the DNS stage recognize hosts resolved by the NGFW
+    itself instead of reporting a generic policy-unknown."""
+    forward, master = await asyncio.gather(
+        client.get_json("/dns/zones/forward"),
+        client.get_json("/dns/zones/master"),
+    )
+    zones: list[S.DnsZone] = []
+    for kind, data in (("forward", forward), ("master", master)):
+        parsed = S.parse_list(S.DnsZone, data, what=f"dns_zones_{kind}")
+        for zone in parsed:
+            zone.kind = kind
+            zones.append(zone)
+    return zones
 
 
 async def get_ngfw_addresses(client: NgfwClient) -> list[str]:
@@ -295,6 +347,8 @@ async def load_snapshot(client: NgfwClient) -> dict[str, Any]:
             get_hw_rules_src_ip(client),
             get_hw_rules_dst_ip(client),
             get_hw_rules_src_dst_ip(client),
+            get_lan_networks(client),
+            get_dns_zones(client),
             get_ngfw_addresses(client),
             get_fw_state(client),
             get_cf_state(client),
@@ -324,6 +378,8 @@ async def load_snapshot(client: NgfwClient) -> dict[str, Any]:
             hw_rules_src_ip,
             hw_rules_dst_ip,
             hw_rules_src_dst_ip,
+            lan_networks,
+            dns_zones,
             ngfw_addresses,
             fw_state,
             cf_state,
@@ -363,6 +419,8 @@ async def load_snapshot(client: NgfwClient) -> dict[str, Any]:
         "hw_rules_src_ip": hw_rules_src_ip or [],
         "hw_rules_dst_ip": hw_rules_dst_ip or [],
         "hw_rules_src_dst_ip": hw_rules_src_dst_ip or [],
+        "lan_networks": lan_networks,
+        "dns_zones": dns_zones,
         "ngfw_addresses": ngfw_addresses,
         "fw_state": fw_state,
         "cf_state": cf_state,

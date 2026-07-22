@@ -14,7 +14,7 @@ from __future__ import annotations
 import ipaddress
 from typing import Any, Literal, TypeVar
 
-from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
+from pydantic import BaseModel, ConfigDict, Field, StrictBool, ValidationError, field_validator
 
 from ..errors import StuckError
 
@@ -44,6 +44,42 @@ class Alias(_Base):
     values: list[Any] | None = None
     start: Any = None
     end: Any = None
+
+
+class DnsZone(_Base):
+    """One local DNS zone (/dns/zones/forward or /dns/zones/master)."""
+
+    id: str
+    name: str
+    enabled: bool = True
+    comment: str = ""
+    # Filled by the loader: "forward" | "master" (not part of the NGFW payload).
+    kind: str = ""
+
+
+class ConnectionSettings(_Base):
+    """The small, safe subset of a connection-settings response STUCK uses.
+
+    The raw endpoint contains per-interface connection settings, including
+    tunnel credentials inside ``config``.  ``extra=ignore`` deliberately
+    prevents that payload from living even transiently on this model.
+    """
+
+    model_config = ConfigDict(extra="ignore")
+
+    enabled: StrictBool
+    role: Literal["cp", "lan", "wan"]
+    l3: list[str] = Field(default_factory=list)
+
+    @field_validator("l3")
+    @classmethod
+    def _l3_addresses(cls, addresses: list[str]) -> list[str]:
+        for address in addresses:
+            try:
+                ipaddress.ip_interface(address)
+            except ValueError as exc:
+                raise ValueError("l3 must contain CIDR interface addresses") from exc
+        return addresses
 
 
 class SourceDest(_Base):

@@ -814,7 +814,7 @@ class NgfwTestDataSeeder:
             rows.append(
                 (
                     "любое-имя.stuck-dns.test",
-                    "DNS forward на TEST-NET 192.0.2.53; текущий STUCK это не оценивает",
+                    "DNS: имя попадает в локальную forward-зону — STUCK покажет её на стадии DNS",
                 )
             )
         for value, expected in rows:
