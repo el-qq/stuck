@@ -68,6 +68,7 @@ function copyStageDetail(detail: StageDetail): StageDetail {
   return {
     ...(detail.rule_id !== undefined ? { rule_id: detail.rule_id } : {}),
     ...(detail.rule_name !== undefined ? { rule_name: detail.rule_name } : {}),
+    ...(detail.hw_mode !== undefined ? { hw_mode: detail.hw_mode } : {}),
     ...(detail.action !== undefined ? { action: detail.action } : {}),
     ...(detail.matched_category !== undefined ? { matched_category: detail.matched_category } : {}),
     ...(detail.redirect_url !== undefined ? { redirect_url: detail.redirect_url } : {}),

@@ -135,6 +135,11 @@ class _FakeClient:
             "/aliases/ports": [],
         }
         self.content_filter_rules: list[dict[str, Any]] = []
+        self.hw_rules: dict[str, list[dict[str, Any]]] = {
+            "/firewall/hw_rules_src_ip": [],
+            "/firewall/hw_rules_dst_ip": [],
+            "/firewall/hw_rules_src_dst_ip": [],
+        }
         self.firewall_rules: list[dict[str, Any]] = [
             {
                 "id": "fwd.ngfw.1",
@@ -159,6 +164,10 @@ class _FakeClient:
             return self.content_filter_rules
         if path in self.aliases:
             return self.aliases[path]
+        if path == "/firewall/hw_settings":
+            return {"mode": "src-ip"}
+        if path in self.hw_rules:
+            return self.hw_rules[path]
         if path in ("/firewall/state", "/content-filter/state", "/ips/state"):
             return {"enabled": True}
         return []
@@ -185,6 +194,8 @@ class _FakeClient:
             self.content_filter_rules.insert(0, {**body, "id": created_id})
         elif path == "/firewall/rules/forward":
             self.firewall_rules.insert(0, {**body, "id": created_id})
+        elif path in self.hw_rules:
+            self.hw_rules[path].append({**body, "id": created_id})
         return {"id": created_id}
 
     def patch(self, path: str, body: dict[str, Any]) -> dict[str, Any]:
@@ -247,7 +258,7 @@ def test_dry_run_builds_full_plan_without_writes() -> None:
         emit=output.append,
     ).seed(apply=False)
 
-    assert len(summary.planned) == 16
+    assert len(summary.planned) == 19
     assert client.posts == []
     assert client.patches == []
     assert any("cf-block.example" in line for line in output)
@@ -263,8 +274,8 @@ def test_apply_creates_prefixed_resources_and_inserts_rules_first() -> None:
         emit=output.append,
     ).seed(apply=True)
 
-    assert len(summary.created) == 16
-    assert len(client.posts) == 16
+    assert len(summary.created) == 19
+    assert len(client.posts) == 19
     assert all(
         item[1].get("name", item[1].get("title", "STUCK TEST")).startswith("STUCK TEST")
         for item in client.posts
@@ -460,6 +471,21 @@ class _ExistingFakeClient(_FakeClient):
                     "comment": "[STUCK TEST] IPS bypass 192.0.2.30",
                 }
             ]
+        if path == "/firewall/hw_settings":
+            return {"mode": "src-ip"}
+        if path == "/firewall/hw_rules_src_ip":
+            return [{"id": "hw.20", "source_ip": "192.0.2.77", "comment": "[STUCK TEST] HW src 192.0.2.77"}]
+        if path == "/firewall/hw_rules_dst_ip":
+            return [{"id": "hw.21", "destination_ip": "203.0.113.77", "comment": "[STUCK TEST] HW dst 203.0.113.77"}]
+        if path == "/firewall/hw_rules_src_dst_ip":
+            return [
+                {
+                    "id": "hw.22",
+                    "source_ip": "192.0.2.78",
+                    "destination_ip": "203.0.113.78",
+                    "comment": "[STUCK TEST] HW pair 192.0.2.78>203.0.113.78",
+                }
+            ]
         if path in ("/firewall/state", "/content-filter/state", "/ips/state"):
             return {"enabled": True}
         return []
@@ -473,8 +499,74 @@ def test_second_apply_is_idempotent_and_performs_no_writes() -> None:
         emit=lambda _: None,
     ).seed(apply=True)
 
-    assert len(summary.reused) == 16
+    assert len(summary.reused) == 19
     assert summary.created == []
     assert client.posts == []
     assert client.patches == []
     assert client.deletes == []
+
+
+class _NoHwFakeClient(_FakeClient):
+    """An older NGFW: the hardware-filtering endpoints do not exist (404)."""
+
+    def get(self, path: str, *, params: dict[str, Any] | None = None) -> Any:
+        if path == "/firewall/hw_settings" or path in self.hw_rules:
+            raise ApiError(f"NGFW не поддерживает документированный endpoint GET {path}")
+        return super().get(path, params=params)
+
+
+def test_missing_hw_endpoints_are_skipped_with_a_warning() -> None:
+    client = _NoHwFakeClient()
+    summary = NgfwTestDataSeeder(
+        client,  # type: ignore[arg-type]
+        SeedOptions(test_user_password="St9!safe-test-password"),
+        emit=lambda _line: None,
+    ).seed(apply=True)
+
+    # Everything except the three hardware rules is still created.
+    assert len(summary.created) == 16
+    assert not any("/firewall/hw_rules" in item[0] for item in client.posts)
+    assert any("Аппаратная фильтрация не поддерживается" in warning for warning in summary.warnings)
+
+
+class _HwConflictFakeClient(_FakeClient):
+    """Our comment exists in the src-ip list but points at a DIFFERENT address."""
+
+    def get(self, path: str, *, params: dict[str, Any] | None = None) -> Any:
+        if path == "/firewall/hw_rules_src_ip":
+            return [{"id": "hw.9", "source_ip": "192.0.2.99", "comment": "[STUCK TEST] HW src 192.0.2.77"}]
+        return super().get(path, params=params)
+
+
+def test_hw_rule_with_same_comment_but_other_address_is_a_conflict() -> None:
+    client = _HwConflictFakeClient()
+    with pytest.raises(ConflictError):
+        NgfwTestDataSeeder(
+            client,  # type: ignore[arg-type]
+            SeedOptions(test_user_password="St9!safe-test-password"),
+            emit=lambda _line: None,
+        ).seed(apply=True)
+    # The conflict triggers rollback of everything created before it.
+    assert client.deletes != []
+
+
+def test_hw_rules_are_prefix_owned_and_complete() -> None:
+    client = _FakeClient()
+    NgfwTestDataSeeder(
+        client,  # type: ignore[arg-type]
+        SeedOptions(test_user_password="St9!safe-test-password"),
+        emit=lambda _line: None,
+    ).seed(apply=True)
+
+    hw_posts = {path: body for path, body, _params in client.posts if "/firewall/hw_rules" in path}
+    assert set(hw_posts) == {
+        "/firewall/hw_rules_src_ip",
+        "/firewall/hw_rules_dst_ip",
+        "/firewall/hw_rules_src_dst_ip",
+    }
+    assert hw_posts["/firewall/hw_rules_src_ip"]["source_ip"] == "192.0.2.77"
+    assert hw_posts["/firewall/hw_rules_dst_ip"]["destination_ip"] == "203.0.113.77"
+    assert hw_posts["/firewall/hw_rules_src_dst_ip"]["source_ip"] == "192.0.2.78"
+    assert hw_posts["/firewall/hw_rules_src_dst_ip"]["destination_ip"] == "203.0.113.78"
+    assert all(body["comment"].startswith("[STUCK TEST] HW ") for body in hw_posts.values())
+    assert all(body["enabled"] is True for body in hw_posts.values())

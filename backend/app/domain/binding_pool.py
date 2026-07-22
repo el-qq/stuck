@@ -34,6 +34,15 @@ class RulesSnapshot:
     ips_bypass: list[S.IpsBypass]
     av_enabled: bool
     fw_pre_filter: list[S.PreliminaryRule] = field(default_factory=list)
+    # Hardware (NIC-level) filtering: one active mode, four candidate rule
+    # lists. ``hw_settings is None`` = the NGFW does not expose the feature
+    # (pre-v22 firmware) — the stage reports "not supported" and hygiene skips
+    # it. Defaults keep older fixtures/exports loadable.
+    hw_settings: S.HwFilterSettings | None = None
+    hw_rules_mac: list[S.HwRuleMac] = field(default_factory=list)
+    hw_rules_src_ip: list[S.HwRuleSrcIp] = field(default_factory=list)
+    hw_rules_dst_ip: list[S.HwRuleDstIp] = field(default_factory=list)
+    hw_rules_src_dst_ip: list[S.HwRuleSrcDstIp] = field(default_factory=list)
     fw_dnat: list[S.FirewallRule] = field(default_factory=list)
     fw_snat: list[S.FirewallRule] = field(default_factory=list)
     fw_settings: S.FirewallSettings = field(default_factory=S.FirewallSettings)
@@ -52,6 +61,12 @@ class RulesSnapshot:
             "firewall_forward": len(self.fw_forward),
             "firewall_input": len(self.fw_input),
             "firewall_pre_filter": len(self.fw_pre_filter),
+            "hardware_rules": (
+                len(self.hw_rules_mac)
+                + len(self.hw_rules_src_ip)
+                + len(self.hw_rules_dst_ip)
+                + len(self.hw_rules_src_dst_ip)
+            ),
             "firewall_dnat": len(self.fw_dnat),
             "firewall_snat": len(self.fw_snat),
             "content_filter_rules": len(self.cf_rules),

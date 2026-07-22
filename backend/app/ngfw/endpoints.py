@@ -117,6 +117,41 @@ async def get_fw_settings(client: NgfwClient) -> S.FirewallSettings:
     return S.parse(S.FirewallSettings, data, what="firewall_settings")
 
 
+async def get_hw_settings(client: NgfwClient) -> S.HwFilterSettings | None:
+    """Hardware filtering is OPTIONAL (absent before v22): 404 → None.
+
+    A present endpoint is parsed strictly — an unknown ``mode`` is api_changed,
+    never a silent fail-open pass.
+    """
+    data = await client.get_json_optional("/firewall/hw_settings")
+    if data is None:
+        return None
+    return S.parse(S.HwFilterSettings, data, what="hw_settings")
+
+
+async def _get_hw_rules(client: NgfwClient, path: str, model: type, what: str) -> list | None:
+    data = await client.get_json_optional(path)
+    if data is None:
+        return None
+    return S.parse_list(model, data, what=what)
+
+
+async def get_hw_rules_mac(client: NgfwClient) -> list[S.HwRuleMac] | None:
+    return await _get_hw_rules(client, "/firewall/hw_rules_mac", S.HwRuleMac, "hw_rules_mac")
+
+
+async def get_hw_rules_src_ip(client: NgfwClient) -> list[S.HwRuleSrcIp] | None:
+    return await _get_hw_rules(client, "/firewall/hw_rules_src_ip", S.HwRuleSrcIp, "hw_rules_src_ip")
+
+
+async def get_hw_rules_dst_ip(client: NgfwClient) -> list[S.HwRuleDstIp] | None:
+    return await _get_hw_rules(client, "/firewall/hw_rules_dst_ip", S.HwRuleDstIp, "hw_rules_dst_ip")
+
+
+async def get_hw_rules_src_dst_ip(client: NgfwClient) -> list[S.HwRuleSrcDstIp] | None:
+    return await _get_hw_rules(client, "/firewall/hw_rules_src_dst_ip", S.HwRuleSrcDstIp, "hw_rules_src_dst_ip")
+
+
 async def get_ngfw_addresses(client: NgfwClient) -> list[str]:
     data = await client.get_json("/l2manager/connection_state")
     interfaces = S.parse_list(S.InterfaceState, data, what="interface_state")
@@ -255,6 +290,11 @@ async def load_snapshot(client: NgfwClient) -> dict[str, Any]:
             get_fw_snat(client),
             get_fw_pre_filter(client),
             get_fw_settings(client),
+            get_hw_settings(client),
+            get_hw_rules_mac(client),
+            get_hw_rules_src_ip(client),
+            get_hw_rules_dst_ip(client),
+            get_hw_rules_src_dst_ip(client),
             get_ngfw_addresses(client),
             get_fw_state(client),
             get_cf_state(client),
@@ -279,6 +319,11 @@ async def load_snapshot(client: NgfwClient) -> dict[str, Any]:
             fw_snat,
             fw_pre_filter,
             fw_settings,
+            hw_settings,
+            hw_rules_mac,
+            hw_rules_src_ip,
+            hw_rules_dst_ip,
+            hw_rules_src_dst_ip,
             ngfw_addresses,
             fw_state,
             cf_state,
@@ -306,6 +351,18 @@ async def load_snapshot(client: NgfwClient) -> dict[str, Any]:
         "fw_snat": fw_snat,
         "fw_pre_filter": fw_pre_filter,
         "fw_settings": fw_settings,
+        # Hardware filtering is unavailable (None settings) when ANY of its
+        # endpoints is missing — old firmware exposes none of them; a partial
+        # set would make the verdict unreliable, so fail safe to "unsupported".
+        "hw_settings": (
+            hw_settings
+            if None not in (hw_settings, hw_rules_mac, hw_rules_src_ip, hw_rules_dst_ip, hw_rules_src_dst_ip)
+            else None
+        ),
+        "hw_rules_mac": hw_rules_mac or [],
+        "hw_rules_src_ip": hw_rules_src_ip or [],
+        "hw_rules_dst_ip": hw_rules_dst_ip or [],
+        "hw_rules_src_dst_ip": hw_rules_src_dst_ip or [],
         "ngfw_addresses": ngfw_addresses,
         "fw_state": fw_state,
         "cf_state": cf_state,

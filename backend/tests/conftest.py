@@ -97,6 +97,12 @@ def default_state() -> dict[str, Any]:
             '"TCP-flags to blocking";"Packet length, bytes";"Comment";"Enabled"\r\n',
         ),
         "fw_settings": (200, {"automatic_snat_enabled": False}),
+        # Hardware filtering: source-IP mode active, no rules configured.
+        "hw_settings": (200, {"mode": "src-ip"}),
+        "hw_rules_mac": (200, []),
+        "hw_rules_src_ip": (200, []),
+        "hw_rules_dst_ip": (200, []),
+        "hw_rules_src_dst_ip": (200, []),
         "interface_state": (200, [{"id": "lan", "l3": ["192.0.2.254/24"], "status": "up"}]),
         "fw_state": (200, {"enabled": True}),
         "cf_state": (200, {"enabled": True}),
@@ -230,6 +236,11 @@ def ngfw_mock():
         reg("fw_snat", "GET", "/firewall/rules/snat")
         reg("fw_pre_filter", "GET", "/firewall/rules/drop_rules/export")
         reg("fw_settings", "GET", "/firewall/settings")
+        reg("hw_settings", "GET", "/firewall/hw_settings")
+        reg("hw_rules_mac", "GET", "/firewall/hw_rules_mac")
+        reg("hw_rules_src_ip", "GET", "/firewall/hw_rules_src_ip")
+        reg("hw_rules_dst_ip", "GET", "/firewall/hw_rules_dst_ip")
+        reg("hw_rules_src_dst_ip", "GET", "/firewall/hw_rules_src_dst_ip")
         reg("interface_state", "GET", "/l2manager/connection_state")
         reg("fw_state", "GET", "/firewall/state")
         reg("cf_state", "GET", "/content-filter/state")

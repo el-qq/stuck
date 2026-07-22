@@ -333,6 +333,21 @@ class NgfwClient:
     async def get_json(self, path: str, *, params: dict[str, Any] | None = None) -> Any:
         return await self._request("GET", path, params=params)
 
+    async def get_json_optional(self, path: str, *, params: dict[str, Any] | None = None) -> Any | None:
+        """Like :meth:`get_json`, but a 404 returns ``None`` instead of raising.
+
+        For OPTIONAL NGFW sections (e.g. hardware filtering, absent on releases
+        before v22): the missing endpoint means "feature not present here", not
+        an error. Every other failure keeps the strict mapping — a 200 with a
+        wrong shape still becomes ``api_changed`` downstream.
+        """
+        try:
+            return await self._request("GET", path, params=params)
+        except StuckError as exc:
+            if exc.code == "ngfw_error" and "endpoint not found" in exc.message:
+                return None
+            raise
+
     async def get_text(self, path: str, *, params: dict[str, Any] | None = None) -> str:
         """Return a successful read-only response as text (for CSV exports)."""
 

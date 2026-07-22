@@ -14,6 +14,12 @@ ROOT_VCE_GROUP_ID = "f3ffde22-a562-4f43-ac04-c40fcec6a88c"
 DEFAULT_PARENT_GROUP_ID = "group.id.1"
 FW_PORT_TEST_IP = "198.51.100.25"
 FW_PORT_TEST_PORT = 9443
+# Hardware filtering (optional NGFW section, v22+): TEST-NET addresses for the
+# three IP rule lists. Exact addresses without masks, per the documented API.
+HW_SRC_TEST_IP = "192.0.2.77"
+HW_DST_TEST_IP = "203.0.113.77"
+HW_PAIR_SRC_IP = "192.0.2.78"
+HW_PAIR_DST_IP = "203.0.113.78"
 
 
 @dataclass(frozen=True)
@@ -164,6 +170,7 @@ class NgfwTestDataSeeder:
             )
             self._verify_managed_rule_order(apply)
             self._ensure_ips_bypass(ips_bypass_id, apply)
+            self._ensure_hw_rules(apply)
 
             if self.options.include_dns:
                 self._ensure_dns_zone(apply)
@@ -598,6 +605,72 @@ class NgfwTestDataSeeder:
             _Rollback("исключение IPS", "DELETE", f"{path}/{quote(bypass_id)}"),
         )
 
+    def _hw_get_optional(self, path: str) -> Any | None:
+        """GET an OPTIONAL hardware-filtering endpoint: absent (404) → None.
+
+        Older NGFW releases do not expose the section at all; that is a normal
+        condition for this tool, not an error.
+        """
+        try:
+            return self.client.get(path)
+        except ApiError as exc:
+            if "не поддерживает документированный endpoint" in str(exc):
+                return None
+            raise
+
+    def _ensure_hw_rules(self, apply: bool) -> None:
+        """Prefix-owned hardware-filtering rules in all three IP lists.
+
+        The ACTIVE MODE is never changed: switching it is a box-wide setting far
+        beyond adding prefixed rows. The current mode is reported instead so the
+        operator knows which list the trace will actually evaluate.
+        """
+        settings = self._hw_get_optional("/firewall/hw_settings")
+        if settings is None:
+            self._warn("Аппаратная фильтрация не поддерживается этим NGFW (endpoint отсутствует); правила пропущены.")
+            return
+        mode = settings.get("mode") if isinstance(settings, dict) else None
+        if mode:
+            self.emit(f"[ACTIVE]  аппаратная фильтрация: режим {mode!r} (оценивается только его список)")
+        else:
+            self._warn("NGFW не сообщил режим аппаратной фильтрации; правила всё равно будут добавлены.")
+
+        specs = [
+            ("hw_rules_src_ip", {"source_ip": HW_SRC_TEST_IP}, f"HW src {HW_SRC_TEST_IP}"),
+            ("hw_rules_dst_ip", {"destination_ip": HW_DST_TEST_IP}, f"HW dst {HW_DST_TEST_IP}"),
+            (
+                "hw_rules_src_dst_ip",
+                {"source_ip": HW_PAIR_SRC_IP, "destination_ip": HW_PAIR_DST_IP},
+                f"HW pair {HW_PAIR_SRC_IP}>{HW_PAIR_DST_IP}",
+            ),
+        ]
+        for endpoint, fields, suffix in specs:
+            path = f"/firewall/{endpoint}"
+            listing = self._hw_get_optional(path)
+            if listing is None:
+                self._warn(f"Endpoint {path} отсутствует; правило пропущено.")
+                continue
+            rules = self._as_list(listing, path)
+            comment = self._comment(suffix)
+            matches = [item for item in rules if item.get("comment") == comment]
+            if matches:
+                match = matches[0]
+                if any(str(match.get(key)) != value for key, value in fields.items()):
+                    raise ConflictError(f"Аппаратное правило {comment!r} существует с другим адресом")
+                self._record_reused(f"аппаратное правило {comment} ({match.get('id')})")
+                continue
+
+            label = f"аппаратное правило {comment}"
+            if not apply:
+                self._record_planned(label)
+                continue
+            payload = self.client.post(path, {**fields, "comment": comment, "enabled": True})
+            rule_id = self._created_id(payload, "hw_rule", path)
+            self._record_created(
+                f"аппаратное правило {comment} ({rule_id})",
+                _Rollback("аппаратное правило", "DELETE", f"{path}/{quote(rule_id)}"),
+            )
+
     def _ensure_dns_zone(self, apply: bool) -> None:
         path = "/dns/zones/forward"
         zones = self._as_list(self.client.get(path), path)
@@ -724,6 +797,18 @@ class NgfwTestDataSeeder:
                 "Межсетевой экран: accept следующим более общим правилом",
             ),
             ("192.0.2.30", "IPS bypass (виден только при включенном IPS)"),
+            (
+                f"источник {HW_SRC_TEST_IP}",
+                "Аппаратная фильтрация: drop при режиме src-ip (выберите этот IP источника)",
+            ),
+            (
+                HW_DST_TEST_IP,
+                "Аппаратная фильтрация: drop при режиме dst-ip",
+            ),
+            (
+                f"{HW_PAIR_SRC_IP} → {HW_PAIR_DST_IP}",
+                "Аппаратная фильтрация: drop при режиме src-and-dst-ip (нужна вся пара)",
+            ),
         ]
         if self.options.include_dns:
             rows.append(

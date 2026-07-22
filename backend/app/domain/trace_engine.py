@@ -30,7 +30,10 @@ from ..ngfw.client import NgfwClient
 from .binding_pool import RulesSnapshot
 
 # Fixed stage order: packet pre-filtering and NAT are explicit, read-only stages.
+# hw_filter is FIRST: hardware filtering drops packets at the NIC, before any
+# software stage (docs/NGFW_API_NOTES.md).
 _STAGE_ORDER: list[str] = [
+    "hw_filter",
     "pre_filter",
     "rate_limit",
     "dns",
@@ -492,6 +495,77 @@ def _bypass_matches(
             if alias and _ip_in_alias(alias, ip, host):
                 return entry
     return None
+
+
+def _ip_equal(spec: Optional[str], ip: Optional[str]) -> bool:
+    """Exact single-address comparison (hardware rules carry no masks)."""
+    if not spec or not ip:
+        return False
+    try:
+        return ipaddress.ip_address(spec.strip()) == ipaddress.ip_address(ip)
+    except ValueError:
+        return spec.strip() == ip
+
+
+def _evaluate_hw_filter(snap: RulesSnapshot, source_ip: Optional[str], resolved_ip: Optional[str]) -> dict[str, Any]:
+    """Hardware (NIC-level) filtering — the very first thing a packet meets.
+
+    One mode is active at a time (``/firewall/hw_settings``); only that mode's
+    rule list applies, and a matching enabled rule DROPS the packet in the
+    network card. IP rules are exact addresses without masks. Invariant #7:
+    missing context (no source IP, unresolved destination, unknowable MAC)
+    yields ``unknown`` — never a skipped possible block.
+    """
+    if snap.hw_settings is None:
+        # The NGFW does not expose hardware filtering (pre-v22) — skip, honestly.
+        return _stage("hw_filter", "skip", {"module_enabled": False, "reason_key": "hw_not_supported"})
+
+    # ``mode`` is a validated Literal: an unknown value never reaches here (it
+    # fails the snapshot load as api_changed — no fail-open pass is possible).
+    mode = snap.hw_settings.mode
+    rules_by_mode: dict[str, list[Any]] = {
+        "mac": snap.hw_rules_mac,
+        "src-ip": snap.hw_rules_src_ip,
+        "dst-ip": snap.hw_rules_dst_ip,
+        "src-and-dst-ip": snap.hw_rules_src_dst_ip,
+    }
+    enabled = [r for r in rules_by_mode[mode] if r.enabled]
+    detail: dict[str, Any] = {"module_enabled": True, "hw_mode": mode}
+
+    if not enabled:
+        detail["reason_key"] = "hw_no_matching_rule"
+        return _stage("hw_filter", "pass", detail)
+
+    if mode == "mac":
+        # The trace has no MAC context; an enabled MAC rule may match anything.
+        detail["reason_key"] = "hw_mac_unknown"
+        return _stage("hw_filter", "unknown", detail)
+
+    needs_source = mode in ("src-ip", "src-and-dst-ip")
+    needs_destination = mode in ("dst-ip", "src-and-dst-ip")
+    if needs_source and source_ip is None:
+        detail["reason_key"] = "hw_source_ip_unknown"
+        return _stage("hw_filter", "unknown", detail)
+    if needs_destination and resolved_ip is None:
+        detail["reason_key"] = "hw_destination_unknown"
+        return _stage("hw_filter", "unknown", detail)
+
+    for rule in enabled:
+        source_ok = _ip_equal(rule.source_ip, source_ip) if needs_source else True
+        destination_ok = _ip_equal(rule.destination_ip, resolved_ip) if needs_destination else True
+        if source_ok and destination_ok:
+            detail.update(
+                {
+                    "rule_id": str(rule.id),
+                    "rule_name": rule.comment or None,
+                    "action": "drop",
+                    "reason_key": "hw_rule_blocked",
+                }
+            )
+            return _stage("hw_filter", "block", detail)
+
+    detail["reason_key"] = "hw_no_matching_rule"
+    return _stage("hw_filter", "pass", detail)
 
 
 def _evaluate_rate_limit(
@@ -1022,8 +1096,14 @@ async def run_trace(
     def na(key: str) -> dict[str, Any]:
         return _stage(key, "na")
 
+    # 0. hardware (NIC-level) filtering — before any software stage.
+    add(_evaluate_hw_filter(snap, source_ip, resolved_ip))
+
     # 1. preliminary packet filtering — ordered blocking CSV snapshot.
-    add(_evaluate_pre_filter(snap, source_ip, resolved_ip, protocol, dst_port))
+    if blocked_at is None:
+        add(_evaluate_pre_filter(snap, source_ip, resolved_ip, protocol, dst_port))
+    else:
+        add(na("pre_filter"))
 
     # 2. rate_limit — evaluate the ordered read-only shaper snapshot.
     if blocked_at is None:

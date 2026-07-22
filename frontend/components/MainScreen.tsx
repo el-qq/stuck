@@ -284,6 +284,15 @@ export function MainScreen() {
                       {t("hygiene.tableInput")}
                       <span className="hygiene-nav__count">{hygieneReport.findings.filter((f) => f.table === "fw_input").length}</span>
                     </button>
+                    <button
+                      className="hygiene-nav__item"
+                      style={{ marginTop: 6 }}
+                      aria-pressed={hygieneSection === "hw_filter"}
+                      onClick={() => setHygieneSection("hw_filter")}
+                    >
+                      {t("stage.hw_filter")}
+                      <span className="hygiene-nav__count">{hygieneReport.findings.filter((f) => f.table === "hw_filter").length}</span>
+                    </button>
                   </div>
 
                   <div style={{ height: 1, background: "var(--line)", margin: "16px 0" }} />

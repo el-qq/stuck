@@ -59,6 +59,7 @@ export const es: Record<keyof typeof en, string> = {
   "rules.stepUsers": "Usuarios y grupos",
   "rules.stepAliases": "Objetos y alias",
   "rules.stepFirewallPreFilter": "Reglas de filtrado preliminar",
+  "rules.stepHardware": "Reglas de filtrado por hardware",
   "rules.stepFirewallDnat": "Reglas de cortafuegos (DNAT)",
   "rules.stepFirewallForward": "Reglas de cortafuegos (forward)",
   "rules.stepFirewallInput": "Reglas de cortafuegos (input)",
@@ -103,6 +104,9 @@ export const es: Record<keyof typeof en, string> = {
     "Esta regla acepta cualquier origen, destino, puerto y protocolo y es la primera coincidencia: todo el tráfico queda permitido sin condiciones.",
   "hygiene.explainOverlyBroadTail":
     "Esta regla lo permite todo después de reglas más específicas: el típico «permitir el resto». Asegúrese de que sea intencionado.",
+  "hygiene.kindHwInactive": "Reglas de un modo inactivo",
+  "hygiene.explainHwInactive": "Las reglas habilitadas de la lista «{list}» ({count}) no tienen efecto: el modo activo es «{mode}».",
+  "hygiene.explainHwDuplicate": "Duplica la regla n.º{position} con la misma dirección.",
 
   "access.modalTitle": "El acceso a NGFW requiere atención",
   "access.statusInsufficient": "El rol de administrador actual no puede ejecutar diagnósticos de tráfico.",
@@ -148,8 +152,7 @@ export const es: Record<keyof typeof en, string> = {
   "check.submitting": "Comprobando…",
   "check.noRulesWarning": "Las reglas aún no se han cargado — pulse «Actualizar reglas» arriba para obtenerlas del servidor.",
   "check.orderTitle": "Orden de procesamiento",
-  "check.orderText":
-    "Filtrado preliminar → Limitación de velocidad → DNS → DNAT → Filtro de contenido → Antivirus → FORWARD/INPUT → Control de aplicaciones → Prevención de intrusiones → SNAT → Destino. Se aplica la primera regla coincidente de cada tabla.",
+  "check.orderText": "En las tablas de reglas se aplica la primera coincidencia.",
   "check.emptyTitle": "Introduzca una dirección y ejecute la comprobación",
   "check.emptySubtitle": "Aquí aparecerá la ruta del tráfico a través de los módulos de NGFW y el veredicto final.",
   "check.resultAllUsers": "escenario: sin usuario específico",
@@ -157,6 +160,7 @@ export const es: Record<keyof typeof en, string> = {
   "check.validation.urlRequired": "Introduzca la dirección de un sitio.",
   "check.validation.userRequired": "Elija un usuario para este escenario.",
 
+  "stage.hw_filter": "Filtrado por hardware",
   "stage.pre_filter": "Filtrado preliminar",
   "stage.rate_limit": "Limitación de velocidad",
   "stage.dns": "DNS",
@@ -190,6 +194,7 @@ export const es: Record<keyof typeof en, string> = {
   "detail.limitScope": "Ámbito del límite",
   "detail.scopeUser": "Por usuario",
   "detail.scopeGroup": "Compartido",
+  "detail.hwMode": "Modo de filtrado",
   "detail.resolvedIp": "IP resuelta",
   "detail.firewallTable": "Tabla del cortafuegos",
   "detail.translatedDestination": "Destino traducido",
@@ -207,6 +212,12 @@ export const es: Record<keyof typeof en, string> = {
   "reason.dns_lookup_failed": "El backend no pudo resolver el nombre de dominio.",
   "reason.dns_policy_unknown":
     "La dirección se resolvió localmente, pero NGFW no ofrece una API de solo lectura para comprobar la política DNS del usuario seleccionado.",
+  "reason.hw_no_matching_rule": "Ninguna regla de filtrado por hardware coincidió.",
+  "reason.hw_rule_blocked": "Una regla de filtrado por hardware descarta este tráfico en la tarjeta de red.",
+  "reason.hw_source_ip_unknown": "Una regla por IP de origen podría coincidir, pero no se seleccionó IP de origen.",
+  "reason.hw_destination_unknown": "Una regla por IP de destino podría coincidir, pero la IP de destino no está resuelta.",
+  "reason.hw_mac_unknown": "El filtrado por hardware funciona por dirección MAC, que esta traza no conoce.",
+  "reason.hw_not_supported": "El filtrado por hardware no está disponible en este NGFW.",
   "reason.pre_filter_disabled": "El filtrado preliminar está desactivado junto con las reglas de usuario del cortafuegos.",
   "reason.pre_filter_source_unknown": "Una regla preliminar puede coincidir, pero no se seleccionó una IP de origen.",
   "reason.pre_filter_conditions_unknown":

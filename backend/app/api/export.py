@@ -85,6 +85,14 @@ def _build_snapshot(
         "firewall_dnat": _dump(fw_dnat),
         "firewall_snat": _dump(fw_snat),
         "firewall_settings": snap.fw_settings.model_dump(mode="json"),
+        "hardware": {
+            # null settings = the NGFW does not expose hardware filtering.
+            "settings": snap.hw_settings.model_dump(mode="json") if snap.hw_settings else None,
+            "rules_mac": _dump(snap.hw_rules_mac),
+            "rules_src_ip": _dump(snap.hw_rules_src_ip),
+            "rules_dst_ip": _dump(snap.hw_rules_dst_ip),
+            "rules_src_dst_ip": _dump(snap.hw_rules_src_dst_ip),
+        },
         "ngfw_addresses": list(snap.ngfw_addresses),
         # Module on/off flag (engine input); additive to the firewall rule lists.
         "firewall_state": snap.fw_state.model_dump(mode="json"),

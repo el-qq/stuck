@@ -222,9 +222,15 @@ describe("lib/demoData.ts — offline rule-hygiene report", () => {
 
   it("showcases every finding kind and both tiers", () => {
     const kinds = new Set(DEMO_HYGIENE_REPORT.findings.map((f) => f.kind));
-    expect(kinds).toEqual(new Set(["shadowed", "redundant", "unreachable_after_any", "overly_broad"]));
+    expect(kinds).toEqual(new Set(["shadowed", "redundant", "unreachable_after_any", "overly_broad", "hw_inactive"]));
     const tiers = new Set(DEMO_HYGIENE_REPORT.findings.map((f) => f.tier));
     expect(tiers).toEqual(new Set(["certain", "possible"]));
+    // Hardware findings mirror the analyser semantics too.
+    const hw = DEMO_HYGIENE_REPORT.findings.filter((f) => f.table === "hw_filter");
+    expect(hw).toHaveLength(2);
+    const inactive = hw.find((f) => f.kind === "hw_inactive")!;
+    expect(inactive.extra?.inactive_count).toBe(inactive.related.length + 1);
+    expect(inactive.extra?.list_mode).not.toBe(inactive.extra?.active_mode);
   });
 
   it("mirrors the analyser semantics: a grouped catch-all lists its dead rules", () => {

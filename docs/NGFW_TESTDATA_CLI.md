@@ -53,6 +53,9 @@ prefix isolates another dataset.
 | `example.org` domain object            | Firewall drop                              |
 | `198.51.100.25` and port `9443`        | Ordered IP:port drop before general accept |
 | `192.0.2.30` IP object                 | IPS bypass                                 |
+| `192.0.2.77` hardware src-ip rule      | Hardware filtering by source IP            |
+| `203.0.113.77` hardware dst-ip rule    | Hardware filtering by destination IP       |
+| `192.0.2.78 → 203.0.113.78` pair rule  | Hardware filtering by source+destination   |
 | `cf-block.example` category/rule       | Content-filter deny                        |
 | `cf-redirect.example` category/rule    | Content-filter redirect                    |
 | optional `stuck-dns.test` forward zone | NGFW DNS forwarding                        |
@@ -65,16 +68,19 @@ invalidated by an external configuration change.
 
 Select the generated test user for scoped cases.
 
-| Target                | Expected result                                 |
-| --------------------- | ----------------------------------------------- |
-| `example.com`         | no test rule blocks                             |
-| `cf-block.example`    | blocked at content filter by deny               |
-| `cf-redirect.example` | blocked at content filter by redirect           |
-| `example.org`         | blocked at firewall by drop                     |
-| `203.0.113.10`        | blocked at firewall by reject                   |
-| `198.51.100.25:9443`  | blocked by the earlier exact port rule          |
-| `198.51.100.25:443`   | exact rule misses; later general accept matches |
-| `192.0.2.30`          | IPS bypass when IPS is enabled                  |
+| Target                      | Expected result                                      |
+| --------------------------- | ---------------------------------------------------- |
+| `example.com`               | no test rule blocks                                  |
+| `cf-block.example`          | blocked at content filter by deny                    |
+| `cf-redirect.example`       | blocked at content filter by redirect                |
+| `example.org`               | blocked at firewall by drop                          |
+| `203.0.113.10`              | blocked at firewall by reject                        |
+| `198.51.100.25:9443`        | blocked by the earlier exact port rule               |
+| `198.51.100.25:443`         | exact rule misses; later general accept matches      |
+| `192.0.2.30`                | IPS bypass when IPS is enabled                       |
+| source `192.0.2.77`         | hardware drop when the src-ip mode is active         |
+| `203.0.113.77`              | hardware drop when the dst-ip mode is active         |
+| `192.0.2.78 → 203.0.113.78` | hardware drop when the src-and-dst-ip mode is active |
 
 Managed firewall/content rules are placed before existing rules and verified
 after creation. This preserves first-match semantics even on appliances with
@@ -86,6 +92,9 @@ large rule tables.
 - A matching name with different content is a conflict; nothing is overwritten.
 - Created address/domain/port objects are read back and validated.
 - On failure, best-effort rollback removes only resources created by that run.
+- Hardware-filtering rules are added to all three IP lists; the ACTIVE mode is
+  never changed (it is reported instead), and on an NGFW without the hardware
+  endpoints the section is skipped with a warning.
 - A read-only administrator receives a clear permission error.
 - Authentication, permission, TLS/network, API-shape and resource-conflict
   failures use distinct exit codes.
