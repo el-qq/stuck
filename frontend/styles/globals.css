@@ -850,6 +850,10 @@ button {
   max-width: 420px;
 }
 
+.modal-card--rules-export {
+  max-width: 420px;
+}
+
 .toast-viewport {
   left: auto;
   width: min(360px, calc(100vw - 32px));

@@ -17,12 +17,12 @@ snapshot via pydantic ``model_dump`` — nothing pulls in session cookies.
 
 from __future__ import annotations
 
+import json
 import logging
 from datetime import datetime, timezone
 from typing import Any, Optional
 
-from fastapi import APIRouter, Depends, Query
-from fastapi.responses import JSONResponse
+from fastapi import APIRouter, Depends, Query, Response
 
 from ..config import Settings, get_settings
 from ..deps import current_session, get_binding_pool, get_or_load_snapshot
@@ -37,13 +37,54 @@ _export_log = logging.getLogger("stuck.export")
 
 router = APIRouter(prefix="/api", tags=["export"])
 
+RULES_EXPORT_FORMAT = "stuck.rules/v2"
+
+# These fields are useful in the product UI, but are neither needed to replay
+# the rules nor appropriate for a diagnostic attachment shared outside the
+# installation. ``title`` and ``domain_name`` are included because aliases and
+# directory domains can reveal the same personal information under other keys.
+_ANONYMIZED_FIELDS = frozenset({"comment", "description", "domain_name", "login", "name", "title"})
+
 
 def _iso(ts: float) -> str:
     return datetime.fromtimestamp(ts, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 def _dump(models) -> list[dict[str, Any]]:
-    return [m.model_dump(mode="json") for m in models]
+    return [_dump_one(model) for model in models]
+
+
+def _dump_one(model) -> dict[str, Any]:
+    """Export only fields the trace engine understands, never vendor extras."""
+    return model.model_dump(mode="json", include=set(type(model).model_fields))
+
+
+def _identity_map(snap: RulesSnapshot) -> dict[str, str]:
+    """Assign deterministic opaque IDs while preserving rule/user links."""
+    replacements: dict[str, str] = {}
+    for index, user in enumerate(snap.users, start=1):
+        replacements.setdefault(str(user.id), f"user-{index}")
+
+    group_index = 0
+    for user in snap.users:
+        if user.parent_id is None:
+            continue
+        group_id = str(user.parent_id)
+        if group_id not in replacements:
+            group_index += 1
+            replacements[group_id] = f"group-{group_index}"
+    return replacements
+
+
+def _anonymize(value: Any, replacements: dict[str, str]) -> Any:
+    """Remove display data recursively and replace known user/group IDs."""
+    if isinstance(value, dict):
+        return {key: _anonymize(item, replacements) for key, item in value.items() if key not in _ANONYMIZED_FIELDS}
+    if isinstance(value, list):
+        return [_anonymize(item, replacements) for item in value]
+    if isinstance(value, str):
+        return replacements.get(value, value)
+    return value
 
 
 def _find_user(snap: RulesSnapshot, user_id: str) -> S.NgfwUser:
@@ -84,10 +125,10 @@ def _build_snapshot(
         "firewall_pre_filter": _dump(snap.fw_pre_filter),
         "firewall_dnat": _dump(fw_dnat),
         "firewall_snat": _dump(fw_snat),
-        "firewall_settings": snap.fw_settings.model_dump(mode="json"),
+        "firewall_settings": _dump_one(snap.fw_settings),
         "hardware": {
             # null settings = the NGFW does not expose hardware filtering.
-            "settings": snap.hw_settings.model_dump(mode="json") if snap.hw_settings else None,
+            "settings": _dump_one(snap.hw_settings) if snap.hw_settings else None,
             "rules_mac": _dump(snap.hw_rules_mac),
             "rules_src_ip": _dump(snap.hw_rules_src_ip),
             "rules_dst_ip": _dump(snap.hw_rules_dst_ip),
@@ -95,19 +136,19 @@ def _build_snapshot(
         },
         "ngfw_addresses": list(snap.ngfw_addresses),
         # Module on/off flag (engine input); additive to the firewall rule lists.
-        "firewall_state": snap.fw_state.model_dump(mode="json"),
+        "firewall_state": _dump_one(snap.fw_state),
         # "правила + состояние CF" (contract §3.8): rules + state + categories,
         # everything the trace engine needs to re-evaluate content filtering.
         "content_filter": {
-            "state": snap.cf_state.model_dump(mode="json"),
+            "state": _dump_one(snap.cf_state),
             "rules": _dump(cf_rules),
             "categories": snap.cf_categories,
         },
         "speed_limit": {
-            "state": snap.shaper_state.model_dump(mode="json"),
+            "state": _dump_one(snap.shaper_state),
             "rules": _dump(snap.shaper_rules),
         },
-        "ips_state": snap.ips_state.model_dump(mode="json"),
+        "ips_state": _dump_one(snap.ips_state),
         "ips_bypass": _dump(ips_bypass),
         "objects": objects,
         # We only cache whether the default AV profile is active.
@@ -140,13 +181,16 @@ async def rules_export(
         filtered_by = str(user_id)
 
     now = datetime.now(tz=timezone.utc)
+    replacements = _identity_map(snap)
     body = {
-        # Binding comes from the SESSION only — never from the request (§3.8).
-        "binding": {"admin": session.admin_login, "server": session.server},
-        "rules_updated_at": _iso(snap.loaded_at),
+        "format": RULES_EXPORT_FORMAT,
         "exported_at": _iso(now.timestamp()),
-        "filtered_by_user_id": filtered_by,
-        "snapshot": _build_snapshot(snap, filtered, only_user),
+        "rules_updated_at": _iso(snap.loaded_at),
+        # Binding comes from the SESSION only — never from the request (§3.8).
+        # The administrator login is deliberately omitted from the attachment.
+        "binding": {"server": session.server},
+        "filtered_by_user_id": replacements.get(filtered_by, filtered_by) if filtered_by else None,
+        "snapshot": _anonymize(_build_snapshot(snap, filtered, only_user), replacements),
     }
 
     ts = now.strftime("%Y%m%dT%H%M%SZ")
@@ -162,7 +206,8 @@ async def rules_export(
         rules_updated_at=_iso(snap.loaded_at),
     )
 
-    return JSONResponse(
-        content=body,
+    return Response(
+        content=json.dumps(body, ensure_ascii=False, indent=2) + "\n",
+        media_type="application/json",
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )

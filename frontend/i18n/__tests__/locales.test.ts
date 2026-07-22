@@ -216,7 +216,7 @@ describe("i18n locales (FR-6: Localization)", () => {
   });
 
   describe("Iteration 7 keys (FR-12 — rules export)", () => {
-    const exportKeys = ["header.exportRules", "header.exporting"];
+    const exportKeys = ["header.exportRules", "header.exporting", "rulesExport.title", "rulesExport.message", "rulesExport.download"];
 
     it("export keys present and non-empty in every locale", () => {
       for (const locale of localeNames) {

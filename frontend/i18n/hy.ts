@@ -42,6 +42,10 @@ export const hy: Record<keyof typeof en, string> = {
   "header.refreshing": "Թարմացվում է…",
   "header.exportRules": "Արտահանել կանոնները",
   "header.exporting": "Արտահանվում է…",
+  "rulesExport.title": "Ներբեռնե՞լ բոլոր կանոնները։",
+  "rulesExport.message":
+    "Կներբեռնվեն ընթացիկ NGFW-ի բոլոր կանոնները։ Օգտատերերի տվյալները ապանունացված են՝ առանց մուտքանունների, անունների և մեկնաբանությունների։",
+  "rulesExport.download": "Ներբեռնել",
   "header.settings": "Կարգավորումներ",
   "header.logout": "Դուրս գալ",
   "header.sessionExpires": "Աշխատաշրջանը՝ մինչև {time}",

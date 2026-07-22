@@ -2,10 +2,10 @@
 
 Covers the config gate (enabled by default and explicitly disabled), the
 feature flag surfaced in session/health, the full-snapshot export, the
-?user_id slice, ?refresh re-pull,
-the "no secrets" invariant, the HARD isolation invariant (session B never sees
-binding A), Content-Disposition, and goal (b): the exported JSON round-trips
-back into a RulesSnapshot that drives the trace engine (usable as a fixture).
+?user_id slice, ?refresh re-pull, privacy anonymization, the HARD isolation
+invariant (session B never sees binding A), Content-Disposition, and goal (b):
+the exported JSON round-trips back into a RulesSnapshot that drives the trace
+engine (usable as a fixture).
 """
 
 from __future__ import annotations
@@ -237,8 +237,9 @@ class TestExportFullSnapshot:
         assert resp.status_code == 200
         body = resp.json()
 
-        # Binding comes from the session.
-        assert body["binding"] == {"admin": "admin", "server": NGFW_SERVER}
+        assert body["format"] == "stuck.rules/v2"
+        # Binding comes from the session, but the admin login is not exported.
+        assert body["binding"] == {"server": NGFW_SERVER}
         assert body["filtered_by_user_id"] is None
         assert isinstance(body["rules_updated_at"], str)
         assert isinstance(body["exported_at"], str)
@@ -261,6 +262,8 @@ class TestExportFullSnapshot:
         assert set(snap["content_filter"]) >= {"state", "rules", "categories"}
         assert snap["av_profile"] == {"enabled": True}
         assert len(snap["users"]) == len(DEFAULT_USERS)
+        assert resp.text.startswith('{\n  "format": "stuck.rules/v2"')
+        assert resp.text.endswith("\n")
 
     def test_content_disposition_header(self, export_authed: TestClient):
         resp = export_authed.get("/api/rules/export")
@@ -275,8 +278,9 @@ class TestExportFullSnapshot:
 # --- 3. No secrets -----------------------------------------------------------
 
 
-class TestExportNoSecrets:
-    def test_export_body_contains_no_secrets(self, export_authed: TestClient):
+class TestExportPrivacy:
+    def test_export_body_contains_no_secrets_or_user_display_data(self, export_authed: TestClient, ngfw_mock):
+        ngfw_mock.state["cf_rules"] = (200, [{**CF_DENY_RULE, "description": "Private support note"}])
         resp = export_authed.get("/api/rules/export")
         assert resp.status_code == 200
 
@@ -287,8 +291,15 @@ class TestExportNoSecrets:
         stuck_session = export_authed.cookies.get("stuck_session")
         assert stuck_session
         assert stuck_session not in raw
+        assert "admin" not in raw
+        assert "Block prohibited" not in raw
+        assert "Private support note" not in raw
+        for user in DEFAULT_USERS:
+            for field in ("id", "name", "login", "comment", "parent_id"):
+                if value := user.get(field):
+                    assert str(value) not in raw
 
-        # No secret-looking keys anywhere in the structure.
+        # No secret-looking or user-display keys anywhere in the structure.
         def walk(node):
             if isinstance(node, dict):
                 for k, v in node.items():
@@ -296,12 +307,16 @@ class TestExportNoSecrets:
                     assert "password" not in low
                     assert "cookie" not in low
                     assert "stuck_session" not in low
+                    assert low not in {"comment", "description", "domain_name", "login", "name", "title"}
                     walk(v)
             elif isinstance(node, list):
                 for v in node:
                     walk(v)
 
         walk(resp.json())
+        users = resp.json()["snapshot"]["users"]
+        assert users[0]["id"] == "user-1"
+        assert set(users[0]) == {"id", "parent_id", "enabled", "domain_type"}
 
 
 # --- 4. ?user_id slice -------------------------------------------------------
@@ -317,7 +332,7 @@ class TestExportUserFilter:
 
         assert sliced_resp.status_code == 200
         body = sliced_resp.json()
-        assert body["filtered_by_user_id"] == "user.id.1"
+        assert body["filtered_by_user_id"] == "user-1"
         sliced = body["snapshot"]
 
         # Every sliced rule list is <= the full one.
@@ -330,7 +345,7 @@ class TestExportUserFilter:
         cf_ids = [r["id"] for r in sliced["content_filter"]["rules"]]
         assert cf_ids == ["3"]
         # Users collapses to just the filtered user.
-        assert [u["id"] for u in sliced["users"]] == ["user.id.1"]
+        assert [u["id"] for u in sliced["users"]] == ["user-1"]
 
     def test_unknown_user_id_not_found(self, export_authed: TestClient):
         resp = export_authed.get("/api/rules/export", params={"user_id": "no.such.user"})
@@ -392,8 +407,8 @@ class TestExportIsolation:
             export_b = client_b.get("/api/rules/export").json()
 
         # Each session only ever sees its own binding.
-        assert export_a["binding"]["admin"] == "adminA"
-        assert export_b["binding"]["admin"] == "adminB"
+        assert export_a["binding"] == {"server": NGFW_SERVER}
+        assert export_b["binding"] == {"server": NGFW_SERVER}
         assert len(export_a["snapshot"]["users"]) == 2  # A's binding, untouched
         assert len(export_b["snapshot"]["users"]) == 3  # B's own binding
 
@@ -410,7 +425,7 @@ class TestExportIsolation:
             for params in ({"user_id": "user.id.1"}, {"refresh": "true"}):
                 body = client_b.get("/api/rules/export", params=params).json()
                 if "binding" in body:  # user_id.1 exists, so this is a 200 body
-                    assert body["binding"]["admin"] == "adminB"
+                    assert body["binding"] == {"server": NGFW_SERVER}
 
     def test_isolation_by_server(self, export_app, ngfw_mock):
         """Same admin, different server = different binding."""
@@ -487,7 +502,7 @@ class TestExportAsFixture:
 
         # (b) Reconstruct a RulesSnapshot straight from the exported JSON.
         snap = _snapshot_from_export(exported["snapshot"])
-        user = next(u for u in snap.users if str(u.id) == "user.id.1")
+        user = snap.users[0]
 
         # Run the real trace engine on the reconstructed fixture.
         ngfw_mock.state["categorize"] = (
