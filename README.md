@@ -123,6 +123,7 @@ with the same name; environment variables take precedence.
 | `STUCK_ALLOWED_NGFW_CIDRS`     | empty               | Comma-separated allowed IPv4 or IPv6 networks.                                                                                                                |
 | `STUCK_ALLOW_ANY_NGFW`         | `false`             | Explicitly allow any safe NGFW host; laboratory use only.                                                                                                     |
 | `STUCK_SESSION_TTL_HOURS`      | `10`                | STUCK browser-session lifetime in hours.                                                                                                                      |
+| `STUCK_2FA_TTL_SECONDS`        | `180`               | Lifetime of a second-factor (2FA) challenge — how long the code form stays valid after the password step. Range 30–600.                                       |
 | `STUCK_COOKIE_SECURE`          | `true`              | Mark the session cookie as HTTPS-only.                                                                                                                        |
 | `STUCK_COOKIE_SAMESITE`        | `lax`               | SameSite policy for the session cookie.                                                                                                                       |
 | `STUCK_NGFW_VERIFY_TLS`        | `false`             | Verify the NGFW TLS certificate.                                                                                                                              |
@@ -204,7 +205,8 @@ STUCK application remains read-only.
 - Antivirus, IPS payload inspection and conditions unavailable from read-only
   APIs cannot be simulated; the UI reports these results as conditional or
   unknown.
-- Two-factor administrator login is detected but not completed by STUCK.
+- Two-factor administrator login is completed over the NGFW challenge
+  WebSocket; STUCK shows a code form after the password step.
 
 ## Disclaimer
 

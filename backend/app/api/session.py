@@ -4,12 +4,21 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 
 from ..config import Settings, get_settings
-from ..deps import current_session, get_binding_pool
+from ..deps import (
+    PENDING_2FA_COOKIE,
+    SESSION_COOKIE,
+    current_session,
+    get_binding_pool,
+    get_pending_2fa_store,
+    get_session_store,
+)
 from ..domain.binding_pool import BindingPool
-from ..domain.session_store import Session
+from ..domain.pending_2fa import PendingTwoFactorStore
+from ..domain.session_store import Session, SessionStore
+from ..errors import not_authenticated, session_expired
 from ..ngfw.client import ngfw_whoami
 
 router = APIRouter(prefix="/api", tags=["session"])
@@ -25,10 +34,33 @@ def _access_payload(session: Session) -> dict[str, str | bool]:
 
 @router.get("/session")
 async def session_status(
-    session: Session = Depends(current_session),
+    request: Request,
+    store: SessionStore = Depends(get_session_store),
+    pending_store: PendingTwoFactorStore = Depends(get_pending_2fa_store),
     pool: BindingPool = Depends(get_binding_pool),
     settings: Settings = Depends(get_settings),
 ):
+    """Report the current backend-held auth state so the browser can restore it.
+
+    Three outcomes: an authenticated session, a live 2FA challenge (page reloaded
+    between password and code — resume the code form), or nothing.
+    """
+    sid = request.cookies.get(SESSION_COOKIE)
+    session, expired = store.resolve(sid)
+    if expired:
+        raise session_expired()
+    if session is None:
+        # No STUCK session, but an in-flight 2FA challenge (the browser reloaded
+        # after the password step) must resume the code form, not a fresh login.
+        pending = pending_store.get(request.cookies.get(PENDING_2FA_COOKIE))
+        if pending is not None:
+            return {
+                "authenticated": False,
+                "two_factor_pending": True,
+                "expires_at": _iso(pending.expires_at),
+            }
+        raise not_authenticated()
+
     binding = pool.get(session.admin_login, session.server)
     rules_updated_at = binding.rules_updated_at if binding else None
     return {

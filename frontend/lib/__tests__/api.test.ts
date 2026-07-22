@@ -59,7 +59,7 @@ describe("lib/api.ts", () => {
       await expectApiError(getSession(), "api_changed");
     });
 
-    it("login response without session object maps to api_changed", async () => {
+    it("login response without session object and not two_factor_required maps to api_changed", async () => {
       vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse({ ok: true })));
 
       await expectApiError(login({ login: "admin", password: "x", server: "gw" }), "api_changed");
@@ -103,8 +103,11 @@ describe("lib/api.ts", () => {
       );
 
       const data = await login({ login: "admin", password: "x", server: "gw" });
-      expect(data.session.rules_updated_at).toBeNull();
-      expect(data.session.first_login).toBe(true);
+      expect(data.twoFactorRequired).toBe(false);
+      if (data.twoFactorRequired === false) {
+        expect(data.session.rules_updated_at).toBeNull();
+        expect(data.session.first_login).toBe(true);
+      }
     });
 
     it("v2: session response without rules_updated_at maps to api_changed", async () => {
@@ -134,6 +137,41 @@ describe("lib/api.ts", () => {
       vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse({ authenticated: true })));
 
       await expectApiError(getSession(), "api_changed");
+    });
+
+    it("login response with two_factor_required returns discriminated outcome", async () => {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValue(
+          jsonResponse({
+            ok: true,
+            two_factor_required: true,
+            expires_at: "2026-07-09T20:05:00Z",
+            message: "Enter the code from your authenticator",
+          }),
+        ),
+      );
+
+      const data = await login({ login: "admin", password: "x", server: "gw" });
+      expect(data.twoFactorRequired).toBe(true);
+      if (data.twoFactorRequired === true) {
+        expect(data.expiresAt).toBe("2026-07-09T20:05:00Z");
+        expect(data.message).toBe("Enter the code from your authenticator");
+      }
+    });
+
+    it("login response with two_factor_required but missing expires_at maps to api_changed", async () => {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValue(
+          jsonResponse({
+            ok: true,
+            two_factor_required: true,
+          }),
+        ),
+      );
+
+      await expectApiError(login({ login: "admin", password: "x", server: "gw" }), "api_changed");
     });
 
     it("rejects a malformed public access profile", async () => {
@@ -329,6 +367,7 @@ describe("lib/api.ts", () => {
       vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse(sessionBody({ rules_export_enabled: true }))));
 
       const data = await getSession();
+      if ("twoFactorPending" in data) throw new Error("expected an authenticated session");
       expect(data.rules_export_enabled).toBe(true);
     });
 
@@ -336,6 +375,7 @@ describe("lib/api.ts", () => {
       vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse(sessionBody({}))));
 
       const data = await getSession();
+      if ("twoFactorPending" in data) throw new Error("expected an authenticated session");
       expect(data.rules_export_enabled).toBeUndefined();
       // The Header gate is `!anonymous && exportEnabled`; undefined is falsy.
       expect(Boolean(data.rules_export_enabled)).toBe(false);
@@ -345,6 +385,7 @@ describe("lib/api.ts", () => {
       vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse(sessionBody({ ngfw_port: 9443 }))));
 
       const data = await getSession();
+      if ("twoFactorPending" in data) throw new Error("expected an authenticated session");
       expect(data.ngfw_port).toBe(9443);
     });
 
@@ -365,12 +406,20 @@ describe("lib/api.ts", () => {
       );
 
       const data = await getSession();
+      if ("twoFactorPending" in data) throw new Error("expected an authenticated session");
       expect(data.access_profile).toEqual({
         role_id: "predefined_admin_readonly",
         role_name: "Read-only administrator",
         trace_allowed: true,
       });
       expect(JSON.stringify(data)).not.toContain("competence");
+    });
+
+    it("returns a two-factor-pending bootstrap when only a challenge is active", async () => {
+      vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse({ authenticated: false, two_factor_pending: true, expires_at: "2026-07-14T09:03:00Z" })));
+
+      const data = await getSession();
+      expect(data).toEqual({ twoFactorPending: true, expiresAt: "2026-07-14T09:03:00Z" });
     });
   });
 

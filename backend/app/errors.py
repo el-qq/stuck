@@ -23,6 +23,14 @@ ERROR_HTTP_STATUS: dict[str, int] = {
     "ngfw_host_not_allowed": 403,
     "invalid_credentials": 401,
     "second_factor_required": 401,
+    # New in the 2FA-completion feature (docs/API_CONTRACT.md, mfa2-plan.md):
+    # a submitted code was rejected but the challenge is still open. The
+    # ``details.can_retry`` flag (from the NGFW ``2fa_error`` frame) tells the UI
+    # whether to keep the form or fall back to the login screen.
+    "second_factor_invalid": 401,
+    # The pending challenge is gone: TTL elapsed, cookie missing/unknown, NGFW
+    # closed the window, or the backend restarted. The UI returns to login.
+    "second_factor_expired": 401,
     "insufficient_ngfw_permissions": 403,
     "not_authenticated": 401,
     "session_expired": 401,
@@ -77,6 +85,24 @@ def not_found(message: str, **details: Any) -> StuckError:
     return StuckError("not_found", message, details=details or None)
 
 
+def second_factor_invalid(*, can_retry: bool, message: str = "") -> StuckError:
+    """Rejected 2FA code while the challenge is still open (retryable).
+
+    ``can_retry`` is surfaced in ``details`` so the frontend can decide whether
+    to keep the code form or return to login. Never include the code, the NGFW
+    cookies or any token in the message/details.
+    """
+    return StuckError(
+        "second_factor_invalid",
+        message or "The second-factor code was rejected",
+        details={"can_retry": can_retry},
+    )
+
+
+def second_factor_expired() -> StuckError:
+    return StuckError("second_factor_expired", "The second-factor challenge has expired")
+
+
 # --- FastAPI exception handlers ----------------------------------------------
 
 _error_log = _logging.getLogger("stuck.error")
@@ -99,7 +125,23 @@ def _log_typed_error(request: Request, exc: StuckError, *, exc_info: Any = None)
 
 async def stuck_error_handler(request: Request, exc: StuckError) -> JSONResponse:
     _log_typed_error(request, exc)
-    return exc.to_response()
+    resp = exc.to_response()
+    if exc.code == "second_factor_expired":
+        # The pending 2FA challenge is gone (TTL, reset, or unknown token). Clear
+        # its HttpOnly cookie on the error response itself — cookies set on the
+        # endpoint's injected Response are dropped when we raise, so this is the
+        # one place that reliably resets the browser to a clean login state.
+        from .deps import PENDING_2FA_COOKIE
+
+        settings = request.app.state.settings
+        resp.delete_cookie(
+            key=PENDING_2FA_COOKIE,
+            path="/",
+            httponly=True,
+            secure=settings.STUCK_COOKIE_SECURE,
+            samesite=settings.STUCK_COOKIE_SAMESITE,
+        )
+    return resp
 
 
 async def unhandled_error_handler(request: Request, exc: Exception) -> JSONResponse:

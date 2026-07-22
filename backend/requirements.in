@@ -4,5 +4,7 @@ fastapi
 starlette
 uvicorn[standard]
 httpx
+# NGFW second-factor (2FA) challenge is a WebSocket the backend proxies.
+websockets
 pydantic
 pydantic-settings

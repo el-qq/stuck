@@ -6,8 +6,11 @@ in-memory stores. Contract: docs/API_CONTRACT.md.
 
 from __future__ import annotations
 
+import asyncio
+import contextlib
 import logging
 import time
+from collections.abc import AsyncIterator
 
 from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
@@ -18,7 +21,9 @@ from . import __version__
 from .api import auth, config, export, session as session_api, trace, users
 from .config import get_settings
 from .domain.binding_pool import BindingPool
+from .domain.pending_2fa import PendingTwoFactorStore
 from .domain.session_store import SessionStore
+from .ngfw.client import ngfw_logout
 from .errors import (
     StuckError,
     stuck_error_handler,
@@ -91,6 +96,48 @@ class AccessLogMiddleware:
                 store.purge_expired()
 
 
+_sweep_log = logging.getLogger("stuck.pool")
+
+
+async def _sweep_pending_2fa(app: FastAPI, interval: float) -> None:
+    """Periodically release 2FA challenges abandoned by the browser.
+
+    If the admin closes the tab or the device drops off while on the code form,
+    no request ever tears the pending entry down. This loop drops every expired
+    entry and closes its orphaned provisional NGFW session (best-effort), so
+    neither backend memory nor an NGFW admin session leaks. The per-attempt
+    challenge WebSocket is already closed inside each request, so there is no
+    long-lived socket to reap here.
+    """
+    store: PendingTwoFactorStore = app.state.pending_2fa_store
+    while True:
+        await asyncio.sleep(interval)
+        try:
+            for entry in store.expire_sweep():
+                # Close the held challenge socket first, then the NGFW session.
+                if entry.channel is not None:
+                    await entry.channel.close()
+                await ngfw_logout(entry.server, entry.ngfw_cookies)
+        except asyncio.CancelledError:
+            raise
+        except Exception as exc:  # never let a sweep error kill the loop
+            log_event(_sweep_log, "pending_2fa_sweep_error", level=logging.WARNING, error=type(exc).__name__)
+
+
+@contextlib.asynccontextmanager
+async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
+    # Sweep a few times per TTL so abandoned challenges are reaped promptly.
+    ttl = app.state.settings.STUCK_2FA_TTL_SECONDS
+    interval = min(60.0, max(10.0, ttl / 3))
+    task = asyncio.create_task(_sweep_pending_2fa(app, interval))
+    try:
+        yield
+    finally:
+        task.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await task
+
+
 def create_app() -> FastAPI:
     settings = get_settings()
     configure_logging(settings.STUCK_LOG_LEVEL, settings.STUCK_LOG_FORMAT, settings.STUCK_LOG_FILE)
@@ -102,7 +149,7 @@ def create_app() -> FastAPI:
             message="STUCK_ALLOW_ANY_NGFW is enabled; use only in a trusted lab",
         )
 
-    app = FastAPI(title="STUCK backend", version=__version__)
+    app = FastAPI(title="STUCK backend", version=__version__, lifespan=_lifespan)
 
     # Process-wide in-memory stores (single worker; see docs/ARCHITECTURE.md).
     # Initialized eagerly so the app works with or without a lifespan runner.
@@ -111,6 +158,9 @@ def create_app() -> FastAPI:
     app.state.settings = settings
     app.state.session_store = SessionStore(settings.session_ttl_seconds)
     app.state.binding_pool = BindingPool()
+    # In-flight 2FA challenges (opaque pending_id → provisional NGFW state).
+    # Cleared on restart like every other in-memory store.
+    app.state.pending_2fa_store = PendingTwoFactorStore(settings.STUCK_2FA_TTL_SECONDS)
 
     if settings.allowed_origins:
         app.add_middleware(

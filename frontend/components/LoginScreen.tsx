@@ -83,6 +83,8 @@ export function LoginScreen({ onEnterDemo }: { onEnterDemo: () => void }) {
     setApiErrorText(null);
     setSubmitting(true);
     try {
+      // On a 2FA account this sets the session context's twoFactorPending, and
+      // App swaps in the code form; otherwise the session becomes authenticated.
       await session.login(loginName.trim(), password, server.trim());
       // Iteration 3 (#1): remember the last successfully used server address.
       setLastServer(server.trim());
@@ -300,6 +302,14 @@ export function LoginScreen({ onEnterDemo }: { onEnterDemo: () => void }) {
                 }}
               >
                 {apiErrorText}
+              </div>
+            )}
+
+            {/* Shown between the password and the button after a 2FA reset
+                (too many wrong codes / NGFW account lockout). */}
+            {session.twoFactorResetNotice && (
+              <div role="alert" style={warnBlockStyle}>
+                {t("login.twoFactorResetNotice")}
               </div>
             )}
 

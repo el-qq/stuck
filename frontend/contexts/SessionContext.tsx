@@ -7,9 +7,16 @@ import { AdminAccessProfile, SessionStatus } from "@/lib/types";
 
 type AuthStatus = "checking" | "authenticated" | "anonymous";
 
+/** Backend-held 2FA challenge the browser must resolve before it is authenticated.
+ *  Owned here (not by a screen) so a page reload can restore it from the server. */
+export type TwoFactorPending = { expiresAt: string; message: string | null };
+
 interface SessionContextValue {
   status: AuthStatus;
   session: SessionStatus | null;
+  /** Non-null while a 2FA code is required (fresh login OR restored on reload).
+   *  The app renders the code form whenever this is set. */
+  twoFactorPending: TwoFactorPending | null;
   /** Set when the initial GET /api/session call itself failed for a reason
    *  other than "not logged in" (e.g. our backend is unreachable). Shown as
    *  a banner on the login screen instead of silently failing. */
@@ -24,7 +31,18 @@ interface SessionContextValue {
    *  re-fills the server and login fields from it, so the admin only
    *  re-enters the password. Null when there was no known session. */
   prefill: { login: string; server: string } | null;
+  /** Sign in. On a 2FA-required account this sets {@link twoFactorPending} (the
+   *  app then shows the code form); otherwise the session becomes authenticated. */
   login: (login: string, password: string, server: string) => Promise<void>;
+  /** Finalize the session after a 2FA code was accepted (mirrors login success). */
+  completeTwoFactor: () => Promise<void>;
+  /** Abandon the in-flight 2FA challenge and return to the login screen. Pass
+   *  `{ notice: true }` for an involuntary reset (too many attempts / expired)
+   *  so the login screen explains it; the identity is always preserved. */
+  cancelTwoFactor: (opts?: { notice?: boolean }) => Promise<void>;
+  /** True after an involuntary 2FA reset; the login screen shows a hint. */
+  twoFactorResetNotice: boolean;
+  clearTwoFactorResetNotice: () => void;
   logout: () => Promise<void>;
   /** v2 (FR-2.5): record that the pair's rules snapshot is loaded and when. */
   markRulesUpdated: (rulesUpdatedAt: string) => void;
@@ -81,6 +99,11 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   const [bootstrapError, setBootstrapError] = useState<ApiError | null>(null);
   const [expiredNotice, setExpiredNotice] = useState(false);
   const [prefill, setPrefill] = useState<{ login: string; server: string } | null>(null);
+  const [twoFactorPending, setTwoFactorPending] = useState<TwoFactorPending | null>(null);
+  // True after a 2FA challenge was reset to login involuntarily (too many wrong
+  // codes / locked / expired) — the login screen explains why. Cleared on the
+  // next successful auth or when the notice is dismissed.
+  const [twoFactorResetNotice, setTwoFactorResetNotice] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -88,6 +111,13 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       .getSession()
       .then((s) => {
         if (cancelled) return;
+        if ("twoFactorPending" in s) {
+          // The page was reloaded mid-2FA; restore the code form from the
+          // backend-held challenge instead of dropping to a fresh login.
+          setTwoFactorPending({ expiresAt: s.expiresAt, message: null });
+          setStatus("anonymous");
+          return;
+        }
         rememberIdentity({ login: s.login, server: s.server });
         setSession(s);
         setStatus("authenticated");
@@ -120,19 +150,66 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  const login = useCallback(async (loginName: string, password: string, server: string) => {
-    await api.login({ login: loginName, password, server });
+  const finalizeSession = useCallback(async () => {
     // Re-fetch canonical status (rules_loaded / rules_updated_at etc.) rather
     // than guessing from the login response, since rule-set loading may happen
     // lazily. After a re-login of a cached pair (first_login=false) this keeps
     // the previous rules_updated_at visible, per contract §5.1.
     const s = await api.getSession();
+    if ("twoFactorPending" in s) {
+      // Shouldn't happen right after a successful auth, but stay safe.
+      setTwoFactorPending({ expiresAt: s.expiresAt, message: null });
+      setStatus("anonymous");
+      return;
+    }
     rememberIdentity({ login: s.login, server: s.server });
     setSession(s);
     setStatus("authenticated");
     setBootstrapError(null);
     setExpiredNotice(false);
     setPrefill(null);
+    setTwoFactorPending(null);
+    setTwoFactorResetNotice(false);
+  }, []);
+
+  const login = useCallback(
+    async (loginName: string, password: string, server: string): Promise<void> => {
+      const outcome = await api.login({ login: loginName, password, server });
+      if (outcome.twoFactorRequired) {
+        // Backend set the HttpOnly stuck_2fa cookie; surface the code form via
+        // context state so a reload can restore it too. No session exists yet.
+        // Remember the identity now so a reset back to login only re-asks for
+        // the password (and a page reload can still prefill it).
+        rememberIdentity({ login: loginName, server });
+        setTwoFactorResetNotice(false);
+        setTwoFactorPending({ expiresAt: outcome.expiresAt, message: outcome.message ?? null });
+        setStatus("anonymous");
+        return;
+      }
+      await finalizeSession();
+    },
+    [finalizeSession],
+  );
+
+  const completeTwoFactor = useCallback(async () => {
+    // The code was accepted; the backend swapped stuck_2fa for stuck_session.
+    setTwoFactorPending(null);
+    setTwoFactorResetNotice(false);
+    await finalizeSession();
+  }, [finalizeSession]);
+
+  const cancelTwoFactor = useCallback(async (opts?: { notice?: boolean }) => {
+    try {
+      await api.cancel2fa();
+    } catch {
+      // Idempotent on the backend; drop the form regardless.
+    }
+    setTwoFactorPending(null);
+    setStatus("anonymous");
+    // Preserve the login/server so re-authentication only needs the password.
+    const identity = readLastIdentity();
+    if (identity) setPrefill(identity);
+    setTwoFactorResetNotice(opts?.notice === true);
   }, []);
 
   const logout = useCallback(async () => {
@@ -179,22 +256,45 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   );
 
   const clearExpiredNotice = useCallback(() => setExpiredNotice(false), []);
+  const clearTwoFactorResetNotice = useCallback(() => setTwoFactorResetNotice(false), []);
 
   const value = useMemo(
     () => ({
       status,
       session,
+      twoFactorPending,
+      twoFactorResetNotice,
+      clearTwoFactorResetNotice,
       bootstrapError,
       expiredNotice,
       clearExpiredNotice,
       prefill,
       login,
+      completeTwoFactor,
+      cancelTwoFactor,
       logout,
       markRulesUpdated,
       refreshAccessProfile,
       handleAuthError,
     }),
-    [status, session, bootstrapError, expiredNotice, clearExpiredNotice, prefill, login, logout, markRulesUpdated, refreshAccessProfile, handleAuthError],
+    [
+      status,
+      session,
+      twoFactorPending,
+      twoFactorResetNotice,
+      clearTwoFactorResetNotice,
+      bootstrapError,
+      expiredNotice,
+      clearExpiredNotice,
+      prefill,
+      login,
+      completeTwoFactor,
+      cancelTwoFactor,
+      logout,
+      markRulesUpdated,
+      refreshAccessProfile,
+      handleAuthError,
+    ],
   );
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;

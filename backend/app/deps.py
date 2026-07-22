@@ -17,6 +17,7 @@ from fastapi import Depends, Request
 
 from .domain.binding_pool import Binding, BindingPool, RulesSnapshot
 from .domain.admin_access import require_trace_access
+from .domain.pending_2fa import PendingTwoFactorStore
 from .domain.session_store import Session, SessionStore
 from .errors import not_authenticated, session_expired
 from .logging_setup import log_event
@@ -24,6 +25,10 @@ from .ngfw import endpoints as ep
 from .ngfw.client import NgfwClient
 
 SESSION_COOKIE = "stuck_session"
+# Short-lived cookie carrying the opaque ``pending_id`` while a 2FA challenge is
+# in flight. HttpOnly, Max-Age = STUCK_2FA_TTL_SECONDS. Never readable by JS and
+# never mixed with ``stuck_session`` (only one of the two is set at a time).
+PENDING_2FA_COOKIE = "stuck_2fa"
 
 _pool_log = logging.getLogger("stuck.pool")
 
@@ -34,6 +39,11 @@ def get_session_store(request: Request) -> SessionStore:
 
 def get_binding_pool(request: Request) -> BindingPool:
     return request.app.state.binding_pool
+
+
+def get_pending_2fa_store(request: Request) -> PendingTwoFactorStore:
+    """Process-wide in-flight-2FA registry (created in ``app.main``)."""
+    return request.app.state.pending_2fa_store
 
 
 def current_session(

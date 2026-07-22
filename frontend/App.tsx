@@ -4,11 +4,12 @@ import { useI18n } from "@/i18n";
 import { LoginScreen } from "@/components/LoginScreen";
 import { MainScreen } from "@/components/MainScreen";
 import { DemoScreen } from "@/components/DemoScreen";
+import { TwoFactorForm } from "@/components/TwoFactorForm";
 import { Header } from "@/components/Header";
 import { SettingsModal } from "@/components/SettingsModal";
 
 export default function App() {
-  const { status } = useSession();
+  const { status, twoFactorPending, completeTwoFactor, cancelTwoFactor } = useSession();
   const { t } = useI18n();
   const [settingsOpen, setSettingsOpen] = useState(false);
   // Iteration 4: demo mode is a separate client-only branch — it never touches
@@ -38,6 +39,27 @@ export default function App() {
         >
           <span style={{ display: "inline-block", animation: "spin 1s linear infinite", fontWeight: 700 }}>⟳</span>
           {t("session.checking")}
+        </div>
+        {settingsOpen && <SettingsModal onClose={() => setSettingsOpen(false)} />}
+      </div>
+    );
+  }
+
+  // A 2FA challenge (fresh login OR restored from the backend on reload) takes
+  // over the screen until it is confirmed or cancelled — the state lives in the
+  // session context, so a page refresh keeps showing this form.
+  if (status !== "authenticated" && twoFactorPending) {
+    return (
+      <div className="app-shell">
+        <Header anonymous onOpenSettings={() => setSettingsOpen(true)} />
+        <div className="login-main" style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
+          <TwoFactorForm
+            expiresAt={twoFactorPending.expiresAt}
+            message={twoFactorPending.message}
+            onSuccess={() => completeTwoFactor()}
+            onExpired={() => cancelTwoFactor({ notice: true })}
+            onCancel={() => cancelTwoFactor()}
+          />
         </div>
         {settingsOpen && <SettingsModal onClose={() => setSettingsOpen(false)} />}
       </div>

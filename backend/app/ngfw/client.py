@@ -16,7 +16,12 @@ from typing import Any
 import httpx
 
 from ..config import get_settings
-from ..domain.admin_access import AdminAccessProfile, parse_whoami
+from ..domain.admin_access import (
+    AdminAccessProfile,
+    TwoFactorPending,
+    detect_two_factor_pending,
+    parse_whoami,
+)
 from ..domain.ngfw_access import enforce_ngfw_access
 from ..errors import StuckError
 from ..logging_setup import log_event
@@ -155,19 +160,13 @@ async def ngfw_login(server: str, login: str, password: str) -> dict[str, str]:
     raise StuckError("ngfw_error", f"Unexpected NGFW login status {resp.status_code}")
 
 
-async def ngfw_whoami(
-    server: str,
-    cookies: dict[str, str],
-    *,
-    provisional: bool = False,
-) -> AdminAccessProfile:
-    """Read the authenticated administrator profile from NGFW.
+async def _get_whoami_response(server: str, cookies: dict[str, str]) -> httpx.Response:
+    """Shared GET /web/whoami plumbing for :func:`ngfw_whoami` and the probe.
 
-    ``provisional`` is true only during password login, before a STUCK session
-    exists.  Some NGFW 2FA flows set provisional cookies and reject this call;
-    that must remain a 2FA prompt rather than an authenticated STUCK session.
+    Raises StuckError("server_unreachable") on transport failure. Callers
+    handle the response status ladder themselves since the two callers map
+    401/403 differently.
     """
-
     await _enforce_current_access(server)
     start = time.perf_counter()
     try:
@@ -181,11 +180,11 @@ async def ngfw_whoami(
         raise _unreachable(exc) from exc
 
     _log_call(server, "GET", "/web/whoami", start, status=resp.status_code)
+    return resp
 
-    if resp.status_code in (401, 403):
-        if provisional:
-            raise StuckError("second_factor_required", "NGFW requires a second authentication factor")
-        raise StuckError("session_expired", "NGFW session expired or revoked")
+
+def _raise_for_whoami_status(resp: httpx.Response) -> None:
+    """Status mapping shared by every non-401/403 whoami outcome."""
     if resp.status_code == 404 or 300 <= resp.status_code < 400:
         # ``whoami`` is a required part of the supported login flow.  A
         # missing or redirecting endpoint means this NGFW response shape is not
@@ -196,11 +195,76 @@ async def ngfw_whoami(
     if resp.status_code != 200:
         raise StuckError("ngfw_error", f"Unexpected NGFW status {resp.status_code} for administrator profile")
 
+
+async def ngfw_whoami(
+    server: str,
+    cookies: dict[str, str],
+    *,
+    provisional: bool = False,
+) -> AdminAccessProfile:
+    """Read the authenticated administrator profile from NGFW.
+
+    ``provisional`` is true only during password login, before a STUCK session
+    exists.  Some NGFW 2FA flows set provisional cookies and reject this call;
+    that must remain a 2FA prompt rather than an authenticated STUCK session.
+    """
+
+    resp = await _get_whoami_response(server, cookies)
+
+    if resp.status_code in (401, 403):
+        if provisional:
+            raise StuckError("second_factor_required", "NGFW requires a second authentication factor")
+        raise StuckError("session_expired", "NGFW session expired or revoked")
+    _raise_for_whoami_status(resp)
+
     # NGFW may rotate a session cookie while reporting the active profile.
     # Keep only the allowlisted cookie names in the existing server-side
     # dictionary; they never appear in responses or logs.
     cookies.update(_extract_ngfw_cookies(resp))
     return parse_whoami(_json_or_none(resp))
+
+
+async def ngfw_whoami_probe(
+    server: str,
+    cookies: dict[str, str],
+    *,
+    submitted_login: str,
+) -> AdminAccessProfile | TwoFactorPending:
+    """Provisional-login whoami read that recognizes the blocked-2FA profile.
+
+    Used ONLY by ``POST /api/auth/login`` (before a STUCK session exists). It
+    replaces ``ngfw_whoami(..., provisional=True)`` for the login path and adds
+    the new 2FA branch:
+
+      * 401 / 403  → ``second_factor_required`` (provisional cookies rejected;
+        preserves the existing contract + test — no challenge is possible).
+      * 200 blocked (``detect_two_factor_pending`` matches) → return
+        :class:`TwoFactorPending` so login can open the challenge WebSocket.
+      * 200 normal → strict :func:`parse_whoami` → :class:`AdminAccessProfile`.
+      * other statuses → the same ``api_changed`` / ``ngfw_error`` mapping as
+        :func:`ngfw_whoami`.
+
+    On the blocked 200 the provisional cookies ARE valid, so they are refreshed
+    into ``cookies`` (never logged) exactly like the authenticated path, then
+    carried into the pending entry for the WebSocket handshake.
+    """
+    resp = await _get_whoami_response(server, cookies)
+
+    if resp.status_code in (401, 403):
+        raise StuckError("second_factor_required", "NGFW requires a second authentication factor")
+
+    if resp.status_code == 200:
+        payload = _json_or_none(resp)
+        pending = detect_two_factor_pending(payload, submitted_login=submitted_login)
+        if pending is not None:
+            cookies.update(_extract_ngfw_cookies(resp))
+            return pending
+        cookies.update(_extract_ngfw_cookies(resp))
+        return parse_whoami(payload)
+
+    _raise_for_whoami_status(resp)
+    # Unreachable: _raise_for_whoami_status always raises for a non-200 status.
+    raise StuckError("ngfw_error", f"Unexpected NGFW status {resp.status_code} for administrator profile")
 
 
 async def ngfw_logout(server: str, cookies: dict[str, str]) -> None:

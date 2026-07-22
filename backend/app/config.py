@@ -48,6 +48,11 @@ class Settings(BaseSettings):
     # The NGFW-side cookie may still expire earlier; that case is surfaced to
     # the UI as session_expired and does not evict the rules snapshot.
     STUCK_SESSION_TTL_HOURS: float = Field(default=10.0, gt=0)
+    # Lifetime of an in-flight second-factor (2FA) challenge, in seconds. The
+    # NGFW challenge itself times out after roughly 2-3 minutes (mfa2-plan.md
+    # §3.4), so the pending entry, the ``stuck_2fa`` cookie Max-Age and the
+    # frontend countdown all derive from this single value. Default 180s.
+    STUCK_2FA_TTL_SECONDS: int = Field(default=180, ge=30, le=600)
     # Secure by default. The local HTTP development command overrides this
     # explicitly; Docker is served through the HTTPS reverse proxy.
     STUCK_COOKIE_SECURE: bool = True
