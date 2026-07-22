@@ -4,28 +4,35 @@ All notable user-visible changes are recorded here. The project follows
 [Semantic Versioning](https://semver.org/) and the structure of
 [Keep a Changelog](https://keepachangelog.com/).
 
-## [Unreleased]
+## [0.2.0]
 
-### Added
+### ✨ Added
 
-- Hardware (NIC-level) filtering as the first trace stage: the source-IP,
-  destination-IP and source+destination-IP modes are evaluated against the
-  NGFW's active mode; the MAC mode honestly reports `unknown`.
+- Hardware filtering in the traffic trace. STUCK evaluates the active NGFW
+  MAC/IP filtering mode before software rules; when MAC context is unavailable,
+  the result stays explicit about the uncertainty.
+- Rule hygiene report. It highlights potentially shadowed, redundant,
+  unreachable and overly broad firewall rules without changing the NGFW
+  configuration.
+- Two-factor administrator sign-in. STUCK completes the NGFW code challenge
+  after password verification.
+- Single-trace JSON export. A compact attachment preserves the checked
+  scenario and technical user ID while excluding display user data and rule
+  comments.
+- Service and port presets, plus direct links to the corresponding NGFW rule
+  section, for faster common checks and follow-up.
 
-### Changed
+### 🛠️ Changed
 
-- A trace with no matching FORWARD rule now reports the vendor-documented
-  default ALLOW policy when the subject is provably user-side (a selected user
-  or a source IP inside a LAN interface network); other cases and the INPUT
-  table stay unknown.
-- The DNS stage recognizes local NGFW DNS zones (forward and master) and
-  reports the matched zone instead of a generic policy-unknown; matching names
-  are not sent to STUCK's system resolver.
-- A rule that depends on an unavailable object, port object, GeoIP list or
-  unsupported firewall action now reports an explicit unknown result instead
-  of deriving a later allow/block verdict.
-- Rules and trace JSON exports now remove user-identifying display data and
-  rule comments. Rules export asks for confirmation before downloading.
+- Rules export is now formatted for sharing, asks for confirmation before
+  downloading the complete snapshot, and removes user display data and rule
+  comments.
+- Trace verdicts are more conservative and informative: STUCK takes the
+  documented LAN-side default policy and local DNS zones into account, while
+  unavailable objects, ports, GeoIP data and unfamiliar rule actions remain
+  `unknown` rather than guessed.
+- Administrator access diagnostics more clearly distinguish insufficient NGFW
+  permissions from an expired session.
 
 ## [0.1.1] - 2026-07-20
 
