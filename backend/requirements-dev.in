@@ -4,6 +4,7 @@
 
 pytest
 pytest-asyncio
+pytest-xdist
 respx
 httpx2
 pip-tools
