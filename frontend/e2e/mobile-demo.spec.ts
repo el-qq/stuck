@@ -187,7 +187,14 @@ for (const width of MOBILE_WIDTHS) {
     await page.waitForTimeout(500);
     const resultAfter = await page.locator(".check-workspace__result").boundingBox();
     expect(resultAfter).not.toBeNull();
-    expect(resultAfter!.y).toBeLessThanOrEqual(130);
+    // The result auto-scrolls to sit right below the sticky chrome (header +
+    // workspace tab bar), whose real heights are published as CSS variables.
+    const stickyChrome = await page.evaluate(() => {
+      const styles = getComputedStyle(document.documentElement);
+      const px = (name: string) => Number.parseFloat(styles.getPropertyValue(name)) || 0;
+      return px("--stuck-header-h") + px("--stuck-tabs-h");
+    });
+    expect(resultAfter!.y).toBeLessThanOrEqual(stickyChrome + 24);
     await expectNoHorizontalOverflow(page);
   });
 }
@@ -368,8 +375,8 @@ test("matched rules link to the relevant NGFW administration section", async ({ 
   await page.getByPlaceholder("example.com:12345").fill("blocked.example");
   await page.getByRole("button", { name: "Check address" }).click();
 
-  const link = page.getByRole("link", { name: /Open related section in NGFW/ });
-  await expect(link).toHaveAttribute("href", "https://ngfw-with-a-very-long-hostname.example.internal:8443/#/settings/access-rules/firewall");
+  const link = page.getByRole("link", { name: /Open section/ });
+  await expect(link).toHaveAttribute("href", "https://ngfw-with-a-very-long-hostname.example.internal:8443/#/firewall/firewall-users");
   await expect(link).toHaveAttribute("target", "_blank");
   await expect(link).toHaveAttribute("rel", "noopener noreferrer");
 });
@@ -381,7 +388,8 @@ test("failure result and long rule names wrap on a phone", async ({ page }) => {
   await page.getByRole("button", { name: "Check address" }).click();
 
   await expect(page.getByText("Access blocked", { exact: true })).toBeVisible();
-  await expect(page.getByText("Default deny (non-standard ports)", { exact: true })).toBeVisible();
+  // The rule line now shows the explicit id next to the name.
+  await expect(page.getByText("Default deny (non-standard ports) (id=fw9)", { exact: true })).toBeVisible();
   await expectNoHorizontalOverflow(page);
 });
 

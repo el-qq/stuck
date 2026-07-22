@@ -17,15 +17,26 @@ export function useStageReveal(stages: TraceStage[] | null, animationEnabled: bo
   const [revealCount, setRevealCount] = useState(() => (showImmediately ? (stages?.length ?? 0) : 0));
   const [flowing, setFlowing] = useState(() => !showImmediately && !!stages?.length);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  // A given result animates AT MOST once. `showImmediately` can flip and flip
+  // back without a new result — e.g. window.print() applies the print media
+  // (paper width trips the compact-layout query) and cancelling restores it —
+  // and that must NOT replay the reveal.
+  const completedRef = useRef(false);
+  const lastStagesRef = useRef<TraceStage[] | null>(null);
 
   useEffect(() => {
+    if (lastStagesRef.current !== stages) {
+      lastStagesRef.current = stages;
+      completedRef.current = false; // a NEW result animates again
+    }
     if (timerRef.current) clearInterval(timerRef.current);
     if (!stages || stages.length === 0) {
       setRevealCount(0);
       setFlowing(false);
       return;
     }
-    if (showImmediately) {
+    if (showImmediately || completedRef.current) {
+      completedRef.current = true;
       setRevealCount(stages.length);
       setFlowing(false);
       return;
@@ -38,6 +49,7 @@ export function useStageReveal(stages: TraceStage[] | null, animationEnabled: bo
     timerRef.current = setInterval(() => {
       i += 1;
       if (i >= stopAt) {
+        completedRef.current = true;
         setRevealCount(stages.length);
         setFlowing(false);
         if (timerRef.current) clearInterval(timerRef.current);
@@ -52,6 +64,7 @@ export function useStageReveal(stages: TraceStage[] | null, animationEnabled: bo
 
   const skip = useCallback(() => {
     if (timerRef.current) clearInterval(timerRef.current);
+    completedRef.current = true;
     setRevealCount(stages?.length ?? 0);
     setFlowing(false);
   }, [stages]);

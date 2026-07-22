@@ -336,6 +336,195 @@ button {
   overflow-wrap: anywhere;
 }
 
+/* Top-level workspace tabs (check / rule hygiene): a standalone bar below the
+   header, sticky right under it so scrolling never hides the tabs. Its height
+   is published as --stuck-tabs-h (WorkspaceTabs.tsx). */
+.workspace-tabs {
+  display: flex;
+  gap: 8px;
+  max-width: 1440px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 12px 24px;
+  position: sticky;
+  top: var(--stuck-header-h, 64px);
+  z-index: 15;
+  background: var(--bg);
+}
+
+.workspace-tabs__tab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  color: var(--muted);
+  border-radius: 999px;
+  padding: 9px 16px;
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.workspace-tabs__tab:hover {
+  color: var(--text);
+}
+
+.workspace-tabs__tab[aria-selected="true"] {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.workspace-tabs__badge {
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  border-radius: 999px;
+  padding: 3px 7px;
+  color: var(--accent-contrast);
+}
+
+/* Hygiene tab: same two-column shell as the check workspace — a sticky left
+   panel (summary + section navigation) and the findings tree on the right. */
+.hygiene-workspace {
+  display: grid;
+  grid-template-columns: minmax(320px, 400px) minmax(0, 1fr);
+  gap: 24px;
+  padding: 24px;
+  max-width: 1440px;
+  width: 100%;
+  margin: 0 auto;
+  align-items: start;
+  min-width: 0;
+}
+
+.hygiene-workspace__controls {
+  position: sticky;
+  top: calc(var(--stuck-header-h, 64px) + var(--stuck-tabs-h, 0px) + 12px);
+  min-width: 0;
+}
+
+.hygiene-workspace__result {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+/* Section navigation (tree) in the hygiene left panel. */
+.hygiene-nav__item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  text-align: left;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text);
+  border-radius: var(--radius-sm);
+  padding: 9px 10px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.hygiene-nav__item:hover {
+  background: var(--panel2);
+}
+
+.hygiene-nav__item[aria-pressed="true"] {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.hygiene-nav__item--child {
+  margin-left: 14px;
+  width: calc(100% - 14px);
+  border-left: 2px solid var(--line);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+
+.hygiene-nav__item--child[aria-pressed="true"] {
+  border-left-color: var(--accent);
+}
+
+.hygiene-nav__count {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--muted);
+  background: var(--panel2);
+  border-radius: 999px;
+  padding: 2px 8px;
+}
+
+.hygiene-nav__item[aria-pressed="true"] .hygiene-nav__count {
+  color: var(--accent);
+  background: var(--panel);
+}
+
+/* Collapsible findings group (one firewall chain). */
+.hygiene-group {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow);
+  min-width: 0;
+}
+
+.hygiene-group > summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 13px 16px;
+  font-size: 13.5px;
+  font-weight: 700;
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+}
+
+.hygiene-group > summary::-webkit-details-marker {
+  display: none;
+}
+
+.hygiene-group > summary::before {
+  content: "▸";
+  color: var(--muted);
+  transition: transform 0.15s ease;
+}
+
+.hygiene-group[open] > summary::before {
+  transform: rotate(90deg);
+}
+
+.hygiene-group__count {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--muted);
+  background: var(--panel2);
+  border-radius: 999px;
+  padding: 2px 8px;
+}
+
+.hygiene-group__body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 0 16px 16px;
+}
+
 .check-workspace {
   display: grid;
   grid-template-columns: minmax(320px, 400px) minmax(0, 1fr);
@@ -350,7 +539,9 @@ button {
 
 .check-workspace__controls {
   position: sticky;
-  top: 84px;
+  /* The header height is measured live (it wraps on mobile and grows with the
+     tab bar) and published as --stuck-header-h by Header.tsx. */
+  top: calc(var(--stuck-header-h, 64px) + var(--stuck-tabs-h, 0px) + 12px);
   min-width: 0;
 }
 
@@ -360,7 +551,7 @@ button {
   gap: 16px;
   min-height: 400px;
   min-width: 0;
-  scroll-margin-top: 92px;
+  scroll-margin-top: calc(var(--stuck-header-h, 64px) + var(--stuck-tabs-h, 0px) + 8px);
 }
 
 .check-panel {
@@ -830,6 +1021,17 @@ button {
 }
 
 @media (max-width: 959px) {
+  .hygiene-workspace {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 20px;
+    max-width: 760px;
+    padding: 20px;
+  }
+
+  .hygiene-workspace__controls {
+    position: static;
+  }
+
   .check-workspace {
     grid-template-columns: minmax(0, 1fr);
     gap: 20px;
@@ -843,7 +1045,6 @@ button {
 
   .check-workspace__result {
     min-height: 0;
-    scroll-margin-top: 112px;
   }
 
   input,
@@ -903,13 +1104,25 @@ button {
     padding: 10px 12px;
   }
 
-  .check-workspace {
+  /* Two tabs split the width; ≥44px tall for comfortable touch targets. */
+  .workspace-tabs__tab {
+    flex: 1;
+    min-height: 44px;
+  }
+
+  .hygiene-workspace {
     gap: 16px;
     padding: 12px;
   }
 
-  .check-workspace__result {
-    scroll-margin-top: 84px;
+  /* ≥44px touch targets for the section navigation. */
+  .hygiene-nav__item {
+    min-height: 44px;
+  }
+
+  .check-workspace {
+    gap: 16px;
+    padding: 12px;
   }
 
   .check-panel {

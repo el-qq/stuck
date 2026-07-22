@@ -89,6 +89,40 @@ export const en = {
   "rules.done": "Done",
   "rules.failedTitle": "Could not refresh rules",
 
+  // ---- rule hygiene ----
+  "tabs.aria": "Sections",
+  "tabs.check": "Traffic check",
+  "hygiene.title": "Rule hygiene",
+  "hygiene.subtitle": "Structural analysis of the rules snapshot",
+  "hygiene.sections": "Sections",
+  "hygiene.sectionAll": "All",
+  "hygiene.sectionFirewall": "Firewall",
+  "hygiene.loading": "Analyzing rules…",
+  "hygiene.rechecking": "Refreshing and checking…",
+  "hygiene.recheck": "Refresh and check",
+  "hygiene.clean": "No issues found — the firewall tables look healthy.",
+  "hygiene.updated": "Snapshot from {time}",
+  "hygiene.countsRisk": "{count} risks",
+  "hygiene.countsWarning": "{count} warnings",
+  "hygiene.countsInfo": "{count} info",
+  "hygiene.possibleBadge": "possible",
+  "hygiene.possibleHint": "Coverage could not be fully proven (an opaque condition) — verify manually.",
+  "hygiene.tableForward": "Forward",
+  "hygiene.tableInput": "Input",
+  "hygiene.rule": "Rule #{position}",
+  "common.openNgfwSection": "Open section",
+  "hygiene.kindShadowed": "Shadowed rule",
+  "hygiene.kindRedundant": "Redundant rule",
+  "hygiene.kindUnreachable": "Unreachable rules",
+  "hygiene.kindOverlyBroad": "Overly broad rule",
+  "hygiene.explainShadowed": "An earlier rule (#{position}) fully covers this one with a different action, so this rule never runs.",
+  "hygiene.explainRedundant": "An earlier rule (#{position}) already covers this one with the same action, so this rule adds nothing.",
+  "hygiene.explainUnreachable": "A catch-all rule (#{position}) matches everything, so the {count} rules after it can never be reached.",
+  "hygiene.explainOverlyBroad": "This rule accepts any source, destination, port and protocol — a very broad allow worth reviewing.",
+  "hygiene.explainOverlyBroadFirst":
+    "This rule accepts any source, destination, port and protocol and is the first match — all traffic is allowed unconditionally.",
+  "hygiene.explainOverlyBroadTail": "This rule allows everything after narrower rules — the usual “allow the rest” tail. Make sure that is intended.",
+
   // ---- administrator access diagnostic ----
   "access.modalTitle": "NGFW access needs attention",
   "access.statusInsufficient": "The current administrator role cannot run traffic diagnostics.",
@@ -187,7 +221,6 @@ export const en = {
   "detail.moduleOn": "Enabled",
   "detail.moduleOff": "Disabled",
   "detail.noRule": "No specific rule matched at this stage.",
-  "detail.openRuleInNgfw": "Open related section in NGFW",
 
   // ---- reason_key fallbacks (server-defined, open vocabulary — see docs/API_CONTRACT.md) ----
   "reason.cf_category_blocked": "Blocked by URL category.",

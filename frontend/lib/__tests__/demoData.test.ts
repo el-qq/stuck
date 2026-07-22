@@ -1,5 +1,14 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { DEFAULT_DEMO_TARGET, DEMO_GROUPS, DEMO_RULES_UPDATED_AT, DEMO_TARGETS, DEMO_USERS, runDemoTrace, type DemoTarget } from "../demoData";
+import {
+  DEFAULT_DEMO_TARGET,
+  DEMO_GROUPS,
+  DEMO_HYGIENE_REPORT,
+  DEMO_RULES_UPDATED_AT,
+  DEMO_TARGETS,
+  DEMO_USERS,
+  runDemoTrace,
+  type DemoTarget,
+} from "../demoData";
 import { STAGE_ORDER } from "../types";
 import type { MessageKey } from "@/i18n/en";
 import type { NgfwUser, TraceResponse } from "../types";
@@ -197,6 +206,34 @@ describe("lib/demoData.ts — demo fixtures", () => {
     for (const u of DEMO_USERS) {
       expect(u.group_id).not.toBeNull();
       expect(groupIds.has(u.group_id as string)).toBe(true);
+    }
+  });
+});
+
+describe("lib/demoData.ts — offline rule-hygiene report", () => {
+  it("summary counts match the findings", () => {
+    const f = DEMO_HYGIENE_REPORT.findings;
+    expect(DEMO_HYGIENE_REPORT.summary.total).toBe(f.length);
+    expect(DEMO_HYGIENE_REPORT.summary.risk).toBe(f.filter((x) => x.severity === "risk").length);
+    expect(DEMO_HYGIENE_REPORT.summary.warning).toBe(f.filter((x) => x.severity === "warning").length);
+    expect(DEMO_HYGIENE_REPORT.summary.info).toBe(f.filter((x) => x.severity === "info").length);
+    expect(DEMO_HYGIENE_REPORT.summary.possible).toBe(f.filter((x) => x.tier === "possible").length);
+  });
+
+  it("showcases every finding kind and both tiers", () => {
+    const kinds = new Set(DEMO_HYGIENE_REPORT.findings.map((f) => f.kind));
+    expect(kinds).toEqual(new Set(["shadowed", "redundant", "unreachable_after_any", "overly_broad"]));
+    const tiers = new Set(DEMO_HYGIENE_REPORT.findings.map((f) => f.tier));
+    expect(tiers).toEqual(new Set(["certain", "possible"]));
+  });
+
+  it("mirrors the analyser semantics: a grouped catch-all lists its dead rules", () => {
+    const grouped = DEMO_HYGIENE_REPORT.findings.find((f) => f.kind === "unreachable_after_any")!;
+    expect(grouped.extra?.unreachable_count).toBe(grouped.related.length);
+    // Shadow/redundant findings reference their earlier coverer.
+    for (const f of DEMO_HYGIENE_REPORT.findings.filter((x) => x.kind === "shadowed" || x.kind === "redundant")) {
+      expect(f.related).toHaveLength(1);
+      expect(f.related[0]!.position).toBeLessThan(f.rule.position);
     }
   });
 });

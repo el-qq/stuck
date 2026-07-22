@@ -113,6 +113,9 @@ export interface SessionStatus {
   /** Whether the rules-export feature is enabled on the backend.
    *  Optional — older backends omit it; treat absence as false. */
   rules_export_enabled?: boolean;
+  /** Whether the rule-hygiene panel is enabled on the backend.
+   *  Optional — older backends omit it; treat absence as false. */
+  rule_hygiene_enabled?: boolean;
   /** HTTPS port of the authenticated NGFW, used only for safe admin links.
    *  Optional for compatibility with older backends. */
   ngfw_port?: number;
@@ -294,4 +297,47 @@ export interface PublicConfig {
   /** Whether trace stages should reveal one by one. Absent on older backends;
    *  the UI preserves the historical enabled default. */
   trace_animation_enabled?: boolean;
+}
+
+// --- Rule hygiene (GET /api/rules/hygiene) ----------------------------------
+
+export type HygieneKind = "shadowed" | "redundant" | "unreachable_after_any" | "overly_broad";
+export type HygieneSeverity = "risk" | "warning" | "info";
+export type HygieneTier = "certain" | "possible";
+
+/** A reference to one firewall rule inside a hygiene finding. */
+export interface HygieneRuleRef {
+  id: string;
+  name: string | null;
+  /** 1-based position in the chain (including disabled rules). */
+  position: number;
+}
+
+export interface HygieneFinding {
+  kind: HygieneKind;
+  severity: HygieneSeverity;
+  tier: HygieneTier;
+  /** Firewall chain the rule lives in. */
+  table: "fw_forward" | "fw_input";
+  reason_key: string;
+  rule: HygieneRuleRef;
+  /** Other rules involved (e.g. the shadowing rule, or the rules rendered dead). */
+  related: HygieneRuleRef[];
+  extra?: { unreachable_count?: number };
+}
+
+export interface HygieneSummary {
+  total: number;
+  risk: number;
+  warning: number;
+  info: number;
+  possible: number;
+}
+
+export interface RuleHygieneReport {
+  binding: { admin: string; server: string };
+  rules_updated_at: string;
+  generated_at: string;
+  summary: HygieneSummary;
+  findings: HygieneFinding[];
 }

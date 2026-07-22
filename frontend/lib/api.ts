@@ -7,6 +7,7 @@ import {
   LoginOutcome,
   LoginResponse,
   PublicConfig,
+  RuleHygieneReport,
   RulesRefreshResponse,
   SessionStatus,
   SessionBootstrap,
@@ -255,6 +256,17 @@ export async function refreshRules(): Promise<RulesRefreshResponse> {
 
 export async function health(): Promise<HealthResponse> {
   return request<HealthResponse>("/api/health", { method: "GET" });
+}
+
+/**
+ * Static rule-hygiene report for the current pair (shadowed / redundant /
+ * unreachable / overly-broad firewall rules). Read-only; ``refresh`` re-pulls
+ * the snapshot from NGFW first, like the export. Gated on the backend — a 404
+ * surfaces as ApiError(not_found) and the caller hides the panel.
+ */
+export async function getRuleHygiene(refresh = false): Promise<RuleHygieneReport> {
+  const query = refresh ? "?refresh=true" : "";
+  return request<RuleHygieneReport>(`/api/rules/hygiene${query}`, { method: "GET" });
 }
 
 export interface RulesExport {

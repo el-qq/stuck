@@ -66,12 +66,16 @@ class Settings(BaseSettings):
     STUCK_LOG_LEVEL: str = "INFO"
     STUCK_LOG_FORMAT: Literal["text", "json"] = "text"
     STUCK_LOG_FILE: str = ""
-    # (v2.3) Rules export is available by default. Operators can still disable
+    # Rules export is available by default. Operators can still disable
     # it explicitly; the endpoint then answers 404 and disappears from the UI.
     STUCK_ENABLE_RULES_EXPORT: bool = True
     # Animated trace-stage reveal is a presentation preference. Operators may
     # turn it off for an immediate, static result view.
     STUCK_ENABLE_TRACE_ANIMATION: bool = True
+    # Rule-hygiene analysis (shadowed / redundant / overly-broad firewall
+    # rules) over the current snapshot. Read-only; disabling answers 404 and
+    # hides the panel in the UI, exactly like the rules export.
+    STUCK_ENABLE_RULE_HYGIENE: bool = True
 
     @field_validator("STUCK_COOKIE_SAMESITE", "STUCK_LOG_FORMAT", mode="before")
     @classmethod

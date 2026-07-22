@@ -76,8 +76,10 @@ async def session_status(
         # The frontend uses this non-secret connection metadata solely to
         # build a hyperlink to the corresponding NGFW administration section.
         "ngfw_port": settings.STUCK_NGFW_PORT,
-        # (v2.3) frontend shows the "Export rules" button only when true.
+        # frontend shows the "Export rules" button only when true.
         "rules_export_enabled": settings.STUCK_ENABLE_RULES_EXPORT,
+        # frontend shows the "Rule hygiene" panel only when true.
+        "rule_hygiene_enabled": settings.STUCK_ENABLE_RULE_HYGIENE,
     }
 
 

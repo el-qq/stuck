@@ -8,7 +8,7 @@
  * animation and result view are reused unchanged.
  */
 
-import { NgfwUser, StageKey, StageStatus, TraceResponse, TraceStage, STAGE_ORDER } from "./types";
+import { NgfwUser, RuleHygieneReport, StageKey, StageStatus, TraceResponse, TraceStage, STAGE_ORDER } from "./types";
 import { MessageKey } from "@/i18n/en";
 
 /**
@@ -155,3 +155,69 @@ export function runDemoTrace(target: DemoTarget, user: NgfwUser | null, t: (key:
 
 /** Stable timestamp shown as "rules updated" in demo mode. */
 export const DEMO_RULES_UPDATED_AT = "2026-01-01T09:00:00Z";
+
+/**
+ * Offline rule-hygiene report. Mirrors the shape and the SEMANTICS of
+ * GET /api/rules/hygiene: one example of every finding kind, both firewall
+ * chains, and both tiers (a `possible` finding sits behind an opaque schedule
+ * condition). Within one chain the grouping matches the real analyser — a
+ * catch-all groups everything after it instead of per-rule shadow findings.
+ * Rule names are plain NGFW comments, like the demo trace rule names.
+ */
+export const DEMO_HYGIENE_REPORT: RuleHygieneReport = {
+  binding: { admin: "demo", server: "demo.local" },
+  rules_updated_at: DEMO_RULES_UPDATED_AT,
+  generated_at: DEMO_RULES_UPDATED_AT,
+  summary: { total: 5, risk: 1, warning: 3, info: 1, possible: 1 },
+  findings: [
+    {
+      kind: "overly_broad",
+      severity: "risk",
+      tier: "certain",
+      table: "fw_input",
+      reason_key: "hygiene_overly_broad",
+      rule: { id: "in1", name: "TEMP: allow any→any (debug)", position: 1 },
+      related: [],
+    },
+    {
+      kind: "unreachable_after_any",
+      severity: "warning",
+      tier: "certain",
+      table: "fw_input",
+      reason_key: "hygiene_unreachable_after_any",
+      rule: { id: "in1", name: "TEMP: allow any→any (debug)", position: 1 },
+      related: [
+        { id: "in2", name: "Allow admin HTTPS from LAN", position: 2 },
+        { id: "in3", name: "Drop the rest", position: 3 },
+      ],
+      extra: { unreachable_count: 2 },
+    },
+    {
+      kind: "shadowed",
+      severity: "warning",
+      tier: "certain",
+      table: "fw_forward",
+      reason_key: "hygiene_shadowed",
+      rule: { id: "fw7", name: "Deny social networks for Sales", position: 7 },
+      related: [{ id: "fw2", name: "Allow web for office LAN", position: 2 }],
+    },
+    {
+      kind: "shadowed",
+      severity: "warning",
+      tier: "possible",
+      table: "fw_forward",
+      reason_key: "hygiene_shadowed",
+      rule: { id: "fw11", name: "Deny FTP at night", position: 11 },
+      related: [{ id: "fw6", name: "Allow FTP for IT (work hours)", position: 6 }],
+    },
+    {
+      kind: "redundant",
+      severity: "info",
+      tier: "certain",
+      table: "fw_forward",
+      reason_key: "hygiene_redundant",
+      rule: { id: "fw9", name: "Allow DNS to gateway (duplicate)", position: 9 },
+      related: [{ id: "fw4", name: "Allow DNS to gateway", position: 4 }],
+    },
+  ],
+};

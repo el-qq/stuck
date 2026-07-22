@@ -137,6 +137,7 @@ with the same name; environment variables take precedence.
 | `STUCK_LOG_FILE`               | empty               | Log-file path; empty writes logs to standard output.                                                                                                          |
 | `STUCK_ENABLE_RULES_EXPORT`    | `true`              | Make the authenticated rules-snapshot export available.                                                                                                       |
 | `STUCK_ENABLE_TRACE_ANIMATION` | `true`              | Reveal desktop trace stages one at a time and show **Skip animation**; set `false` to show the complete result immediately. Also applies to the offline demo. |
+| `STUCK_ENABLE_RULE_HYGIENE`    | `true`              | Enable the read-only rule-hygiene panel (shadowed / redundant / unreachable / overly-broad firewall rules); set `false` to answer 404 and hide it.            |
 
 To lock STUCK to one NGFW host for a local development run:
 
