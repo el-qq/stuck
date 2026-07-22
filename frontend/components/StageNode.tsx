@@ -166,6 +166,11 @@ export function StageNode({ stage, isLast, revealed, animate, flowingConnector }
                 <span style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", letterSpacing: "0.06em" }}>{t("detail.ruleTriggered").toUpperCase()}</span>
                 <span className="mono breakable" style={{ fontSize: 13.5, fontWeight: 700 }}>
                   {detail?.rule_name ?? detail?.rule_id}
+                  {detail?.rule_name && detail?.rule_id && (
+                    // The id is shown explicitly next to the name so the rule
+                    // can be found in the NGFW console unambiguously.
+                    <span style={{ fontSize: 11.5, fontWeight: 600, color: "var(--muted)" }}> (id={detail.rule_id})</span>
+                  )}
                 </span>
                 {ngfwRuleUrl && (
                   <a
@@ -175,7 +180,7 @@ export function StageNode({ stage, isLast, revealed, animate, flowingConnector }
                     className="link-btn"
                     style={{ alignSelf: "flex-start", fontSize: 12.5, fontWeight: 600 }}
                   >
-                    ↗ {t("detail.openRuleInNgfw")}
+                    {t("common.openNgfwSection")} ↗
                   </a>
                 )}
               </div>

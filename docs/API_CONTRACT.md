@@ -53,6 +53,7 @@ unknown codes with a generic fallback.
   ngfw_port?: number;
   ngfw_access_mode?: "allowlist" | "unrestricted";
   rules_export_enabled?: boolean;
+  rule_hygiene_enabled?: boolean;
 }
 ```
 
@@ -172,6 +173,7 @@ best-effort closes its NGFW session. The non-secret rules snapshot remains.
     trace_allowed: boolean;
   };
   rules_export_enabled?: boolean;
+  rule_hygiene_enabled?: boolean;
   ngfw_port?: number;
 }
 ```
@@ -413,6 +415,62 @@ The response is downloaded JSON:
 The binding is derived exclusively from `stuck_session`; request parameters
 cannot select another administrator or server. Exports contain no credentials
 or cookies.
+
+### `GET /api/rules/hygiene`
+
+Static, read-only structural analysis of the current firewall snapshot. Unlike a
+trace (one packet), it reports table-level problems: rules that are shadowed,
+redundant, unreachable, or overly broad. Never calls NGFW to write; a pure
+function of the snapshot.
+
+Query parameters:
+
+- `refresh=true` — refresh the snapshot before analysing (like the export).
+
+Controlled by backend configuration (`STUCK_ENABLE_RULE_HYGIENE`); disabled
+behaves as 404 and the flag is surfaced as `rule_hygiene_enabled` in
+`GET /api/health` and `GET /api/session` so the UI hides the panel.
+
+```ts
+{
+  binding: {
+    admin: string;
+    server: string;
+  }
+  rules_updated_at: string;
+  generated_at: string;
+  summary: {
+    total: number;
+    risk: number;
+    warning: number;
+    info: number;
+    possible: number;
+  }
+  findings: Array<{
+    kind: "shadowed" | "redundant" | "unreachable_after_any" | "overly_broad";
+    severity: "risk" | "warning" | "info";
+    // "certain" = coverage is provable; "possible" = plausible but an opaque
+    // condition (negated set, multiple blocks, source-port/interface/schedule)
+    // prevented a proof. The analysis never over-claims a certain finding.
+    tier: "certain" | "possible";
+    table: "fw_forward" | "fw_input";
+    reason_key: string;
+    rule: { id: string; name: string | null; position: number };
+    related: Array<{ id: string; name: string | null; position: number }>;
+    extra?: { unreachable_count?: number };
+  }>;
+}
+```
+
+Address / port coverage uses literal token-superset containment, so the analysis
+can only under-report (e.g. it does not yet treat `10.0.0.0/8` as covering
+`10.1.0.0/16`), never over-report. The binding comes only from `stuck_session`.
+
+An `overly_broad` finding (a universal any→any accept) is graded by context:
+`risk` when it is the first enabled rule of its chain (all traffic allowed
+unconditionally), `info` when enabled drop rules precede it (the deliberate
+"deny exceptions, allow the rest" tail), `warning` otherwise (a broad allow
+with no exception carved out). Only enabled rules take part in the analysis.
 
 ## Contract invariants
 

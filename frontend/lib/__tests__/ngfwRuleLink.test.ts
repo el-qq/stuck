@@ -3,12 +3,12 @@ import { ngfwRuleSectionUrl } from "../ngfwRuleLink";
 
 describe("ngfwRuleSectionUrl", () => {
   it.each([
-    ["pre_filter", "https://ngfw.example:8443/#/settings/access-rules/firewall"],
-    ["dnat", "https://ngfw.example:8443/#/settings/access-rules/firewall"],
-    ["firewall", "https://ngfw.example:8443/#/settings/access-rules/firewall"],
+    ["pre_filter", "https://ngfw.example:8443/#/firewall/prefiltering"],
+    ["dnat", "https://ngfw.example:8443/#/firewall/dnat"],
+    ["firewall", "https://ngfw.example:8443/#/firewall/firewall-users"],
     ["content_filter", "https://ngfw.example:8443/#/settings/access-rules/content-filter"],
     ["ips", "https://ngfw.example:8443/#/settings/access-rules/ips"],
-    ["snat", "https://ngfw.example:8443/#/settings/access-rules/firewall"],
+    ["snat", "https://ngfw.example:8443/#/firewall/snat"],
   ] as const)("links %s rules to the related admin section", (stage, expected) => {
     expect(ngfwRuleSectionUrl("ngfw.example", 8443, stage, "rule.1")).toBe(expected);
   });

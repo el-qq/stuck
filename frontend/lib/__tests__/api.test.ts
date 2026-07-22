@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { exportRules, getPublicConfig, getSession, getUsers, health, login, refreshAccessProfile, trace } from "../api";
+import { exportRules, getPublicConfig, getRuleHygiene, getSession, getUsers, health, login, refreshAccessProfile, trace } from "../api";
 import { ApiError } from "../errors";
 
 /**
@@ -289,7 +289,7 @@ describe("lib/api.ts", () => {
     });
   });
 
-  describe("exportRules (v2.3 §3.8 — rules export)", () => {
+  describe("exportRules (§3.8 — rules export)", () => {
     function exportResponse(disposition: string | null): Response {
       const headers: Record<string, string> = { "Content-Type": "application/json" };
       if (disposition !== null) headers["Content-Disposition"] = disposition;
@@ -350,7 +350,7 @@ describe("lib/api.ts", () => {
     });
   });
 
-  describe("getSession — rules_export_enabled flag (v2.3)", () => {
+  describe("getSession — rules_export_enabled flag", () => {
     function sessionBody(extra: Record<string, unknown>) {
       return {
         authenticated: true,
@@ -466,6 +466,55 @@ describe("lib/api.ts", () => {
     });
     it("hidden in anonymous (login) mode even if flag true", () => {
       expect(visible(true, true)).toBe(false);
+    });
+  });
+
+  describe("getRuleHygiene", () => {
+    it("returns the parsed report on success", async () => {
+      const report = {
+        binding: { admin: "admin", server: "10.0.0.1" },
+        rules_updated_at: "2026-07-22T00:00:00Z",
+        generated_at: "2026-07-22T00:00:01Z",
+        summary: { total: 1, risk: 0, warning: 1, info: 0, possible: 0 },
+        findings: [
+          {
+            kind: "shadowed",
+            severity: "warning",
+            tier: "certain",
+            table: "fw_forward",
+            reason_key: "hygiene_shadowed",
+            rule: { id: "2", name: null, position: 2 },
+            related: [{ id: "1", name: null, position: 1 }],
+          },
+        ],
+      };
+      const fetchMock = vi.fn().mockResolvedValue(jsonResponse(report));
+      vi.stubGlobal("fetch", fetchMock);
+
+      const res = await getRuleHygiene();
+      expect(res.summary.warning).toBe(1);
+      expect(res.findings[0]!.kind).toBe("shadowed");
+      expect(fetchMock.mock.calls[0]![0]).toBe("/api/rules/hygiene");
+    });
+
+    it("passes ?refresh=true when requested", async () => {
+      const report = {
+        binding: { admin: "a", server: "s" },
+        rules_updated_at: "2026-07-22T00:00:00Z",
+        generated_at: "2026-07-22T00:00:01Z",
+        summary: { total: 0, risk: 0, warning: 0, info: 0, possible: 0 },
+        findings: [],
+      };
+      const fetchMock = vi.fn().mockResolvedValue(jsonResponse(report));
+      vi.stubGlobal("fetch", fetchMock);
+
+      await getRuleHygiene(true);
+      expect(fetchMock.mock.calls[0]![0]).toBe("/api/rules/hygiene?refresh=true");
+    });
+
+    it("maps a disabled-feature 404 to ApiError(not_found)", async () => {
+      vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse({ error: { code: "not_found" } }, 404)));
+      await expectApiError(getRuleHygiene(), "not_found");
     });
   });
 });

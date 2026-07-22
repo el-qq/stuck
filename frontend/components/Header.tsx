@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useLayoutEffect, useRef } from "react";
 import { useSession } from "@/contexts/SessionContext";
 import { useI18n } from "@/i18n";
 import { APP_VERSION } from "@/lib/version";
@@ -17,7 +17,7 @@ interface HeaderProps {
   onOpenSettings: () => void;
   /** Iteration 4: shown in demo mode (anonymous topbar) to leave the demo. */
   onExitDemo?: () => void;
-  /** v2.3 (§3.8): render the rules-export button only when the backend
+  /** §3.8: render the rules-export button only when the backend
    *  enabled the feature (rules_export_enabled). Authenticated mode only. */
   exportEnabled?: boolean;
   exporting?: boolean;
@@ -51,9 +51,22 @@ export function Header({
 }: HeaderProps) {
   const session = useSession();
   const { t, locale } = useI18n();
+  const headerRef = useRef<HTMLElement>(null);
+
+  // Publish the real header height (it wraps to more rows on mobile and grows
+  // with the tab bar) so sticky panels/scroll margins offset below it exactly.
+  useLayoutEffect(() => {
+    const el = headerRef.current;
+    if (!el) return;
+    const apply = () => document.documentElement.style.setProperty("--stuck-header-h", `${el.offsetHeight}px`);
+    apply();
+    const observer = new ResizeObserver(apply);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
 
   return (
-    <header className={`app-header${anonymous ? " app-header--anonymous" : ""}`}>
+    <header ref={headerRef} className={`app-header${anonymous ? " app-header--anonymous" : ""}`}>
       <div className="app-header__brand">
         <div className="app-header__mark">ST</div>
         <div className="app-header__title">{t("common.appName")}</div>
