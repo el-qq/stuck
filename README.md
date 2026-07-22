@@ -22,6 +22,24 @@ and IP-dependent decisions remain explicitly unknown.
 
 [Animated demo of the STUCK cabinet](demo/demo_0.1.0.mp4)
 
+## Key capabilities ✨
+
+- **🔎 Traffic trace** — check a domain, IP address or `host:port`; service and
+  port presets shorten common checks. Select an NGFW user and, when available,
+  a source IP for user-aware evaluation.
+- **🧭 Processing-path view** — follow the ordered decision path, including
+  hardware filtering, DNS/NAT, firewall and inspection modules. Unavailable
+  packet or policy context is shown as `unknown`, never assumed to pass.
+- **🧹 Rule hygiene** — find potentially shadowed, redundant, unreachable and
+  overly broad firewall rules. Findings are advisory; STUCK never changes NGFW
+  configuration.
+- **🔒 Safe exports** — download a single-trace JSON or a formatted rules
+  snapshot. Rules exports require confirmation and remove user display data and
+  rule comments; trace exports retain the technical user ID.
+- **🛡️ Guided access and follow-up** — supports allowed NGFW administrator roles
+  and the second-factor code challenge, and links a trace result to the
+  relevant NGFW rule section.
+
 ## Key properties
 
 - The application backend never changes NGFW configuration.
