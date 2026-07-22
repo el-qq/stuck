@@ -634,7 +634,8 @@ button {
 }
 
 ::selection {
-  background: var(--accent-soft);
+  background: color-mix(in srgb, var(--accent) 90%, transparent);
+  color: var(--accent-contrast);
 }
 
 @keyframes spin {
