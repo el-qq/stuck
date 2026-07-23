@@ -58,6 +58,7 @@ export default function App() {
             message={twoFactorPending.message}
             onSuccess={() => completeTwoFactor()}
             onExpired={() => cancelTwoFactor({ notice: true })}
+            onReadonlyRequired={() => cancelTwoFactor({ readonlyRequired: true })}
             onCancel={() => cancelTwoFactor()}
           />
         </div>

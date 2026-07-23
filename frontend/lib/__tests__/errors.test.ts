@@ -30,6 +30,7 @@ describe("lib/errors.ts", () => {
         "invalid_credentials",
         "second_factor_required",
         "insufficient_ngfw_permissions",
+        "readonly_admin_required",
         "not_authenticated",
         "session_expired",
         "server_unreachable",

@@ -32,6 +32,9 @@ ERROR_HTTP_STATUS: dict[str, int] = {
     # closed the window, or the backend restarted. The UI returns to login.
     "second_factor_expired": 401,
     "insufficient_ngfw_permissions": 403,
+    # Opt-in STUCK_REQUIRE_READONLY_ADMIN mode: the credentials are valid but
+    # the authenticated role is not the built-in read-only administrator.
+    "readonly_admin_required": 403,
     "not_authenticated": 401,
     "session_expired": 401,
     "server_unreachable": 502,

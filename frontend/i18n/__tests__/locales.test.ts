@@ -84,6 +84,7 @@ describe("i18n locales (FR-6: Localization)", () => {
       "second_factor_invalid",
       "second_factor_expired",
       "insufficient_ngfw_permissions",
+      "readonly_admin_required",
       "not_authenticated",
       "session_expired",
       "server_unreachable",

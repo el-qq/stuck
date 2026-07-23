@@ -21,23 +21,24 @@ interface ErrorEnvelope {
 }
 ```
 
-| Code                            | HTTP | Meaning                                                                     |
-| ------------------------------- | ---: | --------------------------------------------------------------------------- |
-| `validation_error`              |  400 | Invalid request body or value                                               |
-| `invalid_server_address`        |  400 | Server is not a bare IPv4/hostname                                          |
-| `ngfw_host_not_allowed`         |  403 | Host is outside this installation's NGFW policy                             |
-| `invalid_credentials`           |  401 | NGFW rejected administrator credentials                                     |
-| `second_factor_required`        |  401 | NGFW requires a second factor STUCK cannot complete (no challenge)          |
-| `second_factor_invalid`         |  401 | Rejected 2FA code; `details.can_retry` says whether another try is worth it |
-| `second_factor_expired`         |  401 | The 2FA challenge window closed (TTL) or the pending entry is unknown       |
-| `insufficient_ngfw_permissions` |  403 | Current NGFW role cannot run diagnostics; details contain only `role_id`    |
-| `not_authenticated`             |  401 | Missing or unknown STUCK session                                            |
-| `session_expired`               |  401 | STUCK or NGFW session can no longer be used                                 |
-| `not_found`                     |  404 | Resource or disabled feature is unavailable                                 |
-| `server_unreachable`            |  502 | NGFW/network timeout or connection failure                                  |
-| `api_changed`                   |  502 | Required NGFW response shape changed                                        |
-| `ngfw_error`                    |  502 | Other NGFW failure                                                          |
-| `internal_error`                |  500 | Unexpected backend failure; details are hidden                              |
+| Code                            | HTTP | Meaning                                                                           |
+| ------------------------------- | ---: | --------------------------------------------------------------------------------- |
+| `validation_error`              |  400 | Invalid request body or value                                                     |
+| `invalid_server_address`        |  400 | Server is not a bare IPv4/hostname                                                |
+| `ngfw_host_not_allowed`         |  403 | Host is outside this installation's NGFW policy                                   |
+| `invalid_credentials`           |  401 | NGFW rejected administrator credentials                                           |
+| `second_factor_required`        |  401 | NGFW requires a second factor STUCK cannot complete (no challenge)                |
+| `second_factor_invalid`         |  401 | Rejected 2FA code; `details.can_retry` says whether another try is worth it       |
+| `second_factor_expired`         |  401 | The 2FA challenge window closed (TTL) or the pending entry is unknown             |
+| `insufficient_ngfw_permissions` |  403 | Current NGFW role cannot run diagnostics; details contain only `role_id`          |
+| `readonly_admin_required`       |  403 | Read-only-admin mode rejects a non-read-only role; details contain only `role_id` |
+| `not_authenticated`             |  401 | Missing or unknown STUCK session                                                  |
+| `session_expired`               |  401 | STUCK or NGFW session can no longer be used                                       |
+| `not_found`                     |  404 | Resource or disabled feature is unavailable                                       |
+| `server_unreachable`            |  502 | NGFW/network timeout or connection failure                                        |
+| `api_changed`                   |  502 | Required NGFW response shape changed                                              |
+| `ngfw_error`                    |  502 | Other NGFW failure                                                                |
+| `internal_error`                |  500 | Unexpected backend failure; details are hidden                                    |
 
 Frontend locale dictionaries must contain every known error code and tolerate
 unknown codes with a generic fallback.
@@ -113,6 +114,13 @@ accepts only `login`, `name`, `role_id`, `role_name` and `competence`; the raw
 payload and cookies are never returned or logged. A 401/403 at this step is a
 2FA diagnostic (`second_factor_required`) and creates no STUCK session. Success
 sets `stuck_session`; no NGFW cookie is returned.
+
+When `STUCK_REQUIRE_READONLY_ADMIN` is enabled, a verified role other than the
+built-in read-only administrator (`predefined_admin_readonly`) is rejected with
+`readonly_admin_required` after the provisional NGFW session is closed; no
+STUCK session or cookie is created. The same check applies to
+`POST /api/auth/2fa` after the code is confirmed (the pending challenge and
+`stuck_2fa` are dropped as well).
 
 When the provisional `whoami` is a 200 profile blocked awaiting a second factor
 (`blocked_flags` bit 0, empty `role_id`), login instead returns the 2FA branch

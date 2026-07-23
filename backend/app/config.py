@@ -76,6 +76,11 @@ class Settings(BaseSettings):
     # rules) over the current snapshot. Read-only; disabling answers 404 and
     # hides the panel in the UI, exactly like the rules export.
     STUCK_ENABLE_RULE_HYGIENE: bool = True
+    # Opt-in login policy: accept only NGFW administrators with the built-in
+    # read-only role (predefined_admin_readonly). Any other role — including
+    # the full administrator — is rejected after a successful NGFW
+    # authentication with the readonly_admin_required error.
+    STUCK_REQUIRE_READONLY_ADMIN: bool = False
 
     @field_validator("STUCK_COOKIE_SAMESITE", "STUCK_LOG_FORMAT", mode="before")
     @classmethod

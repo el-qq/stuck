@@ -8,6 +8,11 @@ All notable user-visible changes are recorded here. The project follows
 
 ### ✨ Added
 
+- Optional read-only-admin sign-in mode (`STUCK_REQUIRE_READONLY_ADMIN`,
+  disabled by default). When enabled, only NGFW administrators with the
+  read-only role may sign in; any other role is rejected after password (and
+  2FA) verification and returned to the sign-in screen with an explanatory
+  message.
 - Hardware filtering in the traffic trace. STUCK evaluates the active NGFW
   MAC/IP filtering mode before software rules; when MAC context is unavailable,
   the result stays explicit about the uncertainty.

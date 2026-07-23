@@ -12,6 +12,7 @@ export type ErrorCode =
   | "second_factor_invalid"
   | "second_factor_expired"
   | "insufficient_ngfw_permissions"
+  | "readonly_admin_required"
   | "not_authenticated"
   | "session_expired"
   | "server_unreachable"
@@ -30,6 +31,7 @@ export const KNOWN_ERROR_CODES: readonly ErrorCode[] = [
   "second_factor_invalid",
   "second_factor_expired",
   "insufficient_ngfw_permissions",
+  "readonly_admin_required",
   "not_authenticated",
   "session_expired",
   "server_unreachable",
