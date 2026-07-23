@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from typing import Any, Iterable, Optional
+from collections.abc import Iterable
+from typing import Any
 
 from ...ngfw import schemas as S
 
@@ -19,7 +20,7 @@ def protocol_matches(rule_protocol: str, requested_protocol: str) -> bool:
     return normalized.endswith(requested_protocol.lower())
 
 
-def ports_match_state(port_ids: Iterable[str], aliases: dict[str, S.Alias], dst_port: int) -> Optional[bool]:
+def ports_match_state(port_ids: Iterable[str], aliases: dict[str, S.Alias], dst_port: int) -> bool | None:
     """Tri-state matching for a firewall/NAT destination-port condition."""
     ids = list(port_ids)
     if not ids:
@@ -37,7 +38,7 @@ def ports_match_state(port_ids: Iterable[str], aliases: dict[str, S.Alias], dst_
                 unresolved = True
             continue
 
-        states: list[Optional[bool]] = []
+        states: list[bool | None] = []
         if alias.value is not None:
             states.append(port_value_state(alias.value, dst_port))
         if alias.start is not None or alias.end is not None:
@@ -50,7 +51,7 @@ def ports_match_state(port_ids: Iterable[str], aliases: dict[str, S.Alias], dst_
     return None if unresolved else False
 
 
-def raw_port_matches(spec: Optional[str], port: int) -> bool:
+def raw_port_matches(spec: str | None, port: int) -> bool:
     """Match a literal preliminary-filter port or inclusive range."""
     if not spec:
         return True
@@ -64,7 +65,7 @@ def raw_port_matches(spec: Optional[str], port: int) -> bool:
         return False
 
 
-def single_nat_port(value: Optional[str], aliases: dict[str, S.Alias]) -> Optional[int]:
+def single_nat_port(value: str | None, aliases: dict[str, S.Alias]) -> int | None:
     """Resolve a single DNAT port value without guessing from ranges/objects."""
     if not value:
         return None
@@ -85,7 +86,7 @@ def has_specific_values(values: Iterable[str]) -> bool:
     return bool(normalized - {"any"})
 
 
-def port_value_state(value: Any, dst_port: int) -> Optional[bool]:
+def port_value_state(value: Any, dst_port: int) -> bool | None:
     try:
         port = int(value)
     except TypeError, ValueError:
@@ -95,7 +96,7 @@ def port_value_state(value: Any, dst_port: int) -> Optional[bool]:
     return port == dst_port
 
 
-def port_range_state(start: Any, end: Any, dst_port: int) -> Optional[bool]:
+def port_range_state(start: Any, end: Any, dst_port: int) -> bool | None:
     try:
         first, last = int(start), int(end)
     except TypeError, ValueError:
@@ -105,7 +106,7 @@ def port_range_state(start: Any, end: Any, dst_port: int) -> Optional[bool]:
     return first <= dst_port <= last
 
 
-def raw_port_state(value: str, dst_port: int) -> Optional[bool]:
+def raw_port_state(value: str, dst_port: int) -> bool | None:
     text = value.strip()
     if "-" in text:
         first, last = (part.strip() for part in text.split("-", 1))

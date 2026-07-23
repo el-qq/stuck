@@ -11,9 +11,8 @@ from __future__ import annotations
 from contextlib import contextmanager
 
 import pytest
+from conftest import NGFW_SERVER, LiveTestClient
 from fastapi.testclient import TestClient
-
-from conftest import LiveTestClient, NGFW_SERVER
 
 from app.config import get_settings
 from app.domain import rule_hygiene
@@ -354,7 +353,7 @@ class TestBroadAndCatchAll:
         kinds = _kinds(report)
         assert kinds.count("unreachable_after_any") == 1
         assert "shadowed" not in kinds
-        finding = [f for f in report["findings"] if f["kind"] == "unreachable_after_any"][0]
+        finding = next(f for f in report["findings"] if f["kind"] == "unreachable_after_any")
         assert finding["extra"]["unreachable_count"] == 2
         assert {r["id"] for r in finding["related"]} == {"2", "3"}
 

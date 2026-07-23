@@ -9,7 +9,8 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any
+from types import TracebackType
+from typing import Any, Self
 from urllib.parse import urlsplit
 
 import httpx
@@ -148,7 +149,7 @@ class NgfwApiClient:
         )
         self._authenticated = False
 
-    def __enter__(self) -> "NgfwApiClient":
+    def __enter__(self) -> Self:
         try:
             self.authenticate()
             return self
@@ -156,7 +157,12 @@ class NgfwApiClient:
             self.close()
             raise
 
-    def __exit__(self, exc_type: Any, exc: Any, traceback: Any) -> None:
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc: BaseException | None,
+        traceback: TracebackType | None,
+    ) -> None:
         try:
             self.logout()
         finally:

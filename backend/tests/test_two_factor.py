@@ -5,8 +5,8 @@ import json
 from types import SimpleNamespace
 
 import pytest
-from fastapi.testclient import TestClient
 from conftest import NGFW_SERVER, NGFW_SESSION_COOKIE, NGFW_SESSION_VALUE
+from fastapi.testclient import TestClient
 
 
 def _stuck_2fa_cookie_header(resp) -> str | None:
@@ -191,9 +191,10 @@ class TestPendingTwoFactorStore:
 
     def test_store_ttl_expiry(self):
         """Expired entries are dropped by get()."""
+        import time
+
         from app.domain.pending_2fa import PendingTwoFactorStore
         from app.ngfw.two_factor_ws import NgfwTwoFactorChannel
-        import time
 
         store = PendingTwoFactorStore(ttl_seconds=1)  # 1 second TTL
         channel = NgfwTwoFactorChannel(NGFW_SERVER, {"session": "token"})

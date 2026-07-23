@@ -832,5 +832,5 @@ class NgfwTestDataSeeder:
                 elif action.method == "PATCH" and action.body is not None:
                     self.client.patch(action.path, action.body)
                 self.emit(f"[ROLLED BACK] {action.description}")
-            except Exception as exc:  # best effort; preserve original failure
+            except NgfwToolError as exc:  # best effort; preserve original failure
                 self.emit(f"[ROLLBACK FAILED] {action.description}: {exc}")

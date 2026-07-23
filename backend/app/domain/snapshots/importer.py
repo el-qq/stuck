@@ -28,8 +28,8 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
-from datetime import datetime, timezone
-from typing import Any, TypeVar
+from datetime import UTC, datetime
+from typing import Any
 
 from pydantic import BaseModel, ValidationError
 
@@ -47,8 +47,6 @@ IMPORT_MAX_BYTES = 20 * 1024 * 1024
 # (ids, alias values, URLs...). UI renders these as text nodes; the cap only
 # guards against absurd payloads, not legitimate exports.
 MAX_STRING_LENGTH = 512
-
-T = TypeVar("T", bound=BaseModel)
 
 
 @dataclass
@@ -100,7 +98,7 @@ def _parse_iso(value: Any) -> float:
     if not isinstance(value, str) or not value or len(value) > 64:
         raise _invalid("structure")
     try:
-        return datetime.fromisoformat(value.replace("Z", "+00:00")).astimezone(timezone.utc).timestamp()
+        return datetime.fromisoformat(value).astimezone(UTC).timestamp()
     except ValueError as exc:
         raise _invalid("structure") from exc
 
@@ -125,7 +123,7 @@ def _section(container: dict[str, Any], key: str, default: Any) -> Any:
     return default if value is None else value
 
 
-def _parse_list(model: type[T], data: Any) -> list[T]:
+def _parse_list[T: BaseModel](model: type[T], data: Any) -> list[T]:
     """Tolerant element parsing: unknown fields pass, wrong types reject."""
     try:
         return S.parse_list(model, data, what="import")
@@ -133,7 +131,7 @@ def _parse_list(model: type[T], data: Any) -> list[T]:
         raise _invalid("structure") from exc
 
 
-def _parse_one(model: type[T], data: Any) -> T:
+def _parse_one[T: BaseModel](model: type[T], data: Any) -> T:
     try:
         return model.model_validate(data)
     except ValidationError as exc:

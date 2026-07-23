@@ -11,7 +11,8 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
-from typing import Any
+from types import TracebackType
+from typing import Any, Self
 
 import httpx
 
@@ -281,7 +282,7 @@ async def ngfw_logout(server: str, cookies: dict[str, str]) -> None:
         async with _new_client(server, cookies) as client:
             resp = await client.delete("/web/auth/login")
         _log_call(server, "DELETE", "/web/auth/login", start, status=resp.status_code)
-    except Exception as exc:
+    except (httpx.HTTPError, OSError, RuntimeError, StuckError, ValueError) as exc:
         # Logout must be idempotent and never surface NGFW errors.
         _log_call(server, "DELETE", "/web/auth/login", start, error=type(exc).__name__)
         return
@@ -298,7 +299,7 @@ def _extract_ngfw_cookies(resp: httpx.Response) -> dict[str, str]:
 def _json_or_none(resp: httpx.Response) -> Any:
     try:
         return resp.json()
-    except Exception:
+    except ValueError:
         return None
 
 
@@ -345,11 +346,16 @@ class NgfwClient:
             details={"role_id": role_id},
         )
 
-    async def __aenter__(self) -> "NgfwClient":
+    async def __aenter__(self) -> Self:
         self._client = _new_client(self.server, self.cookies)
         return self
 
-    async def __aexit__(self, exc_type: Any, exc: Any, traceback: Any) -> None:
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc: BaseException | None,
+        traceback: TracebackType | None,
+    ) -> None:
         if self._client is not None:
             await self._client.aclose()
             self._client = None

@@ -11,7 +11,7 @@ from __future__ import annotations
 import asyncio
 import ipaddress
 import socket
-from typing import Any, Optional
+from typing import Any
 from urllib.parse import urlsplit
 
 from ..config import get_settings
@@ -19,13 +19,15 @@ from ..ngfw import endpoints as ep
 from ..ngfw import schemas as S
 from ..ngfw.client import NgfwClient
 from .binding_pool import RulesSnapshot
-from .trace.contracts import build_category_names, stage
 from .trace.address_matching import (
     _bypass_matches,
     _is_ngfw_address,
     _user_tokens,
+)
+from .trace.address_matching import (
     rules_applicable_to_user as _rules_applicable_to_user,
 )
+from .trace.contracts import build_category_names, stage
 from .trace.nat import evaluate_dnat, evaluate_snat
 from .trace.network_stages import (
     evaluate_dns,
@@ -60,7 +62,7 @@ def normalize_target(raw_url: str, default_port: int) -> tuple[str, str, int]:
     return normalized, host.lower(), int(port)
 
 
-async def resolve_ip(host: str) -> Optional[str]:
+async def resolve_ip(host: str) -> str | None:
     """Best-effort system resolution to the first IPv4 or IPv6 address."""
     try:
         ipaddress.ip_address(host)
@@ -89,10 +91,10 @@ async def run_trace(
     client: NgfwClient,
     *,
     url: str,
-    user: Optional[S.NgfwUser],
+    user: S.NgfwUser | None,
     protocol: str,
-    dst_port_override: Optional[int],
-    source_ip: Optional[str] = None,
+    dst_port_override: int | None,
+    source_ip: str | None = None,
 ) -> dict[str, Any]:
     """Produce the complete, stable ``POST /api/trace`` response body.
 
@@ -118,7 +120,7 @@ async def run_trace(
     human_categories = [category_names.get(category, category) for category in url_categories]
     user_tokens = _user_tokens(user)
     stages: list[dict[str, Any]] = []
-    blocked_at: Optional[str] = None
+    blocked_at: str | None = None
 
     def add(result: dict[str, Any]) -> None:
         nonlocal blocked_at
@@ -174,7 +176,7 @@ async def run_trace(
     else:
         add(not_applicable("antivirus"))
 
-    matched_rule: Optional[S.FirewallRule] = None
+    matched_rule: S.FirewallRule | None = None
     if blocked_at is None:
         firewall_stage, matched_rule = evaluate_firewall(
             snapshot,

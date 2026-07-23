@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Optional, Literal
+from typing import Literal
 
 from ...ngfw import schemas as S
 
@@ -23,7 +23,7 @@ class Dimension:
     tokens: frozenset[str]
     opaque: bool
 
-    def covers(self, other: "Dimension") -> Optional[Tier]:
+    def covers(self, other: Dimension) -> Tier | None:
         if self.any:
             return "certain"
         if self.opaque or other.opaque:
@@ -69,7 +69,7 @@ class HygieneFinding:
     tier: Tier
     table: str
     rule_id: str
-    rule_name: Optional[str]
+    rule_name: str | None
     rule_position: int
     reason_key: str
     related: list[dict] = field(default_factory=list)

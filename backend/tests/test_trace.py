@@ -1,8 +1,7 @@
 """Tests for trace / users / rules-refresh + binding pool (contract v2.1 §3.4-3.6, §5.1)."""
 
-from fastapi.testclient import TestClient
-
 from conftest import DEFAULT_USERS, NGFW_SERVER
+from fastapi.testclient import TestClient
 
 STAGE_KEYS = [
     "hw_filter",
@@ -226,11 +225,13 @@ class TestExtendedFirewallPipeline:
     def test_preliminary_filter_blocks_first(self, authenticated_client: TestClient, ngfw_mock):
         ngfw_mock.state["fw_pre_filter"] = (
             200,
-            '"Rule type";"Protocol";"Source IP-address";"Source port";'
-            '"Destination IP-address";"Destination port";"TCP-flags";'
-            '"TCP-flags to blocking";"Packet length, bytes";"Comment";"Enabled"\r\n'
-            '"drop_rules";"None";"192.0.2.10";"None";"198.51.100.1";'
-            '"443";"";"";"None";"Block test";"Enabled"\r\n',
+            (
+                '"Rule type";"Protocol";"Source IP-address";"Source port";'
+                '"Destination IP-address";"Destination port";"TCP-flags";'
+                '"TCP-flags to blocking";"Packet length, bytes";"Comment";"Enabled"\r\n'
+                '"drop_rules";"None";"192.0.2.10";"None";"198.51.100.1";'
+                '"443";"";"";"None";"Block test";"Enabled"\r\n'
+            ),
         )
 
         response = authenticated_client.post(

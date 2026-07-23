@@ -24,7 +24,7 @@ from __future__ import annotations
 import secrets
 import time
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:  # pragma: no cover - typing only, avoids an import cycle
     import asyncio
@@ -58,8 +58,8 @@ class PendingTwoFactor:
     admin_id: str | None
     created_at: float
     expires_at: float
-    channel: Optional["NgfwTwoFactorChannel"] = field(default=None, repr=False)
-    reader_task: Optional["asyncio.Task[None]"] = field(default=None, repr=False)
+    channel: NgfwTwoFactorChannel | None = field(default=None, repr=False)
+    reader_task: asyncio.Task[None] | None = field(default=None, repr=False)
 
     def is_expired(self, now: float | None = None) -> bool:
         return (now or time.time()) >= self.expires_at
@@ -83,8 +83,8 @@ class PendingTwoFactorStore:
         ngfw_cookies: dict[str, str],
         submitted_login: str,
         admin_id: str | None,
-        channel: "NgfwTwoFactorChannel | None" = None,
-        reader_task: "asyncio.Task[None] | None" = None,
+        channel: NgfwTwoFactorChannel | None = None,
+        reader_task: asyncio.Task[None] | None = None,
     ) -> PendingTwoFactor:
         """Register a new challenge and return it (with a fresh ``pending_id``).
 

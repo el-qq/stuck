@@ -5,8 +5,8 @@ from __future__ import annotations
 import asyncio
 import ipaddress
 import logging
-from datetime import datetime, timezone
-from typing import Literal, Optional
+from datetime import UTC, datetime
+from typing import Literal
 
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
@@ -32,15 +32,15 @@ router = APIRouter(prefix="/api", tags=["trace"])
 
 
 def _iso(ts: float) -> str:
-    return datetime.fromtimestamp(ts, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    return datetime.fromtimestamp(ts, tz=UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 class TraceRequest(BaseModel):
     url: str = Field(min_length=1)
-    user_id: Optional[str] = None
+    user_id: str | None = None
     protocol: Literal["tcp", "udp"] = "tcp"
-    dst_port: Optional[int] = Field(default=None, ge=1, le=65535)
-    source_ip: Optional[str] = None
+    dst_port: int | None = Field(default=None, ge=1, le=65535)
+    source_ip: str | None = None
 
 
 def _find_user(snap, user_id: str) -> S.NgfwUser:

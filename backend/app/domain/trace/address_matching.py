@@ -3,13 +3,14 @@
 from __future__ import annotations
 
 import ipaddress
-from typing import Any, Iterable, Optional
+from collections.abc import Iterable
+from typing import Any
 
 from ...ngfw import schemas as S
 from ..binding_pool import RulesSnapshot
 
 
-def _user_tokens(user: Optional[S.NgfwUser]) -> set[str]:
+def _user_tokens(user: S.NgfwUser | None) -> set[str]:
     """Identity alias tokens the user matches in rule source/alias lists."""
     if user is None:
         return set()
@@ -26,7 +27,7 @@ def _user_tokens(user: Optional[S.NgfwUser]) -> set[str]:
     return tokens
 
 
-def _ip_in_alias(alias: S.Alias, ip: Optional[str], host: str) -> bool:
+def _ip_in_alias(alias: S.Alias, ip: str | None, host: str) -> bool:
     """Return whether an address-like alias matches an IP address or host."""
     alias_type = (alias.type or "").lower()
     values: list[Any] = []
@@ -35,9 +36,10 @@ def _ip_in_alias(alias: S.Alias, ip: Optional[str], host: str) -> bool:
     if alias.values:
         values.extend(alias.values)
 
-    if "domain" in alias_type or (not alias_type and isinstance(alias.value, str) and _looks_like_domain(alias.value)):
-        if any(isinstance(value, str) and _host_matches_domain(host, value) for value in values):
-            return True
+    if (
+        "domain" in alias_type or (not alias_type and isinstance(alias.value, str) and _looks_like_domain(alias.value))
+    ) and any(isinstance(value, str) and _host_matches_domain(host, value) for value in values):
+        return True
 
     if ip is None:
         return False
@@ -85,7 +87,7 @@ def _host_matches_domain(host: str, domain: str) -> bool:
 def _alias_matches_target(
     alias_id: str,
     aliases: dict[str, S.Alias],
-    ip: Optional[str],
+    ip: str | None,
     host: str,
     seen: set[str] | None = None,
 ) -> bool:
@@ -149,9 +151,7 @@ def _alias_nonmatch_is_certain(
             checks.append(False)
         elif value in aliases:
             checks.append(_alias_nonmatch_is_certain(value, aliases, set(visited)))
-        elif _is_raw_ip_spec(value):
-            checks.append(True)
-        elif ("domain" in alias_type or not alias_type) and _looks_like_domain(value):
+        elif _is_raw_ip_spec(value) or ("domain" in alias_type or not alias_type) and _looks_like_domain(value):
             checks.append(True)
         else:
             checks.append(False)
@@ -161,9 +161,9 @@ def _alias_nonmatch_is_certain(
 def _alias_match_state(
     alias_id: str,
     aliases: dict[str, S.Alias],
-    ip: Optional[str],
+    ip: str | None,
     host: str,
-) -> Optional[bool]:
+) -> bool | None:
     """Tri-state alias matching; ``None`` preserves a possible earlier rule."""
     if alias_id not in aliases:
         return None
@@ -177,9 +177,9 @@ def _alias_match_state(
 def _source_match_state(
     block: S.SourceDest,
     user_tokens: set[str],
-    source_ip: Optional[str],
+    source_ip: str | None,
     aliases: dict[str, S.Alias],
-) -> Optional[bool]:
+) -> bool | None:
     """Tri-state match for one source block; a missing required IP is unknown."""
     references = list(block.addresses)
     if not references:
@@ -212,7 +212,7 @@ def _source_match_state(
 def _source_matches(
     block: S.SourceDest,
     user_tokens: set[str],
-    source_ip: Optional[str],
+    source_ip: str | None,
     aliases: dict[str, S.Alias],
 ) -> bool:
     return _source_match_state(block, user_tokens, source_ip, aliases) is True
@@ -258,9 +258,9 @@ def _alias_may_match_ip(alias_id: str, aliases: dict[str, S.Alias], seen: set[st
 def _dest_match_state(
     block: S.SourceDest,
     aliases: dict[str, S.Alias],
-    ip: Optional[str],
+    ip: str | None,
     host: str,
-) -> Optional[bool]:
+) -> bool | None:
     """Tri-state destination match; ``None`` means unresolved context matters."""
     references = list(block.addresses)
     if not references:
@@ -293,7 +293,7 @@ def _dest_match_state(
 def _sources_block_matches(
     rule: S.FirewallRule,
     user_tokens: set[str],
-    source_ip: Optional[str],
+    source_ip: str | None,
     aliases: dict[str, S.Alias],
 ) -> bool:
     return not rule.sources or all(_source_matches(block, user_tokens, source_ip, aliases) for block in rule.sources)
@@ -302,9 +302,9 @@ def _sources_block_matches(
 def _sources_block_match_state(
     rule: S.FirewallRule,
     user_tokens: set[str],
-    source_ip: Optional[str],
+    source_ip: str | None,
     aliases: dict[str, S.Alias],
-) -> Optional[bool]:
+) -> bool | None:
     if not rule.sources:
         return True
     states = [_source_match_state(block, user_tokens, source_ip, aliases) for block in rule.sources]
@@ -314,8 +314,8 @@ def _sources_block_match_state(
 
 
 def _dests_block_match_state(
-    rule: S.FirewallRule, aliases: dict[str, S.Alias], ip: Optional[str], host: str
-) -> Optional[bool]:
+    rule: S.FirewallRule, aliases: dict[str, S.Alias], ip: str | None, host: str
+) -> bool | None:
     if not rule.destinations:
         return True
     states = [_dest_match_state(block, aliases, ip, host) for block in rule.destinations]
@@ -324,7 +324,7 @@ def _dests_block_match_state(
     return None if None in states else True
 
 
-def _unknown_object_reason(*, address: Optional[str]) -> str:
+def _unknown_object_reason(*, address: str | None) -> str:
     return "fw_destination_unknown" if address is None else "fw_object_unknown"
 
 
@@ -352,7 +352,7 @@ def rules_applicable_to_user(snapshot: RulesSnapshot, user: S.NgfwUser) -> dict[
     }
 
 
-def _raw_ip_matches(spec: Optional[str], ip: Optional[str]) -> bool:
+def _raw_ip_matches(spec: str | None, ip: str | None) -> bool:
     if not spec:
         return True
     if ip is None:
@@ -389,7 +389,7 @@ def _is_raw_ip_spec(spec: str) -> bool:
     return True
 
 
-def _single_nat_ip(value: Optional[str], aliases: dict[str, S.Alias]) -> Optional[str]:
+def _single_nat_ip(value: str | None, aliases: dict[str, S.Alias]) -> str | None:
     if not value:
         return None
     candidate = value.strip()
@@ -402,7 +402,7 @@ def _single_nat_ip(value: Optional[str], aliases: dict[str, S.Alias]) -> Optiona
         return None
 
 
-def _is_ngfw_address(addresses: Iterable[str], ip: Optional[str]) -> bool:
+def _is_ngfw_address(addresses: Iterable[str], ip: str | None) -> bool:
     if ip is None:
         return False
     try:
@@ -422,9 +422,9 @@ def _bypass_matches(
     bypass: list[S.IpsBypass],
     aliases: dict[str, S.Alias],
     user_tokens: set[str],
-    ip: Optional[str],
+    ip: str | None,
     host: str,
-) -> Optional[S.IpsBypass]:
+) -> S.IpsBypass | None:
     for entry in bypass:
         if not entry.enabled:
             continue
@@ -437,7 +437,7 @@ def _bypass_matches(
     return None
 
 
-def _ip_equal(spec: Optional[str], ip: Optional[str]) -> bool:
+def _ip_equal(spec: str | None, ip: str | None) -> bool:
     if not spec or not ip:
         return False
     try:

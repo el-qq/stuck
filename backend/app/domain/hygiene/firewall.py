@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Optional
-
 from ...ngfw import schemas as S
 from .models import Dimension, HygieneFinding, RuleFacts, Tier
 
@@ -77,7 +75,7 @@ def has_specific_values(values: list[str]) -> bool:
     return bool(normalized - {"any"})
 
 
-def coverage(earlier: RuleFacts, later: RuleFacts) -> Optional[Tier]:
+def coverage(earlier: RuleFacts, later: RuleFacts) -> Tier | None:
     """Return the certainty tier when ``earlier`` fully covers ``later``."""
     tier: Tier = "certain"
     for earlier_dimension, later_dimension in (
@@ -122,12 +120,12 @@ def _overly_broad_findings(table: str, rules: list[RuleFacts]) -> list[HygieneFi
     return findings
 
 
-def _first_catch_all(rules: list[RuleFacts]) -> Optional[int]:
+def _first_catch_all(rules: list[RuleFacts]) -> int | None:
     return next((index for index, facts in enumerate(rules) if facts.is_universal), None)
 
 
 def _append_unreachable_finding(
-    findings: list[HygieneFinding], table: str, rules: list[RuleFacts], catch_all_at: Optional[int]
+    findings: list[HygieneFinding], table: str, rules: list[RuleFacts], catch_all_at: int | None
 ) -> set[int]:
     if catch_all_at is None or catch_all_at + 1 >= len(rules):
         return set()

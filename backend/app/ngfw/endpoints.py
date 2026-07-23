@@ -301,7 +301,7 @@ async def get_av_default_enabled(client: NgfwClient) -> bool:
     def normalize_profile_id(value: Any) -> str:
         text = str(value).strip()
         prefix = "av_profile.id."
-        return text[len(prefix) :] if text.startswith(prefix) else text
+        return text.removeprefix(prefix)
 
     selected_id = normalize_profile_id(selected)
     for profile in profiles_data:

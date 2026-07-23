@@ -8,7 +8,7 @@ shadowed / redundant / unreachable / overly-broad rules. Gated by
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, Query
 
@@ -26,7 +26,7 @@ router = APIRouter(prefix="/api", tags=["hygiene"])
 
 
 def _iso(ts: float) -> str:
-    return datetime.fromtimestamp(ts, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    return datetime.fromtimestamp(ts, tz=UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 @router.get("/rules/hygiene")
@@ -58,7 +58,7 @@ async def rules_hygiene(
         # Binding comes from the SESSION only — never from the request (§3.8).
         "binding": {"admin": session.admin_login, "server": session.server},
         "rules_updated_at": _iso(snap.loaded_at),
-        "generated_at": _iso(datetime.now(tz=timezone.utc).timestamp()),
+        "generated_at": _iso(datetime.now(tz=UTC).timestamp()),
         "summary": report["summary"],
         "findings": report["findings"],
     }

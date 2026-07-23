@@ -7,8 +7,8 @@ from typing import Any
 import httpx
 import pytest
 
-from tools.ngfw_testdata.client import NgfwApiClient, parse_target
 from tools.ngfw_testdata.cli import _admin_login, _parser
+from tools.ngfw_testdata.client import NgfwApiClient, parse_target
 from tools.ngfw_testdata.errors import (
     ApiError,
     AuthorizationError,
@@ -89,14 +89,16 @@ def test_write_403_is_reported_as_read_only_permission_error() -> None:
         return httpx.Response(403, json={"message": "read only administrator"})
 
     transport = httpx.MockTransport(handler)
-    with NgfwApiClient(
-        "ngfw.example:8443",
-        "readonly",
-        "secret",
-        transport=transport,
-    ) as client:
-        with pytest.raises(AuthorizationError, match="запретил операцию") as caught:
-            client.post("/aliases/ip_addresses", {"value": "203.0.113.10"})
+    with (
+        NgfwApiClient(
+            "ngfw.example:8443",
+            "readonly",
+            "secret",
+            transport=transport,
+        ) as client,
+        pytest.raises(AuthorizationError, match="запретил операцию") as caught,
+    ):
+        client.post("/aliases/ip_addresses", {"value": "203.0.113.10"})
 
     assert "только чтение" in (caught.value.hint or "")
 
@@ -114,9 +116,11 @@ def test_api_error_never_echoes_submitted_password() -> None:
         return httpx.Response(400, json={"message": f"invalid psw {test_password}"})
 
     transport = httpx.MockTransport(handler)
-    with NgfwApiClient("ngfw.example:8443", "admin", "admin-secret", transport=transport) as client:
-        with pytest.raises(ApiError) as caught:
-            client.post("/user_backend/users", {"psw": test_password})
+    with (
+        NgfwApiClient("ngfw.example:8443", "admin", "admin-secret", transport=transport) as client,
+        pytest.raises(ApiError) as caught,
+    ):
+        client.post("/user_backend/users", {"psw": test_password})
 
     assert test_password not in str(caught.value)
     assert "[REDACTED]" in str(caught.value)

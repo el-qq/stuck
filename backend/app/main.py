@@ -18,12 +18,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from . import __version__
-from .api import auth, config, export, hygiene, session as session_api, snapshots, trace, users
+from .api import auth, config, export, hygiene, snapshots, trace, users
+from .api import session as session_api
 from .config import get_settings
 from .domain.binding_pool import BindingPool
 from .domain.pending_2fa import PendingTwoFactorStore
 from .domain.session_store import SessionStore
-from .ngfw.client import ngfw_logout
 from .errors import (
     StuckError,
     stuck_error_handler,
@@ -31,6 +31,7 @@ from .errors import (
     validation_exception_handler,
 )
 from .logging_setup import configure_logging, log_event
+from .ngfw.client import ngfw_logout
 
 _access_log = logging.getLogger("stuck.access")
 _security_log = logging.getLogger("stuck.security")
@@ -120,7 +121,9 @@ async def _sweep_pending_2fa(app: FastAPI, interval: float) -> None:
                 await ngfw_logout(entry.server, entry.ngfw_cookies)
         except asyncio.CancelledError:
             raise
-        except Exception as exc:  # never let a sweep error kill the loop
+        except (OSError, RuntimeError, StuckError) as exc:
+            # Teardown helpers translate expected network failures. Let coding
+            # defects surface instead of silently losing the cleanup loop.
             log_event(_sweep_log, "pending_2fa_sweep_error", level=logging.WARNING, error=type(exc).__name__)
 
 

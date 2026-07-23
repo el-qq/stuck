@@ -11,6 +11,7 @@ import logging as _logging
 from typing import Any
 
 from fastapi import Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
 # Import-safe: logging_setup has no imports from errors (no cycle).
@@ -162,17 +163,11 @@ async def unhandled_error_handler(request: Request, exc: Exception) -> JSONRespo
     return err.to_response()
 
 
-async def validation_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+async def validation_exception_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
     # FastAPI RequestValidationError -> our validation_error envelope.
-    details = None
-    errs = getattr(exc, "errors", None)
-    if callable(errs):
-        try:
-            # Keep only type/loc/msg: pydantic's "input" echoes the raw body,
-            # which for /api/auth/login would include the password.
-            details = {"fields": [{k: e.get(k) for k in ("type", "loc", "msg")} for e in errs() if isinstance(e, dict)]}
-        except Exception:  # pragma: no cover - defensive
-            details = None
+    # Keep only type/loc/msg: pydantic's "input" echoes the raw body, which
+    # for /api/auth/login would include the password.
+    details = {"fields": [{k: e.get(k) for k in ("type", "loc", "msg")} for e in exc.errors() if isinstance(e, dict)]}
     err = StuckError("validation_error", "Invalid request body", details=details)
     _log_typed_error(request, err)
     return err.to_response()

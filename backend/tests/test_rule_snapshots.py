@@ -9,10 +9,11 @@ keeps them, a fresh pool (restart) has none. The per-pair limit is explicit
 from __future__ import annotations
 
 import pytest
+from pydantic import ValidationError
 
 from app.config import Settings
-from app.domain.snapshots import store as rule_snapshots
 from app.domain.binding_pool import BindingPool, RulesSnapshot
+from app.domain.snapshots import store as rule_snapshots
 from app.errors import StuckError
 from app.ngfw import schemas as S
 
@@ -157,7 +158,7 @@ class TestSnapshotConfig:
 
     @pytest.mark.parametrize("value", [0, -1, 51])
     def test_limit_range_is_validated(self, value):
-        with pytest.raises(Exception):
+        with pytest.raises(ValidationError):
             Settings(STUCK_ALLOW_ANY_NGFW=True, STUCK_SNAPSHOT_LIMIT_PER_BINDING=value)
 
     @pytest.mark.parametrize("value", [1, 50])

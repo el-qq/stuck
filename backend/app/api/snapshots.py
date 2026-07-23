@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from fastapi import APIRouter, Depends, Query, Request
@@ -24,13 +24,13 @@ from pydantic import BaseModel
 
 from ..config import Settings, get_settings
 from ..deps import binding_for, current_session, get_binding_pool, get_or_load_snapshot
+from ..domain.admin_access import require_trace_access
+from ..domain.binding_pool import Binding, BindingPool, RulesSnapshot
+from ..domain.session_store import Session
 from ..domain.snapshots import diff as snapshot_diff
 from ..domain.snapshots import importer as snapshot_import
 from ..domain.snapshots import store as rule_snapshots
-from ..domain.admin_access import require_trace_access
-from ..domain.binding_pool import Binding, BindingPool, RulesSnapshot
 from ..domain.snapshots.store import SnapshotEntry
-from ..domain.session_store import Session
 from ..errors import StuckError, not_found, validation_error
 from ..logging_setup import log_event
 
@@ -40,7 +40,7 @@ router = APIRouter(prefix="/api", tags=["snapshots"])
 
 
 def _iso(ts: float) -> str:
-    return datetime.fromtimestamp(ts, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    return datetime.fromtimestamp(ts, tz=UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 def _gate(settings: Settings) -> None:
@@ -154,15 +154,15 @@ async def create_snapshot(
     snap = await get_or_load_snapshot(session, pool, force=body.refresh)
     entry = rule_snapshots.add_entry(binding, rule_snapshots.create_manual(snap, comment), limit)
 
-    log_kwargs = dict(
-        server=session.server,
-        login=session.admin_login,
-        snapshot_id=entry.id,
-        source=entry.source,
-        refresh=body.refresh,
-        rules_updated_at=_iso(entry.rules_updated_at),
-        total=len(binding.saved_snapshots),
-    )
+    log_kwargs = {
+        "server": session.server,
+        "login": session.admin_login,
+        "snapshot_id": entry.id,
+        "source": entry.source,
+        "refresh": body.refresh,
+        "rules_updated_at": _iso(entry.rules_updated_at),
+        "total": len(binding.saved_snapshots),
+    }
     log_event(_snapshots_log, "snapshot_created", **log_kwargs)
     return {"ok": True, "snapshot": _descriptor(entry)}
 
@@ -313,7 +313,7 @@ async def snapshots_diff(
     _gate(settings)
     require_trace_access(session.admin_access)
     binding = binding_for(session, pool)
-    now = datetime.now(tz=timezone.utc).timestamp()
+    now = datetime.now(tz=UTC).timestamp()
 
     snap_a, meta_a, anonymized_a = await _resolve_side(a, session, pool, binding, now)
     snap_b, meta_b, anonymized_b = await _resolve_side(b, session, pool, binding, now)
