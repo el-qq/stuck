@@ -15,8 +15,8 @@ import logging
 
 from fastapi import Depends, Request
 
-from .domain.binding_pool import Binding, BindingPool, RulesSnapshot
 from .domain.admin_access import require_trace_access
+from .domain.binding_pool import Binding, BindingPool, RulesSnapshot
 from .domain.pending_2fa import PendingTwoFactorStore
 from .domain.session_store import Session, SessionStore
 from .errors import not_authenticated, session_expired

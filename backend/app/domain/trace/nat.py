@@ -2,29 +2,29 @@
 
 from __future__ import annotations
 
-from typing import Any, Optional
+from typing import Any
 
 from ...ngfw import schemas as S
 from ..binding_pool import RulesSnapshot
-from .contracts import stage
 from .address_matching import (
     _dests_block_match_state,
     _single_nat_ip,
     _sources_block_match_state,
     _unknown_object_reason,
 )
+from .contracts import stage
 from .port_matching import has_specific_values, ports_match_state, protocol_matches, single_nat_port
 
 
 def evaluate_dnat(
     snapshot: RulesSnapshot,
     user_tokens: set[str],
-    source_ip: Optional[str],
-    destination_ip: Optional[str],
+    source_ip: str | None,
+    destination_ip: str | None,
     host: str,
     protocol: str,
     dst_port: int,
-) -> tuple[dict[str, Any], Optional[str], int]:
+) -> tuple[dict[str, Any], str | None, int]:
     """Evaluate the first possible DNAT rule and return its effective target."""
     if not snapshot.fw_state.enabled:
         return (
@@ -85,8 +85,8 @@ def evaluate_dnat(
 def evaluate_snat(
     snapshot: RulesSnapshot,
     user_tokens: set[str],
-    source_ip: Optional[str],
-    destination_ip: Optional[str],
+    source_ip: str | None,
+    destination_ip: str | None,
     host: str,
     protocol: str,
     dst_port: int,
@@ -131,12 +131,12 @@ def _rule_match_state(
     rule: S.FirewallRule,
     snapshot: RulesSnapshot,
     user_tokens: set[str],
-    source_ip: Optional[str],
-    destination_ip: Optional[str],
+    source_ip: str | None,
+    destination_ip: str | None,
     host: str,
     protocol: str,
     dst_port: int,
-) -> Optional[bool]:
+) -> bool | None:
     destination_match = _dests_block_match_state(rule, snapshot.aliases, destination_ip, host)
     ports_match = ports_match_state(rule.destination_ports, snapshot.aliases, dst_port)
     if (
@@ -176,8 +176,8 @@ def _unknown_match_reason(
     rule: S.FirewallRule,
     snapshot: RulesSnapshot,
     user_tokens: set[str],
-    source_ip: Optional[str],
-    destination_ip: Optional[str],
+    source_ip: str | None,
+    destination_ip: str | None,
     host: str,
     dst_port: int,
 ) -> str:

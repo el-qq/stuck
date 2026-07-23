@@ -12,7 +12,6 @@ from typing import Any
 
 from ..errors import StuckError
 
-
 # STUCK loads a full rules snapshot, so permit only the two built-in roles that
 # are documented as full administrator and administrator read-only.  Do not
 # infer permission from a partial competence list.

@@ -18,10 +18,10 @@ match that URL.
 """
 
 import os
+import re
 import socket
 import threading
 import time
-import re
 from typing import Any
 
 import httpx
@@ -92,9 +92,11 @@ def default_state() -> dict[str, Any]:
         "fw_snat": (200, []),
         "fw_pre_filter": (
             200,
-            '"Rule type";"Protocol";"Source IP-address";"Source port";'
-            '"Destination IP-address";"Destination port";"TCP-flags";'
-            '"TCP-flags to blocking";"Packet length, bytes";"Comment";"Enabled"\r\n',
+            (
+                '"Rule type";"Protocol";"Source IP-address";"Source port";'
+                '"Destination IP-address";"Destination port";"TCP-flags";'
+                '"TCP-flags to blocking";"Packet length, bytes";"Comment";"Enabled"\r\n'
+            ),
         ),
         "fw_settings": (200, {"automatic_snat_enabled": False}),
         # Hardware filtering: source-IP mode active, no rules configured.

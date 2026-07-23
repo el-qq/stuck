@@ -3,16 +3,16 @@
 from __future__ import annotations
 
 import ipaddress
-from typing import Any, Optional
+from typing import Any
 
 from ...ngfw import schemas as S
 from ..binding_pool import RulesSnapshot
-from .contracts import stage
 from .address_matching import _alias_matches_target, _ip_equal, _raw_ip_matches
+from .contracts import stage
 from .port_matching import protocol_matches, raw_port_matches
 
 
-def evaluate_hw_filter(snapshot: RulesSnapshot, source_ip: Optional[str], resolved_ip: Optional[str]) -> dict[str, Any]:
+def evaluate_hw_filter(snapshot: RulesSnapshot, source_ip: str | None, resolved_ip: str | None) -> dict[str, Any]:
     """Evaluate the active NIC drop list before any software policy stage.
 
     Hardware filtering has one active mode. Missing MAC/source/destination
@@ -66,7 +66,7 @@ def evaluate_hw_filter(snapshot: RulesSnapshot, source_ip: Optional[str], resolv
     return stage("hw_filter", "pass", detail)
 
 
-def evaluate_rate_limit(snapshot: RulesSnapshot, user_tokens: set[str], ip: Optional[str], host: str) -> dict[str, Any]:
+def evaluate_rate_limit(snapshot: RulesSnapshot, user_tokens: set[str], ip: str | None, host: str) -> dict[str, Any]:
     if not snapshot.shaper_state.enabled:
         return stage("rate_limit", "skip", {"module_enabled": False, "reason_key": "rate_limit_disabled"})
 
@@ -103,9 +103,9 @@ def evaluate_rate_limit(snapshot: RulesSnapshot, user_tokens: set[str], ip: Opti
     return stage("rate_limit", "pass", {"module_enabled": True, "reason_key": "rate_limit_no_matching_rule"})
 
 
-def match_dns_zone(host: str, zones: list[S.DnsZone]) -> Optional[S.DnsZone]:
+def match_dns_zone(host: str, zones: list[S.DnsZone]) -> S.DnsZone | None:
     """Return the most-specific enabled local zone that covers ``host``."""
-    best: Optional[S.DnsZone] = None
+    best: S.DnsZone | None = None
     candidate = (host or "").lower().rstrip(".")
     for zone in zones:
         if not zone.enabled:
@@ -118,7 +118,7 @@ def match_dns_zone(host: str, zones: list[S.DnsZone]) -> Optional[S.DnsZone]:
     return best
 
 
-def evaluate_dns(snapshot: RulesSnapshot, host: str, resolved_ip: Optional[str]) -> dict[str, Any]:
+def evaluate_dns(snapshot: RulesSnapshot, host: str, resolved_ip: str | None) -> dict[str, Any]:
     try:
         ipaddress.ip_address(host)
     except ValueError:
@@ -142,8 +142,8 @@ def evaluate_dns(snapshot: RulesSnapshot, host: str, resolved_ip: Optional[str])
 
 def evaluate_pre_filter(
     snapshot: RulesSnapshot,
-    source_ip: Optional[str],
-    destination_ip: Optional[str],
+    source_ip: str | None,
+    destination_ip: str | None,
     protocol: str,
     dst_port: int,
 ) -> dict[str, Any]:

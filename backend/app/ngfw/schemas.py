@@ -12,13 +12,11 @@ ValidationError into a StuckError(api_changed).
 from __future__ import annotations
 
 import ipaddress
-from typing import Any, Literal, TypeVar
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, StrictBool, ValidationError, field_validator
 
 from ..errors import StuckError
-
-T = TypeVar("T", bound=BaseModel)
 
 
 class _Base(BaseModel):
@@ -307,14 +305,14 @@ def _api_changed(what: str, exc: Exception) -> StuckError:
     )
 
 
-def parse(model: type[T], data: Any, *, what: str) -> T:
+def parse[T: BaseModel](model: type[T], data: Any, *, what: str) -> T:
     try:
         return model.model_validate(data)
     except ValidationError as exc:
         raise _api_changed(what, exc) from exc
 
 
-def parse_list(model: type[T], data: Any, *, what: str) -> list[T]:
+def parse_list[T: BaseModel](model: type[T], data: Any, *, what: str) -> list[T]:
     if not isinstance(data, list):
         raise _api_changed(what, TypeError(f"expected list, got {type(data).__name__}"))
     out: list[T] = []

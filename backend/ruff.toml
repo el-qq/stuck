@@ -1,6 +1,12 @@
 line-length = 120
 target-version = "py314"
 
+[lint.flake8-bugbear]
+# FastAPI evaluates this declarative dependency marker when the route is
+# registered; it is not a mutable runtime default.  Tell B008 about that
+# framework contract instead of weakening the rule for arbitrary calls.
+extend-immutable-calls = ["fastapi.Depends"]
+
 [format]
 quote-style = "double"
 indent-style = "space"

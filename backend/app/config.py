@@ -101,7 +101,7 @@ class Settings(BaseSettings):
         return v.upper() if isinstance(v, str) else v
 
     @model_validator(mode="after")
-    def _validate_ngfw_access_policy(self) -> "Settings":
+    def _validate_ngfw_access_policy(self) -> Settings:
         hosts = parse_allowed_hosts(self.STUCK_ALLOWED_NGFW_HOSTS)
         networks = parse_allowed_networks(self.STUCK_ALLOWED_NGFW_CIDRS)
         if not self.STUCK_ALLOW_ANY_NGFW and not hosts and not networks:

@@ -3,11 +3,10 @@
 from __future__ import annotations
 
 import ipaddress
-from typing import Any, Optional
+from typing import Any
 
 from ...ngfw import schemas as S
 from ..binding_pool import RulesSnapshot
-from .contracts import stage
 from .address_matching import (
     _cf_rule_applies_to_user,
     _dests_block_match_state,
@@ -15,6 +14,7 @@ from .address_matching import (
     _sources_block_match_state,
     _unknown_object_reason,
 )
+from .contracts import stage
 from .port_matching import has_specific_values, ports_match_state, protocol_matches
 
 
@@ -80,12 +80,12 @@ def evaluate_content_filter(
 def evaluate_firewall(
     snapshot: RulesSnapshot,
     user_tokens: set[str],
-    source_ip: Optional[str],
-    destination_ip: Optional[str],
+    source_ip: str | None,
+    destination_ip: str | None,
     host: str,
     protocol: str,
     dst_port: int,
-) -> tuple[dict[str, Any], Optional[S.FirewallRule]]:
+) -> tuple[dict[str, Any], S.FirewallRule | None]:
     """Evaluate the selected INPUT/FORWARD chain using first-possible-match.
 
     A rule whose unprovided context may match becomes ``unknown`` immediately;
@@ -184,7 +184,7 @@ def _unavailable_rule_context(rule: S.FirewallRule) -> bool:
     )
 
 
-def _source_in_lan(source_ip: Optional[str], lan_networks: list[str]) -> bool:
+def _source_in_lan(source_ip: str | None, lan_networks: list[str]) -> bool:
     """Return whether an address is provably in a LAN-side interface network."""
     if not source_ip or not lan_networks:
         return False

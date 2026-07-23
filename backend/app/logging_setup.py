@@ -19,7 +19,7 @@ import json
 import logging
 import re
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 MASK = "***"
@@ -88,7 +88,7 @@ class SecretMaskingFilter(logging.Filter):
     def filter(self, record: logging.LogRecord) -> bool:
         try:
             message = record.getMessage()
-        except Exception:  # pragma: no cover - malformed %-format args
+        except KeyError, TypeError, ValueError:  # pragma: no cover - malformed %-format args
             return True
         scrubbed = scrub_text(message)
         if scrubbed != message:
@@ -101,7 +101,7 @@ class SecretMaskingFilter(logging.Filter):
 
 
 def _iso(created: float) -> str:
-    return datetime.fromtimestamp(created, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
+    return datetime.fromtimestamp(created, tz=UTC).strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
 
 
 def _fmt_value(value: Any) -> str:

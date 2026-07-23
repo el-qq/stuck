@@ -1,13 +1,12 @@
 """Tests for authentication endpoints (docs/API_CONTRACT.md)."""
 
-import json
 import ipaddress
+import json
 
 import httpx
 import pytest
-from fastapi.testclient import TestClient
-
 from conftest import NGFW_SERVER, NGFW_SESSION_VALUE
+from fastapi.testclient import TestClient
 
 
 def _stuck_set_cookie_header(resp) -> str | None:

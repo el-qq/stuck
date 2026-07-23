@@ -60,7 +60,7 @@ class RulesSnapshot:
     loaded_at: float = field(default_factory=time.time)
 
     @classmethod
-    def from_raw(cls, raw: dict[str, Any]) -> "RulesSnapshot":
+    def from_raw(cls, raw: dict[str, Any]) -> RulesSnapshot:
         return cls(**raw)
 
     def counts(self) -> dict[str, int]:
@@ -107,7 +107,7 @@ class Binding:
     # the exact snapshot lifecycle demanded by AGENTS.md invariant 5. Entries
     # are ``snapshots.store.SnapshotEntry`` objects (no secrets); the list is
     # managed exclusively through ``app.domain.snapshots.store``.
-    saved_snapshots: list["SnapshotEntry"] = field(default_factory=list)
+    saved_snapshots: list[SnapshotEntry] = field(default_factory=list)
 
     @property
     def rules_updated_at(self) -> float | None:

@@ -33,7 +33,8 @@ labels the export uses (развилка h.2).
 from __future__ import annotations
 
 from bisect import bisect_left
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 from pydantic import BaseModel
 

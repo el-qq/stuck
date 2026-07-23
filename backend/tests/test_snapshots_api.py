@@ -10,9 +10,8 @@ from __future__ import annotations
 
 from contextlib import contextmanager
 
+from conftest import NGFW_SERVER, LiveTestClient
 from fastapi.testclient import TestClient
-
-from conftest import LiveTestClient, NGFW_SERVER
 
 from app.config import get_settings
 from app.domain.snapshots import importer as snapshot_import

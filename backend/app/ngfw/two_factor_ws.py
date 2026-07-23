@@ -337,7 +337,7 @@ class NgfwTwoFactorChannel:
         start = time.perf_counter()
         try:
             await self._ws.close()
-        except Exception as exc:  # pragma: no cover - best-effort teardown
+        except (ConnectionClosed, OSError, RuntimeError) as exc:  # pragma: no cover - best-effort teardown
             _log_ws(self.server, "close", start, error=type(exc).__name__)
         else:
             _log_ws(self.server, "close", start, status="closed")

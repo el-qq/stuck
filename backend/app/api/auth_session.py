@@ -9,7 +9,7 @@ values and are never included in a returned object or log event.
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fastapi import Response
 
@@ -27,7 +27,7 @@ _pool_log = logging.getLogger("stuck.pool")
 
 def iso_timestamp(timestamp: float) -> str:
     """Serialize an in-memory timestamp in the API's stable UTC format."""
-    return datetime.fromtimestamp(timestamp, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    return datetime.fromtimestamp(timestamp, tz=UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 def set_session_cookie(response: Response, session: Session, settings: Settings) -> None:

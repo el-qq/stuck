@@ -3,10 +3,8 @@
 import json
 
 import pytest
-from fastapi.testclient import TestClient
-
 from conftest import NGFW_SESSION_VALUE, ROTATED_NGFW_SESSION_VALUE
-
+from fastapi.testclient import TestClient
 
 READONLY_WHOAMI = {
     "login": "admin",

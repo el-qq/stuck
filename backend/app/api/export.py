@@ -19,8 +19,8 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import datetime, timezone
-from typing import Any, Optional
+from datetime import UTC, datetime
+from typing import Any
 
 from fastapi import APIRouter, Depends, Query, Response
 
@@ -30,7 +30,8 @@ from ..domain import trace_engine
 
 # Anonymization is shared with the snapshot diff (docs/source/snapshots.md h.2)
 # and lives in the domain layer as the single source of truth.
-from ..domain.anonymize import anonymize as _anonymize, identity_map as _identity_map
+from ..domain.anonymize import anonymize as _anonymize
+from ..domain.anonymize import identity_map as _identity_map
 from ..domain.binding_pool import BindingPool, RulesSnapshot
 from ..domain.session_store import Session
 from ..errors import StuckError
@@ -45,7 +46,7 @@ RULES_EXPORT_FORMAT = "stuck.rules/v2"
 
 
 def _iso(ts: float) -> str:
-    return datetime.fromtimestamp(ts, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    return datetime.fromtimestamp(ts, tz=UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 def _dump(models) -> list[dict[str, Any]]:
@@ -67,8 +68,8 @@ def _find_user(snap: RulesSnapshot, user_id: str) -> S.NgfwUser:
 
 def _build_snapshot(
     snap: RulesSnapshot,
-    filtered: Optional[dict[str, list[Any]]],
-    only_user: Optional[S.NgfwUser],
+    filtered: dict[str, list[Any]] | None,
+    only_user: S.NgfwUser | None,
 ) -> dict[str, Any]:
     """Serialize the snapshot into the stable documented export schema (no secrets).
 
@@ -132,7 +133,7 @@ def _build_snapshot(
 
 @router.get("/rules/export")
 async def rules_export(
-    user_id: Optional[str] = Query(default=None),
+    user_id: str | None = Query(default=None),
     refresh: bool = Query(default=False),
     session: Session = Depends(current_session),
     pool: BindingPool = Depends(get_binding_pool),
@@ -146,15 +147,15 @@ async def rules_export(
     # /api/rules/refresh); an expired cookie surfaces as session_expired.
     snap = await get_or_load_snapshot(session, pool, force=refresh)
 
-    filtered_by: Optional[str] = None
-    filtered: Optional[dict[str, list[Any]]] = None
-    only_user: Optional[S.NgfwUser] = None
+    filtered_by: str | None = None
+    filtered: dict[str, list[Any]] | None = None
+    only_user: S.NgfwUser | None = None
     if user_id is not None:
         only_user = _find_user(snap, user_id)  # 404 if not in THIS binding
         filtered = trace_engine.rules_applicable_to_user(snap, only_user)
         filtered_by = str(user_id)
 
-    now = datetime.now(tz=timezone.utc)
+    now = datetime.now(tz=UTC)
     replacements = _identity_map(snap)
     body = {
         "format": RULES_EXPORT_FORMAT,

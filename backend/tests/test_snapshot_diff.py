@@ -8,8 +8,8 @@ the anonymized comparison mode.
 
 from __future__ import annotations
 
-from app.domain.snapshots import diff as snapshot_diff
 from app.domain.binding_pool import RulesSnapshot
+from app.domain.snapshots import diff as snapshot_diff
 from app.ngfw import schemas as S
 
 

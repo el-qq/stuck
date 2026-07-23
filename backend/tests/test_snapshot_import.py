@@ -9,15 +9,15 @@ snapshot and importing it back yields an empty anonymized diff against itself.
 from __future__ import annotations
 
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 
 from app.api.export import RULES_EXPORT_FORMAT, _build_snapshot
-from app.domain.snapshots import diff as snapshot_diff
-from app.domain.snapshots import importer as snapshot_import
 from app.domain.anonymize import anonymize, identity_map
 from app.domain.binding_pool import RulesSnapshot
+from app.domain.snapshots import diff as snapshot_diff
+from app.domain.snapshots import importer as snapshot_import
 from app.errors import StuckError
 from app.ngfw import schemas as S
 
@@ -25,21 +25,21 @@ SERVER = "192.168.1.1"
 
 
 def _snap(**kw) -> RulesSnapshot:
-    defaults = dict(
-        users=[S.NgfwUser(id="user.id.1", name="John", login="john", parent_id="group.id.1")],
-        aliases={"al1": S.Alias(id="al1", type="ip_list", title="Office", values=["10.0.0.0/24"])},
-        fw_forward=[S.FirewallRule(id="fw1", action="drop", comment="note")],
-        fw_input=[],
-        fw_state=S.StateFlag(enabled=True),
-        cf_state=S.StateFlag(enabled=True),
-        cf_rules=[S.ContentFilterRule(id="3", access="deny", aliases=["user.id.1"])],
-        cf_categories=["cat.a"],
-        ips_state=S.StateFlag(),
-        ips_bypass=[],
-        av_enabled=True,
-        hw_settings=S.HwFilterSettings(mode="src-ip"),
-        loaded_at=1_700_000_000.0,
-    )
+    defaults = {
+        "users": [S.NgfwUser(id="user.id.1", name="John", login="john", parent_id="group.id.1")],
+        "aliases": {"al1": S.Alias(id="al1", type="ip_list", title="Office", values=["10.0.0.0/24"])},
+        "fw_forward": [S.FirewallRule(id="fw1", action="drop", comment="note")],
+        "fw_input": [],
+        "fw_state": S.StateFlag(enabled=True),
+        "cf_state": S.StateFlag(enabled=True),
+        "cf_rules": [S.ContentFilterRule(id="3", access="deny", aliases=["user.id.1"])],
+        "cf_categories": ["cat.a"],
+        "ips_state": S.StateFlag(),
+        "ips_bypass": [],
+        "av_enabled": True,
+        "hw_settings": S.HwFilterSettings(mode="src-ip"),
+        "loaded_at": 1_700_000_000.0,
+    }
     defaults.update(kw)
     return RulesSnapshot(**defaults)
 
@@ -160,7 +160,7 @@ class TestParsedSnapshot:
         assert imported.server == SERVER
         assert imported.foreign_server is False
         # loaded_at reflects when NGFW data was read, per the file.
-        expected = datetime(2026, 7, 23, 9, 0, 0, tzinfo=timezone.utc).timestamp()
+        expected = datetime(2026, 7, 23, 9, 0, 0, tzinfo=UTC).timestamp()
         assert imported.snapshot.loaded_at == pytest.approx(expected)
 
     def test_foreign_server_is_flagged_not_rejected(self):
