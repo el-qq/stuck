@@ -45,6 +45,9 @@ evaluates traces locally.
 ### Backend
 
 - `app/api/` validates STUCK requests and returns contract shapes.
+- `app/api/auth.py` is the thin authentication router; its sibling session and
+  2FA workflow modules own HttpOnly cookie transitions and provisional-session
+  cleanup, respectively.
 - `app/ngfw/client.py` owns HTTPS, admin login, cookie forwarding, timeouts and
   NGFW error normalization.
 - `app/ngfw/endpoints.py` is the only mapping from application concepts to
