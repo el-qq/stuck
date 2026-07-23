@@ -32,6 +32,10 @@ SOURCE_IMPORTED = "imported"
 # Snapshot comments are administrator-entered display strings; the limit keeps
 # them list-friendly and bounds memory (docs/source/snapshots.md, развилка b).
 COMMENT_MAX_LENGTH = 200
+# The browser's File.name is normally a basename already. The API keeps a
+# separately bounded basename as imported-only display metadata so UI can show
+# where a comparison side came from without retaining a client filesystem path.
+FILE_NAME_MAX_LENGTH = 200
 
 
 @dataclass
@@ -52,6 +56,7 @@ class SnapshotEntry:
     exported_at: str | None = None  # exported_at из файла (ISO, as given)
     server: str | None = None  # binding.server из файла
     foreign_server: bool = False  # file server != current pair's server
+    file_name: str | None = None  # safe basename supplied by the import client
     # An imported snapshot came through the anonymized export: display fields
     # are absent and user/group ids are opaque. Any diff involving it must run
     # in the "anonymized" comparison mode.
@@ -82,6 +87,7 @@ def create_imported(
     exported_at: str,
     server: str,
     foreign_server: bool,
+    file_name: str | None = None,
 ) -> SnapshotEntry:
     return SnapshotEntry(
         id=_new_id(),
@@ -94,6 +100,7 @@ def create_imported(
         exported_at=exported_at,
         server=server,
         foreign_server=foreign_server,
+        file_name=file_name,
         anonymized=True,
     )
 

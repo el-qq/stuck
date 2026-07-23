@@ -5,6 +5,7 @@ All notable user-visible changes are recorded here. The project follows
 [Keep a Changelog](https://keepachangelog.com/).
 
 ## Next
+
 - Rule snapshots with diff over time. Administrators can save named
   point-in-time snapshots of the rules of their NGFW pair, import a previously
   exported rules JSON as a snapshot, and compare any two states (including the

@@ -7,24 +7,15 @@ import { useApiErrorMessage } from "@/hooks/useApiErrorMessage";
 import { useI18n } from "@/i18n";
 import * as api from "@/lib/api";
 import { ApiError, toApiError } from "@/lib/errors";
-import {
-  CURRENT_SNAPSHOT_ID,
-  RuleHygieneReport,
-  RulesRefreshResponse,
-  SnapshotDescriptor,
-  SnapshotDiffResponse,
-  SnapshotOrCurrentId,
-  TraceResponse,
-} from "@/lib/types";
+import { RuleHygieneReport, RulesRefreshResponse, TraceResponse } from "@/lib/types";
 import { downloadBlob, defaultRulesExportFilename } from "@/lib/download";
-import { readFileAsText } from "@/lib/fileRead";
+import { useRuleSnapshots } from "@/hooks/useRuleSnapshots";
 import { AccessDiagnosticModal } from "../auth/AccessDiagnosticModal";
 import { HygieneCounters, HygieneTable, RuleHygieneReportView, hygieneBadgeColor } from "../rules/RuleHygieneReportView";
 import { RulesExportConfirmModal } from "../rules/RulesExportConfirmModal";
 import { RulesRefreshModal } from "../rules/RulesRefreshModal";
-import { SnapshotDeleteConfirmModal } from "../rules/SnapshotDeleteConfirmModal";
-import { SnapshotDiffView, diffBadgeColor } from "../rules/SnapshotDiffView";
-import { SnapshotsListPanel } from "../rules/SnapshotsListPanel";
+import { diffBadgeColor } from "../rules/SnapshotDiffView";
+import { SnapshotComparisonWorkspace } from "../rules/SnapshotComparisonWorkspace";
 import { Header } from "../shell/Header";
 import { SettingsModal } from "../shell/SettingsModal";
 import { WorkspaceTabs } from "../shell/WorkspaceTabs";
@@ -92,189 +83,8 @@ export function MainScreen() {
 
   // ---- rule snapshots + diff (top-level workspace tab, docs/source/snapshots.md fork f) ----
   const snapshotsEnabled = (session.session?.rule_snapshots_enabled ?? false) && traceAllowed;
-
-  const [snapshots, setSnapshots] = useState<SnapshotDescriptor[]>([]);
-  const [snapshotsLimit, setSnapshotsLimit] = useState(10);
-  const [snapshotsListLoaded, setSnapshotsListLoaded] = useState(false);
-  const [snapshotsLoading, setSnapshotsLoading] = useState(false);
-  const [snapshotsError, setSnapshotsError] = useState<string | null>(null);
-
-  const [snapshotComment, setSnapshotComment] = useState("");
-  const [creatingSnapshot, setCreatingSnapshot] = useState(false);
-  const [importingSnapshot, setImportingSnapshot] = useState(false);
-  const [importError, setImportError] = useState<string | null>(null);
-
-  const [deleteTarget, setDeleteTarget] = useState<SnapshotDescriptor | null>(null);
-  const [deletingSnapshotId, setDeletingSnapshotId] = useState<string | null>(null);
-  const [deleteError, setDeleteError] = useState<string | null>(null);
-
-  // В2: two selectors, default "last saved vs current" — set once the list
-  // has loaded for the first time (defaultsInitialized guards re-defaulting
-  // after the admin has made their own choice).
-  const [selectedA, setSelectedA] = useState<SnapshotOrCurrentId>(CURRENT_SNAPSHOT_ID);
-  const [selectedB, setSelectedB] = useState<SnapshotOrCurrentId>(CURRENT_SNAPSHOT_ID);
-  const defaultsInitialized = useRef(false);
-
-  // The diff is a pure function of both sides — cached until invalidated
-  // (side changed, or a `current` side went stale after rules/refresh).
-  const [snapshotDiff, setSnapshotDiff] = useState<SnapshotDiffResponse | null>(null);
-  const [diffLoading, setDiffLoading] = useState(false);
-  const [diffError, setDiffError] = useState<string | null>(null);
-  // Read from `runRefresh` without adding selectedA/B to its dependencies.
-  const diffInvolvesCurrentRef = useRef(true);
-
-  const loadSnapshots = useCallback(async () => {
-    setSnapshotsLoading(true);
-    setSnapshotsError(null);
-    try {
-      const res = await api.listRuleSnapshots();
-      setSnapshots(res.snapshots);
-      setSnapshotsLimit(res.limit);
-      setSnapshotsListLoaded(true);
-    } catch (e) {
-      const apiErr = toApiError(e);
-      if (session.handleAuthError(apiErr)) return;
-      setSnapshotsError(errorMessage(apiErr));
-    } finally {
-      setSnapshotsLoading(false);
-    }
-  }, [session, errorMessage]);
-
-  const loadDiff = useCallback(
-    async (a: SnapshotOrCurrentId, b: SnapshotOrCurrentId) => {
-      setDiffLoading(true);
-      setDiffError(null);
-      try {
-        const res = await api.getRuleSnapshotDiff(a, b);
-        setSnapshotDiff(res);
-      } catch (e) {
-        const apiErr = toApiError(e);
-        if (session.handleAuthError(apiErr)) return;
-        setDiffError(errorMessage(apiErr));
-      } finally {
-        setDiffLoading(false);
-      }
-    },
-    [session, errorMessage],
-  );
-
-  // Fetch the list on ENTERING the tab, exactly like hygiene.
-  useEffect(() => {
-    if (tab === "snapshots" && snapshotsEnabled && !snapshotsListLoaded && !snapshotsLoading) void loadSnapshots();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tab, snapshotsListLoaded, snapshotsLoading, snapshotsEnabled]);
-
-  // В2 default: "last saved vs current" — applied once, right after the
-  // first successful list load (an empty list leaves both sides "current").
-  useEffect(() => {
-    if (snapshotsListLoaded && !defaultsInitialized.current) {
-      defaultsInitialized.current = true;
-      setSelectedA(snapshots[0]?.id ?? CURRENT_SNAPSHOT_ID);
-      setSelectedB(CURRENT_SNAPSHOT_ID);
-    }
-  }, [snapshotsListLoaded, snapshots]);
-
-  // Load (or reload) the diff once the defaults (or an explicit A/B pick)
-  // are in place. `loadDiff` is intentionally not a dependency (see hygiene).
-  useEffect(() => {
-    if (tab === "snapshots" && snapshotsEnabled && defaultsInitialized.current && snapshotDiff === null && !diffLoading) {
-      void loadDiff(selectedA, selectedB);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tab, snapshotsEnabled, selectedA, selectedB, snapshotDiff, diffLoading]);
-
-  useEffect(() => {
-    diffInvolvesCurrentRef.current = selectedA === CURRENT_SNAPSHOT_ID || selectedB === CURRENT_SNAPSHOT_ID;
-  }, [selectedA, selectedB]);
-
-  const handleSelectA = useCallback((id: SnapshotOrCurrentId) => {
-    setSelectedA(id);
-    setSnapshotDiff(null);
-    setDiffError(null);
-  }, []);
-
-  const handleSelectB = useCallback((id: SnapshotOrCurrentId) => {
-    setSelectedB(id);
-    setSnapshotDiff(null);
-    setDiffError(null);
-  }, []);
-
-  const runCreateSnapshot = useCallback(async () => {
-    setCreatingSnapshot(true);
-    try {
-      const trimmed = snapshotComment.trim();
-      await api.createRuleSnapshot(trimmed ? { comment: trimmed } : {});
-      setSnapshotComment("");
-      await loadSnapshots();
-    } catch (e) {
-      const apiErr = toApiError(e);
-      if (!session.handleAuthError(apiErr)) toast.show(errorMessage(apiErr), "error");
-    } finally {
-      setCreatingSnapshot(false);
-    }
-  }, [snapshotComment, session, toast, errorMessage, loadSnapshots]);
-
-  const runImportSnapshot = useCallback(
-    async (file: File) => {
-      setImportError(null);
-      if (file.size > api.SNAPSHOT_IMPORT_MAX_BYTES) {
-        setImportError(errorMessage(new ApiError("snapshot_import_too_large", "file too large")));
-        return;
-      }
-      setImportingSnapshot(true);
-      try {
-        const text = await readFileAsText(file);
-        let parsed: unknown;
-        try {
-          parsed = JSON.parse(text);
-        } catch {
-          setImportError(errorMessage(new ApiError("snapshot_import_invalid", "not valid JSON")));
-          return;
-        }
-        const trimmed = snapshotComment.trim();
-        await api.importRuleSnapshot({ export: parsed, ...(trimmed ? { comment: trimmed } : {}) });
-        setSnapshotComment("");
-        await loadSnapshots();
-      } catch (e) {
-        const apiErr = toApiError(e);
-        if (session.handleAuthError(apiErr)) return;
-        setImportError(errorMessage(apiErr));
-      } finally {
-        setImportingSnapshot(false);
-      }
-    },
-    [snapshotComment, session, errorMessage, loadSnapshots],
-  );
-
-  const requestDeleteSnapshot = useCallback((s: SnapshotDescriptor) => {
-    setDeleteTarget(s);
-    setDeleteError(null);
-  }, []);
-
-  const cancelDeleteSnapshot = useCallback(() => {
-    setDeleteTarget(null);
-    setDeleteError(null);
-  }, []);
-
-  const confirmDeleteSnapshot = useCallback(async () => {
-    if (!deleteTarget) return;
-    setDeletingSnapshotId(deleteTarget.id);
-    setDeleteError(null);
-    try {
-      await api.deleteRuleSnapshot(deleteTarget.id);
-      if (selectedA === deleteTarget.id) setSelectedA(CURRENT_SNAPSHOT_ID);
-      if (selectedB === deleteTarget.id) setSelectedB(CURRENT_SNAPSHOT_ID);
-      if (selectedA === deleteTarget.id || selectedB === deleteTarget.id) setSnapshotDiff(null);
-      setDeleteTarget(null);
-      await loadSnapshots();
-    } catch (e) {
-      const apiErr = toApiError(e);
-      if (session.handleAuthError(apiErr)) return;
-      setDeleteError(errorMessage(apiErr));
-    } finally {
-      setDeletingSnapshotId(null);
-    }
-  }, [deleteTarget, selectedA, selectedB, session, errorMessage, loadSnapshots]);
+  const snapshotState = useRuleSnapshots({ active: tab === "snapshots", enabled: snapshotsEnabled });
+  const { diffChangeCount, invalidateCurrentDiff } = snapshotState;
 
   const runExport = useCallback(async () => {
     setExporting(true);
@@ -342,9 +152,9 @@ export function MainScreen() {
       // The hygiene report is a function of the snapshot — invalidate the
       // cache; the effect above re-fetches when (or while) the tab is open.
       setHygieneReport(null);
-      // Only the "current" side of the snapshot diff went stale — a diff
-      // between two saved snapshots is unaffected by a live rules refresh.
-      if (diffInvolvesCurrentRef.current) setSnapshotDiff(null);
+      // A refresh invalidates only the live `current` side. The hook also
+      // cancels any old in-flight response before another comparison starts.
+      invalidateCurrentDiff();
     } catch (e) {
       const apiErr = toApiError(e);
       if (session.handleAuthError(apiErr)) return;
@@ -352,7 +162,7 @@ export function MainScreen() {
     } finally {
       setRefreshing(false);
     }
-  }, [session, traceAllowed]);
+  }, [invalidateCurrentDiff, session, traceAllowed]);
 
   // FR-2.1: on first login for this admin+server pair, load the rule snapshot
   // automatically (visualized with the step popup, as in the design mock).
@@ -395,13 +205,6 @@ export function MainScreen() {
   // panel is enabled. The bar sticks under the header (WorkspaceTabs),
   // surviving result scrolling.
   const showTabs = hygieneEnabled || snapshotsEnabled;
-  const diffChangeCount = snapshotDiff
-    ? snapshotDiff.summary.added +
-      snapshotDiff.summary.removed +
-      snapshotDiff.summary.changed +
-      snapshotDiff.summary.moved +
-      snapshotDiff.summary.states_changed
-    : 0;
   const workspaceTabs = showTabs ? (
     <WorkspaceTabs ariaLabel={t("tabs.aria")}>
       <button
@@ -442,7 +245,7 @@ export function MainScreen() {
         >
           {t("snapshots.title")}
           {diffChangeCount > 0 && (
-            <span className="workspace-tabs__badge" style={{ background: diffBadgeColor(snapshotDiff!.summary) }}>
+            <span className="workspace-tabs__badge" style={{ background: diffBadgeColor(snapshotState.diff!.summary) }}>
               {diffChangeCount}
             </span>
           )}
@@ -570,48 +373,7 @@ export function MainScreen() {
       )}
 
       {snapshotsEnabled && tab === "snapshots" && (
-        <main role="tabpanel" id="tabpanel-snapshots" aria-labelledby="tab-snapshots" className="hygiene-workspace">
-          <aside className="hygiene-workspace__controls">
-            <SnapshotsListPanel
-              snapshots={snapshots}
-              limit={snapshotsLimit}
-              loading={snapshotsLoading}
-              error={snapshotsError}
-              comment={snapshotComment}
-              onCommentChange={setSnapshotComment}
-              creating={creatingSnapshot}
-              onCreate={() => void runCreateSnapshot()}
-              importing={importingSnapshot}
-              importError={importError}
-              onImportFile={(file) => void runImportSnapshot(file)}
-              deletingId={deletingSnapshotId}
-              onDeleteRequest={requestDeleteSnapshot}
-              selectedA={selectedA}
-              selectedB={selectedB}
-              onSelectA={handleSelectA}
-              onSelectB={handleSelectB}
-            />
-          </aside>
-          <section className="hygiene-workspace__result">
-            {diffLoading && !snapshotDiff && <div style={{ padding: "22px 0", fontSize: 13.5, color: "var(--muted)" }}>{t("snapshots.diffLoading")}</div>}
-            {diffError && !diffLoading && (
-              <div
-                role="alert"
-                style={{
-                  fontSize: 13,
-                  color: "var(--bad)",
-                  background: "var(--bad-soft)",
-                  borderRadius: "var(--radius-sm)",
-                  padding: "12px 14px",
-                  lineHeight: 1.5,
-                }}
-              >
-                {diffError}
-              </div>
-            )}
-            {snapshotDiff && !diffError && <SnapshotDiffView diff={snapshotDiff} port={session.session?.ngfw_port} />}
-          </section>
-        </main>
+        <SnapshotComparisonWorkspace state={snapshotState} rulesUpdatedAt={rulesUpdatedAt} port={session.session?.ngfw_port} />
       )}
 
       {/* The check tabpanel stays MOUNTED and toggles via display — unmounting
@@ -675,14 +437,6 @@ export function MainScreen() {
         onDownload={() => void runExport()}
       />
 
-      <SnapshotDeleteConfirmModal
-        snapshot={deleteTarget}
-        deleting={deletingSnapshotId !== null}
-        errorText={deleteError}
-        onCancel={cancelDeleteSnapshot}
-        onConfirm={() => void confirmDeleteSnapshot()}
-      />
-
       {accessProfile && !traceAllowed && (
         <AccessDiagnosticModal
           open={accessModalOpen}
@@ -700,7 +454,7 @@ export function MainScreen() {
 
 function formatTime(iso: string, locale: string): string {
   try {
-    return new Intl.DateTimeFormat(locale, { dateStyle: "short", timeStyle: "short" }).format(new Date(iso));
+    return new Intl.DateTimeFormat(locale, { dateStyle: "short", timeStyle: "medium" }).format(new Date(iso));
   } catch {
     return iso;
   }

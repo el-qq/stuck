@@ -147,6 +147,15 @@ class TestStatesAndObjects:
         assert _table(result, "hw_src_ip") == []  # incomparable, not "removed"
         assert {"key": "hw_settings.mode", "from": "src-ip", "to": None} in result["states"]
 
+    def test_unsupported_hardware_rows_do_not_inflate_snapshot_count(self):
+        """Partial legacy-firmware data is not a comparable hardware policy."""
+        snap = _snap(
+            hw_settings=None,
+            hw_rules_src_ip=[S.HwRuleSrcIp(id="h1", source_ip="10.0.0.1")],
+        )
+
+        assert snap.counts()["hardware_rules"] == 0
+
     def test_alias_value_change_is_reported(self):
         a = _snap(aliases={"al1": S.Alias(id="al1", type="ip_list", values=["10.0.0.1"])})
         b = _snap(aliases={"al1": S.Alias(id="al1", type="ip_list", values=["10.0.0.1", "10.0.0.2"])})
@@ -155,6 +164,27 @@ class TestStatesAndObjects:
         assert entry["kind"] == "changed"
         assert {"field": "values", "from": ["10.0.0.1"], "to": ["10.0.0.1", "10.0.0.2"]} in entry["changed_fields"]
 
+    def test_alias_and_user_order_never_reports_moved(self):
+        aliases_a = {
+            "al1": S.Alias(id="al1", values=["10.0.0.1"]),
+            "al2": S.Alias(id="al2", values=["10.0.0.2"]),
+        }
+        aliases_b = {
+            "al2": S.Alias(id="al2", values=["10.0.0.2"]),
+            "al1": S.Alias(id="al1", values=["10.0.0.1"]),
+        }
+        users_a = [S.NgfwUser(id="u1"), S.NgfwUser(id="u2")]
+        users_b = [S.NgfwUser(id="u2"), S.NgfwUser(id="u1")]
+
+        result = snapshot_diff.diff_snapshots(
+            _snap(aliases=aliases_a, users=users_a),
+            _snap(aliases=aliases_b, users=users_b),
+            anonymized=False,
+        )
+
+        assert result["tables"] == []
+        assert result["summary"]["moved"] == 0
+
     def test_users_structural_fields_only(self):
         a = _snap(users=[S.NgfwUser(id="u1", name="Old Name", enabled=True)])
         b = _snap(users=[S.NgfwUser(id="u1", name="New Name", enabled=False)])
@@ -162,6 +192,39 @@ class TestStatesAndObjects:
         (entry,) = _table(result, "users")
         fields = {f["field"] for f in entry["changed_fields"]}
         assert fields == {"enabled"}  # a renamed user alone is NOT a change
+
+    def test_network_context_counts_are_covered_by_unordered_diff(self):
+        """A changed collection counted by RulesSnapshot cannot yield a clean diff."""
+        a = _snap(
+            lan_networks=["10.10.0.0/16"],
+            dns_zones=[S.DnsZone(id="zone-1", name="corp.example")],
+            ngfw_addresses=["192.0.2.1"],
+        )
+        b = _snap(
+            lan_networks=[],
+            dns_zones=[],
+            ngfw_addresses=[],
+        )
+
+        result = snapshot_diff.diff_snapshots(a, b, anonymized=False)
+
+        assert (
+            a.counts()["lan_networks"] + a.counts()["dns_zones"] > b.counts()["lan_networks"] + b.counts()["dns_zones"]
+        )
+        assert {table["table"] for table in result["tables"]} == {"lan_networks", "dns_zones", "ngfw_addresses"}
+        assert result["summary"] == {
+            "added": 0,
+            "removed": 3,
+            "changed": 0,
+            "moved": 0,
+            "states_changed": 0,
+            "tables_changed": 3,
+        }
+        for table in result["tables"]:
+            (entry,) = table["entries"]
+            assert entry["kind"] == "removed"
+            assert entry["position_a"] is None
+            assert entry["position_b"] is None
 
 
 class TestAnonymizedMode:

@@ -64,6 +64,31 @@ def _clean_comment(comment: Any) -> str | None:
     return comment or None
 
 
+def _clean_file_name(file_name: Any) -> str | None:
+    """Keep only a safe imported-file basename for comparison-side labels.
+
+    The name is user-provided display metadata, not a file-system reference.
+    Stripping both path separators prevents a pasted absolute client path from
+    entering the in-memory snapshot or any API response. It is intentionally
+    never included in structured logs.
+    """
+    if file_name is None:
+        return None
+    if not isinstance(file_name, str):
+        raise validation_error("file_name must be a string")
+    basename = file_name.replace("\\", "/").rsplit("/", 1)[-1].strip()
+    if not basename:
+        raise validation_error("file_name must contain a basename")
+    if len(basename) > rule_snapshots.FILE_NAME_MAX_LENGTH:
+        raise validation_error(
+            "file_name is too long",
+            max_length=rule_snapshots.FILE_NAME_MAX_LENGTH,
+        )
+    if not basename.isprintable():
+        raise validation_error("file_name must not contain control characters")
+    return basename
+
+
 def _descriptor(entry: SnapshotEntry) -> dict[str, Any]:
     """The list/create response element (развилка f). Never the snapshot body."""
     descriptor: dict[str, Any] = {
@@ -78,6 +103,8 @@ def _descriptor(entry: SnapshotEntry) -> dict[str, Any]:
         descriptor["exported_at"] = entry.exported_at
         descriptor["server"] = entry.server
         descriptor["foreign_server"] = entry.foreign_server
+        if entry.file_name is not None:
+            descriptor["file_name"] = entry.file_name
     return descriptor
 
 
@@ -191,6 +218,7 @@ async def import_snapshot(
     if not isinstance(payload, dict) or "export" not in payload:
         raise validation_error("Request body must be an object with an 'export' field")
     comment = _clean_comment(payload.get("comment"))
+    file_name = _clean_file_name(payload.get("file_name"))
 
     document = payload["export"]
     if isinstance(document, str):
@@ -214,6 +242,7 @@ async def import_snapshot(
             exported_at=imported.exported_at,
             server=imported.server,
             foreign_server=imported.foreign_server,
+            file_name=file_name,
         ),
         limit,
     )
@@ -244,6 +273,8 @@ def _side_meta(entry: SnapshotEntry) -> dict[str, Any]:
     }
     if entry.source == rule_snapshots.SOURCE_IMPORTED:
         meta["foreign_server"] = entry.foreign_server
+        if entry.file_name is not None:
+            meta["file_name"] = entry.file_name
     return meta
 
 

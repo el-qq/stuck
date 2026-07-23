@@ -64,17 +64,25 @@ class RulesSnapshot:
         return cls(**raw)
 
     def counts(self) -> dict[str, int]:
+        # Hardware rule lists are semantically usable only with settings. The
+        # loader intentionally marks a partial legacy-firmware response as
+        # unsupported (``hw_settings is None``), and the diff then treats the
+        # whole section as incomparable rather than inventing adds/removals.
+        # Do not surface those partial rows as a user-visible count either.
+        hardware_rules = (
+            len(self.hw_rules_mac)
+            + len(self.hw_rules_src_ip)
+            + len(self.hw_rules_dst_ip)
+            + len(self.hw_rules_src_dst_ip)
+            if self.hw_settings is not None
+            else 0
+        )
         return {
             "users": len(self.users),
             "firewall_forward": len(self.fw_forward),
             "firewall_input": len(self.fw_input),
             "firewall_pre_filter": len(self.fw_pre_filter),
-            "hardware_rules": (
-                len(self.hw_rules_mac)
-                + len(self.hw_rules_src_ip)
-                + len(self.hw_rules_dst_ip)
-                + len(self.hw_rules_src_dst_ip)
-            ),
+            "hardware_rules": hardware_rules,
             "lan_networks": len(self.lan_networks),
             "dns_zones": len(self.dns_zones),
             "firewall_dnat": len(self.fw_dnat),

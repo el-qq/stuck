@@ -396,6 +396,9 @@ export interface SnapshotDescriptor {
   server?: string;
   /** True when the imported document's server differs from the current pair's. */
   foreign_server?: boolean;
+  /** Safe basename of the selected import file; present only for newer
+   * imported snapshots and never a client filesystem path. */
+  file_name?: string;
 }
 
 export interface SnapshotsListResponse {
@@ -420,6 +423,9 @@ export interface CreateSnapshotResponse {
 
 export interface ImportSnapshotRequest {
   comment?: string;
+  /** Browser-provided basename for identifying an imported comparison side.
+   * The API validates and stores no path information. */
+  file_name?: string;
   /** The parsed JSON document produced by `GET /api/rules/export` (`stuck.rules/v2`). */
   export: unknown;
 }
@@ -452,7 +458,11 @@ export type DiffTable =
   | "shaper_rules"
   | "ips_bypass"
   | "aliases"
-  | "users";
+  | "users"
+  /** Trace-relevant network context. These collections have no rule order. */
+  | "dns_zones"
+  | "lan_networks"
+  | "ngfw_addresses";
 
 export type DiffKind = "added" | "removed" | "changed" | "moved";
 
@@ -507,6 +517,8 @@ export interface DiffSide {
   comment: string | null;
   source: SnapshotSource | "current";
   foreign_server?: boolean;
+  /** Safe basename for an imported file, if supplied by the backend. */
+  file_name?: string;
 }
 
 export interface SnapshotDiffResponse {

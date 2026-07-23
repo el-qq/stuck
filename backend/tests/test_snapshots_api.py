@@ -261,6 +261,33 @@ class TestImport:
         assert resp.status_code == 200
         assert resp.json()["snapshot"]["source"] == "imported"
 
+    def test_imported_file_name_is_a_safe_basename_and_diff_side_metadata(
+        self, authenticated_client: TestClient, ngfw_mock
+    ):
+        doc = _export_doc(authenticated_client)
+        resp = authenticated_client.post(
+            "/api/rules/snapshots/import",
+            json={"export": doc, "file_name": r"C:\\Users\\operator\\rules-before-change.json"},
+        )
+        assert resp.status_code == 200, resp.text
+        imported = resp.json()["snapshot"]
+        assert imported["file_name"] == "rules-before-change.json"
+
+        listed = authenticated_client.get("/api/rules/snapshots").json()["snapshots"]
+        assert listed[0]["file_name"] == "rules-before-change.json"
+
+        diff = authenticated_client.get(f"/api/rules/snapshots/diff?a={imported['id']}&b=current").json()
+        assert diff["a"]["file_name"] == "rules-before-change.json"
+
+    def test_import_file_name_validation(self, authenticated_client: TestClient, ngfw_mock):
+        doc = _export_doc(authenticated_client)
+        for file_name in (42, "", "a" * 201, "rules\n.json"):
+            resp = authenticated_client.post(
+                "/api/rules/snapshots/import", json={"export": doc, "file_name": file_name}
+            )
+            assert resp.status_code == 400
+            assert resp.json()["error"]["code"] == "validation_error"
+
     def test_truncated_file_string_is_json_reason(self, authenticated_client: TestClient, ngfw_mock):
         raw = authenticated_client.get("/api/rules/export").text[:100]
         resp = authenticated_client.post("/api/rules/snapshots/import", json={"export": raw})

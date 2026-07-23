@@ -249,6 +249,17 @@ export const DEMO_HYGIENE_REPORT: RuleHygieneReport = {
  */
 export const DEMO_SNAPSHOTS_LIMIT = 10;
 
+/** The pinned first item of the demo selector.  It mirrors the live rules
+ * snapshot, but deliberately stays outside the saved-snapshot list. */
+export const DEMO_CURRENT_SNAPSHOT = {
+  id: "current",
+  created_at: DEMO_RULES_UPDATED_AT,
+  rules_updated_at: DEMO_RULES_UPDATED_AT,
+  comment: null,
+  source: "current" as const,
+  counts: { users: 6, firewall_forward: 10, firewall_input: 3, content_filter_rules: 4, hardware_rules: 5, aliases: 3 },
+};
+
 export const DEMO_SNAPSHOTS: SnapshotDescriptor[] = [
   {
     id: "demo-snap-yesterday",
@@ -265,6 +276,7 @@ export const DEMO_SNAPSHOTS: SnapshotDescriptor[] = [
     exported_at: "2025-12-20T07:56:00Z",
     comment: "Reference export from the staging NGFW",
     source: "imported",
+    file_name: "staging-rules-2025-12-20.json",
     server: "staging-ngfw.example",
     foreign_server: true,
     counts: { users: 4, firewall_forward: 6, firewall_input: 2, content_filter_rules: 3, hardware_rules: 4, aliases: 2 },
@@ -287,6 +299,7 @@ export const DEMO_SNAPSHOT_DIFF: SnapshotDiffResponse = {
     comment: "Reference export from the staging NGFW",
     source: "imported",
     foreign_server: true,
+    file_name: "staging-rules-2025-12-20.json",
   },
   b: {
     id: "current",

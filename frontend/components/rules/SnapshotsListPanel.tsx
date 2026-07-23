@@ -1,11 +1,13 @@
 "use client";
 
-import React, { useRef } from "react";
+import React, { DragEvent, useRef } from "react";
 import { useI18n } from "@/i18n";
-import { CURRENT_SNAPSHOT_ID, SnapshotDescriptor, SnapshotOrCurrentId } from "@/lib/types";
+import { SnapshotDescriptor, SnapshotOrCurrentId } from "@/lib/types";
+import { formatSnapshotDate, importedSnapshotFileName, SnapshotChoice, SnapshotComparisonSide, snapshotCountsTotal } from "./snapshotComparison";
 
 interface Props {
-  snapshots: SnapshotDescriptor[];
+  /** Includes the pinned `current` state as its first item. */
+  choices: SnapshotChoice[];
   limit: number;
   loading: boolean;
   error: string | null;
@@ -22,31 +24,19 @@ interface Props {
   deletingId: string | null;
   onDeleteRequest: (snapshot: SnapshotDescriptor) => void;
 
-  selectedA: SnapshotOrCurrentId;
-  selectedB: SnapshotOrCurrentId;
-  onSelectA: (id: SnapshotOrCurrentId) => void;
-  onSelectB: (id: SnapshotOrCurrentId) => void;
+  beforeId: SnapshotOrCurrentId;
+  afterId: SnapshotOrCurrentId;
+  activeSide: SnapshotComparisonSide;
+  onAssign: (side: SnapshotComparisonSide, id: SnapshotOrCurrentId) => void;
 }
 
-function countsTotal(counts: Record<string, number>): number {
-  return Object.values(counts).reduce((sum, n) => sum + (typeof n === "number" && Number.isFinite(n) ? n : 0), 0);
-}
-
-function formatDate(iso: string, locale: string): string {
-  try {
-    return new Intl.DateTimeFormat(locale, { dateStyle: "short", timeStyle: "short" }).format(new Date(iso));
-  } catch {
-    return iso;
-  }
-}
-
-/** Left-panel control surface for the "Snapshots" workspace tab: the saved
- *  list (create / delete / import) plus the A/B comparison selectors. All
- *  network calls and cross-cutting state (which pair, invalidation on
- *  refresh) live in the parent screen — this component only renders and
- *  reports user intent via callbacks, mirroring the hygiene left panel. */
+/**
+ * The left-side snapshot library. A click always assigns the item to the
+ * explicitly active `Before`/`After` target, and desktop drag-and-drop maps
+ * to the same callback. This keeps the touch and keyboard paths equivalent.
+ */
 export function SnapshotsListPanel({
-  snapshots,
+  choices,
   limit,
   loading,
   error,
@@ -59,69 +49,63 @@ export function SnapshotsListPanel({
   onImportFile,
   deletingId,
   onDeleteRequest,
-  selectedA,
-  selectedB,
-  onSelectA,
-  onSelectB,
+  beforeId,
+  afterId,
+  activeSide,
+  onAssign,
 }: Props) {
-  const { t, locale } = useI18n();
+  const { t } = useI18n();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const snapshots = choices.filter((choice): choice is SnapshotDescriptor => choice.source !== "current");
 
-  const options: Array<{ id: SnapshotOrCurrentId; label: string }> = [
-    { id: CURRENT_SNAPSHOT_ID, label: t("snapshots.current") },
-    ...snapshots.map((s) => ({ id: s.id, label: snapshotOptionLabel(s, locale, t) })),
-  ];
+  function handleDragStart(event: DragEvent<HTMLButtonElement>, id: SnapshotOrCurrentId) {
+    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setData("text/plain", id);
+  }
 
   return (
     <div className="check-panel">
       <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 6 }}>{t("snapshots.title")}</div>
       <div style={{ fontSize: 12.5, color: "var(--muted)", lineHeight: 1.5, marginBottom: 14 }}>{t("snapshots.subtitle")}</div>
 
-      {/* ---- compare selectors ---- */}
-      <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--muted)", marginBottom: 8 }}>{t("snapshots.compareTitle")}</div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16 }}>
-        <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-          <span style={{ fontSize: 11.5, fontWeight: 600, color: "var(--muted)" }}>{t("snapshots.compareA")}</span>
-          <select className="form-control" value={selectedA} onChange={(e) => onSelectA(e.target.value)} style={selectStyle}>
-            {options.map((o) => (
-              <option key={o.id} value={o.id}>
-                {o.label}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-          <span style={{ fontSize: 11.5, fontWeight: 600, color: "var(--muted)" }}>{t("snapshots.compareB")}</span>
-          <select className="form-control" value={selectedB} onChange={(e) => onSelectB(e.target.value)} style={selectStyle}>
-            {options.map((o) => (
-              <option key={o.id} value={o.id}>
-                {o.label}
-              </option>
-            ))}
-          </select>
-        </label>
+      <div className="snapshot-picker__hint">{t("snapshots.selectionHint")}</div>
+
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", margin: "16px 0 8px" }}>
+        <span style={{ fontSize: 12.5, fontWeight: 600, color: "var(--muted)" }}>{t("snapshots.listTitle")}</span>
+        <span className="hygiene-nav__count">{t("snapshots.limitCounter", { count: snapshots.length, limit })}</span>
+      </div>
+
+      <div className="snapshot-picker__list" aria-label={t("snapshots.listTitle")}>
+        {choices.map((choice) => (
+          <SnapshotChoiceRow
+            key={choice.id}
+            choice={choice}
+            isBefore={choice.id === beforeId}
+            isAfter={choice.id === afterId}
+            activeSide={activeSide}
+            onAssign={onAssign}
+            onDragStart={handleDragStart}
+            deleting={deletingId === choice.id}
+            onDeleteRequest={onDeleteRequest}
+          />
+        ))}
       </div>
 
       <div style={{ height: 1, background: "var(--line)", margin: "16px 0" }} />
 
-      {/* ---- create ---- */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-        <span style={{ fontSize: 12.5, fontWeight: 600, color: "var(--muted)" }}>{t("snapshots.listTitle")}</span>
-        <span className="hygiene-nav__count">{t("snapshots.limitCounter", { count: snapshots.length, limit })}</span>
-      </div>
       <input
         className="form-control"
         value={comment}
-        onChange={(e) => onCommentChange(e.target.value)}
+        onChange={(event) => onCommentChange(event.target.value)}
         placeholder={t("snapshots.commentPlaceholder")}
         maxLength={200}
-        style={{ ...selectStyle, marginBottom: 8 }}
+        style={{ ...inputStyle, marginBottom: 8 }}
       />
       <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
-        <button type="button" className="btn-primary" onClick={onCreate} disabled={creating || loading} style={actionBtnStyle}>
+        <button type="button" className="btn-primary" onClick={onCreate} disabled={creating || loading} style={actionButtonStyle}>
           {creating ? t("snapshots.creating") : t("snapshots.create")}
         </button>
-        <button type="button" className="btn-outline" onClick={() => fileInputRef.current?.click()} disabled={importing} style={actionBtnStyle}>
+        <button type="button" className="btn-outline" onClick={() => fileInputRef.current?.click()} disabled={importing} style={actionButtonStyle}>
           {importing ? t("snapshots.importing") : t("snapshots.import")}
         </button>
         <input
@@ -129,83 +113,124 @@ export function SnapshotsListPanel({
           type="file"
           accept="application/json,.json"
           style={{ display: "none" }}
-          onClick={(e) => {
-            e.currentTarget.value = "";
+          onClick={(event) => {
+            event.currentTarget.value = "";
           }}
-          onChange={(e) => {
-            const file = e.target.files?.[0];
+          onChange={(event) => {
+            const file = event.target.files?.[0];
             if (file) onImportFile(file);
           }}
         />
       </div>
       {importError && (
-        <div
-          role="alert"
-          style={{ fontSize: 12.5, color: "var(--bad)", background: "var(--bad-soft)", borderRadius: "var(--radius-sm)", padding: "9px 11px", marginBottom: 8 }}
-        >
+        <div role="alert" className="snapshot-comparison__error">
           {importError}
         </div>
       )}
 
-      <div style={{ height: 1, background: "var(--line)", margin: "12px 0 14px" }} />
-
-      {/* ---- list ---- */}
       {loading && snapshots.length === 0 ? (
-        <div style={{ fontSize: 13, color: "var(--muted)" }}>{t("common.loading")}</div>
+        <div style={{ fontSize: 13, color: "var(--muted)", marginTop: 12 }}>{t("common.loading")}</div>
       ) : error ? (
-        <div role="alert" style={{ fontSize: 13, color: "var(--bad)", background: "var(--bad-soft)", borderRadius: "var(--radius-sm)", padding: "10px 12px" }}>
+        <div role="alert" className="snapshot-comparison__error" style={{ marginTop: 12 }}>
           {error}
         </div>
       ) : snapshots.length === 0 ? (
-        <div style={{ fontSize: 12.5, color: "var(--muted)", lineHeight: 1.5 }}>{t("snapshots.empty")}</div>
-      ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-          {snapshots.map((s) => (
-            <div key={s.id} className="pick-row" style={rowStyle}>
-              <div style={{ minWidth: 0, flex: 1 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-                  <span style={{ fontSize: 12.5, fontWeight: 700 }}>{formatDate(s.created_at, locale)}</span>
-                  <span style={badgeStyle(s.source === "imported" ? "var(--info)" : "var(--muted)")}>
-                    {s.source === "imported" ? t("snapshots.sourceImported") : t("snapshots.sourceManual")}
-                  </span>
-                  {s.foreign_server && <span style={badgeStyle("var(--warn)")}>{t("snapshots.foreignBadge")}</span>}
-                </div>
-                {s.comment && (
-                  <div
-                    title={s.comment}
-                    style={{ fontSize: 12, color: "var(--muted)", marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
-                  >
-                    {s.comment}
-                  </div>
-                )}
-                <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}>{t("snapshots.rowCounts", { count: countsTotal(s.counts) })}</div>
-              </div>
-              <button
-                type="button"
-                className="btn-ghost"
-                aria-label={t("snapshots.delete")}
-                title={t("snapshots.delete")}
-                onClick={() => onDeleteRequest(s)}
-                disabled={deletingId === s.id}
-                style={{ flexShrink: 0, fontSize: 13, fontWeight: 700, padding: "4px 8px" }}
-              >
-                {deletingId === s.id ? "…" : "✕"}
-              </button>
-            </div>
-          ))}
-        </div>
+        <div style={{ fontSize: 12.5, color: "var(--muted)", lineHeight: 1.5, marginTop: 12 }}>{t("snapshots.empty")}</div>
+      ) : null}
+    </div>
+  );
+}
+
+function SnapshotChoiceRow({
+  choice,
+  isBefore,
+  isAfter,
+  activeSide,
+  onAssign,
+  onDragStart,
+  deleting,
+  onDeleteRequest,
+}: {
+  choice: SnapshotChoice;
+  isBefore: boolean;
+  isAfter: boolean;
+  activeSide: SnapshotComparisonSide;
+  onAssign: (side: SnapshotComparisonSide, id: SnapshotOrCurrentId) => void;
+  onDragStart: (event: DragEvent<HTMLButtonElement>, id: SnapshotOrCurrentId) => void;
+  deleting: boolean;
+  onDeleteRequest: (snapshot: SnapshotDescriptor) => void;
+}) {
+  const { t, locale } = useI18n();
+  const total = snapshotCountsTotal(choice.counts);
+  const fileName = importedSnapshotFileName(choice);
+  const itemLabel = choice.source === "current" ? t("snapshots.current") : formatSnapshotDate(choice.created_at, locale);
+
+  return (
+    <div className="snapshot-picker__row" data-before={isBefore} data-after={isAfter}>
+      <button
+        type="button"
+        draggable
+        className="snapshot-picker__item"
+        onClick={() => onAssign(activeSide, choice.id)}
+        onDragStart={(event) => onDragStart(event, choice.id)}
+        aria-label={itemLabel}
+      >
+        <span className="snapshot-picker__item-head">
+          <span className="snapshot-picker__item-date">{itemLabel}</span>
+          <SelectionBadges before={isBefore} after={isAfter} />
+        </span>
+        {choice.source !== "current" && (
+          <span className="snapshot-picker__badges">
+            <SourceBadge source={choice.source} />
+            {choice.foreign_server && <span className="snapshot-picker__badge snapshot-picker__badge--foreign">{t("snapshots.foreignBadge")}</span>}
+          </span>
+        )}
+        {choice.source !== "current" && choice.comment && <span className="snapshot-picker__comment">{choice.comment}</span>}
+        {fileName && (
+          <span className="snapshot-picker__comment" title={fileName}>
+            {fileName}
+          </span>
+        )}
+        {choice.rules_updated_at && <span className="snapshot-picker__count">{formatSnapshotDate(choice.rules_updated_at, locale)}</span>}
+        {total > 0 && <span className="snapshot-picker__count">{t("snapshots.rowCounts", { count: total })}</span>}
+      </button>
+      {choice.source !== "current" && (
+        <button
+          type="button"
+          className="btn-ghost snapshot-picker__delete"
+          aria-label={t("snapshots.delete")}
+          title={t("snapshots.delete")}
+          onClick={() => onDeleteRequest(choice)}
+          disabled={deleting}
+        >
+          {deleting ? "…" : "✕"}
+        </button>
       )}
     </div>
   );
 }
 
-function snapshotOptionLabel(s: SnapshotDescriptor, locale: string, t: ReturnType<typeof useI18n>["t"]): string {
-  const date = formatDate(s.created_at, locale);
-  const tag = s.source === "imported" ? ` (${t("snapshots.sourceImported")})` : "";
-  return s.comment ? `${date} — ${s.comment}${tag}` : `${date}${tag}`;
+function SelectionBadges({ before, after }: { before: boolean; after: boolean }) {
+  const { t } = useI18n();
+  if (!before && !after) return null;
+  return (
+    <span className="snapshot-picker__selection">
+      {before && <span data-side="before">{t("snapshots.before")}</span>}
+      {after && <span data-side="after">{t("snapshots.after")}</span>}
+    </span>
+  );
 }
 
-const selectStyle: React.CSSProperties = {
+function SourceBadge({ source }: { source: SnapshotDescriptor["source"] }) {
+  const { t } = useI18n();
+  return (
+    <span className="snapshot-picker__badge" data-imported={source === "imported"}>
+      {source === "imported" ? t("snapshots.sourceImported") : t("snapshots.sourceManual")}
+    </span>
+  );
+}
+
+const inputStyle: React.CSSProperties = {
   border: "1px solid var(--line)",
   borderRadius: "var(--radius-sm)",
   padding: "9px 10px",
@@ -215,7 +240,7 @@ const selectStyle: React.CSSProperties = {
   width: "100%",
 };
 
-const actionBtnStyle: React.CSSProperties = {
+const actionButtonStyle: React.CSSProperties = {
   flex: 1,
   border: "none",
   borderRadius: "var(--radius-sm)",
@@ -223,25 +248,3 @@ const actionBtnStyle: React.CSSProperties = {
   fontSize: 13,
   fontWeight: 700,
 };
-
-const rowStyle: React.CSSProperties = {
-  display: "flex",
-  alignItems: "flex-start",
-  gap: 8,
-  border: "1px solid var(--line)",
-  borderRadius: "var(--radius-sm)",
-  padding: "8px 10px",
-  minWidth: 0,
-};
-
-function badgeStyle(color: string): React.CSSProperties {
-  return {
-    fontSize: 10.5,
-    fontWeight: 700,
-    color,
-    border: `1px solid ${color}`,
-    borderRadius: 4,
-    padding: "1px 5px",
-    whiteSpace: "nowrap",
-  };
-}
