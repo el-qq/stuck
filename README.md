@@ -18,17 +18,6 @@ and IP-dependent decisions remain explicitly unknown.
 
 🇬🇧 English · 🇪🇸 Español · 🇷🇺 Русский · 🇰🇿 Қазақша · 🇲🇾 Bahasa Melayu · 🇫🇷 Français · 🇧🇾 Беларуская · 🇰🇬 Кыргызча · 🇦🇲 Հայերեն
 
-## Demo
-
-[Animated demo of the STUCK cabinet](demo/demo_0.1.0.mp4)
-
-The interactive offline demo can be published to GitHub Pages without an NGFW
-or backend. Enable **Settings → Pages → Build and deployment → Source: GitHub
-Actions** once; each push to `main` then runs
-[`deploy-demo.yml`](.github/workflows/deploy-demo.yml). Repository Pages uses
-`/<repository>/` by default. For a custom domain, define the repository Actions
-variable `PAGES_BASE_PATH=/` before deploying.
-
 ## Key capabilities ✨
 
 - **🔎 Traffic trace** — check a domain, IP address or `host:port`; service and
