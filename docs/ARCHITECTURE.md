@@ -54,7 +54,9 @@ evaluates traces locally.
 - `app/domain/session_store.py` stores active STUCK sessions, NGFW cookies and
   the strict, non-secret current-admin role profile.
 - `app/domain/binding_pool.py` stores isolated rule snapshots without secrets.
-- `app/domain/trace_engine.py` performs deterministic, read-only rule matching.
+- `app/domain/trace_engine.py` orchestrates the deterministic, read-only trace
+  pipeline; `app/domain/trace/` isolates fail-closed matching and individual
+  network, NAT and policy-stage evaluation.
 - `app/logging_setup.py` provides structured logging and centralized masking.
 
 ### Lab-data utility
