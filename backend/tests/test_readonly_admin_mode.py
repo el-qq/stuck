@@ -7,7 +7,7 @@ readonly_admin_required error (403) after successful NGFW authentication.
 """
 
 import json
-import pytest
+
 from fastapi.testclient import TestClient
 
 from conftest import NGFW_SERVER, NGFW_SESSION_VALUE
@@ -213,7 +213,7 @@ class TestTwoFactorWithReadonlyAdminMode:
         ngfw_mock.state["whoami"] = (200, blocked_whoami)
 
         # Fake the WebSocket channel for 2FA
-        holder = _install_fake_channel(monkeypatch, [TwoFactorMessage("2fa_challenge"), TwoFactorMessage(MSG_SUCCESS)])
+        _install_fake_channel(monkeypatch, [TwoFactorMessage("2fa_challenge"), TwoFactorMessage(MSG_SUCCESS)])
 
         # Step 1: Login → goes to 2FA form
         resp_login = client.post("/api/auth/login", json=valid_login_data)
@@ -262,7 +262,7 @@ class TestTwoFactorWithReadonlyAdminMode:
         ngfw_mock.state["whoami"] = (200, blocked_whoami)
 
         # Fake the WebSocket channel for 2FA
-        holder = _install_fake_channel(monkeypatch, [TwoFactorMessage("2fa_challenge"), TwoFactorMessage(MSG_SUCCESS)])
+        _install_fake_channel(monkeypatch, [TwoFactorMessage("2fa_challenge"), TwoFactorMessage(MSG_SUCCESS)])
 
         # Step 1: Login → goes to 2FA form
         resp_login = client.post("/api/auth/login", json=valid_login_data)
@@ -327,8 +327,6 @@ class TestTwoFactorWithReadonlyAdminMode:
             },
         )
 
-        # Remember if logout was already called during login
-        logout_called_before = ngfw_mock.routes["logout"].called
         resp = client.post("/api/auth/2fa", json={"code": "123456"})
         assert resp.status_code == 403
 
