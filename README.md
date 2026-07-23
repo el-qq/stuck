@@ -40,6 +40,10 @@ variable `PAGES_BASE_PATH=/` before deploying.
 - **🧹 Rule hygiene** — find potentially shadowed, redundant, unreachable and
   overly broad firewall rules. Findings are advisory; STUCK never changes NGFW
   configuration.
+- **📸 Rule snapshots** — save named points in time, compare **Before** and
+  **After** with the current rules or another snapshot, and see rules that were
+  added, removed, changed or moved. A privacy-minimized rules export can serve
+  as an imported reference, including from another NGFW server.
 - **🔒 Safe exports** — download a single-trace JSON or a formatted rules
   snapshot. Rules exports require confirmation and remove user display data and
   rule comments; trace exports retain the technical user ID.

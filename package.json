@@ -1,6 +1,6 @@
 {
   "name": "stuck",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "description": "STUCK — Secure Traffic Utility & Configuration Kit. Root orchestration scripts for the FastAPI backend and React/Vite frontend.",
   "scripts": {

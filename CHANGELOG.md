@@ -4,18 +4,18 @@ All notable user-visible changes are recorded here. The project follows
 [Semantic Versioning](https://semver.org/) and the structure of
 [Keep a Changelog](https://keepachangelog.com/).
 
-## Next
+## [0.3.0]: rule snapshots
 
-- An API-free interactive demo can be deployed to GitHub Pages. It is built
-  from local fixtures only and makes no request to an NGFW or STUCK backend.
-- Rule snapshots with diff over time. Administrators can save named
-  point-in-time snapshots of the rules of their NGFW pair, import a previously
-  exported rules JSON as a snapshot, and compare any two states (including the
-  current one) in a dedicated panel: added, removed, changed and moved rules
-  plus module state changes. Comparisons involving an imported (anonymized)
-  export run in an explicit anonymized mode. Snapshots live in memory until
-  backend restart; the panel can be disabled with
-  `STUCK_ENABLE_RULE_SNAPSHOTS`.
+### ✨ Highlights
+
+- **See exactly what changed in the rules.** Save named rule snapshots and
+  compare **Before** and **After** in one view. STUCK shows added, removed,
+  changed and moved rules, as well as important module-state changes.
+- **Compare safely with another export.** Import a rules export as a reference
+  point without contacting NGFW. The comparison stays anonymized and clearly
+  marks an export from another server.
+- **Show STUCK anywhere.** The interactive GitHub Pages demo works entirely
+  offline, with no backend, NGFW connection, credentials or session.
 
 ## [0.2.0]
 
