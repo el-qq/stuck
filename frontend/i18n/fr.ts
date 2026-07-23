@@ -8,6 +8,7 @@ export const fr: Record<keyof typeof en, string> = {
   "common.cancel": "Annuler",
   "common.save": "Enregistrer",
   "common.close": "Fermer",
+  "common.ok": "OK",
   "common.retry": "Réessayer",
   "common.showDetails": "Afficher les détails",
   "common.hideDetails": "Masquer les détails",

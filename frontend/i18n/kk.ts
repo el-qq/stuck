@@ -8,6 +8,7 @@ export const kk: Record<keyof typeof en, string> = {
   "common.cancel": "Бас тарту",
   "common.save": "Сақтау",
   "common.close": "Жабу",
+  "common.ok": "ОК",
   "common.retry": "Қайталау",
   "common.showDetails": "Толығырақ көрсету",
   "common.hideDetails": "Толығырақты жасыру",

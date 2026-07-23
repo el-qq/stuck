@@ -8,6 +8,7 @@ export const ru: Record<keyof typeof en, string> = {
   "common.cancel": "Отмена",
   "common.save": "Сохранить",
   "common.close": "Закрыть",
+  "common.ok": "ОК",
   "common.retry": "Повторить",
   "common.showDetails": "Показать детали",
   "common.hideDetails": "Скрыть детали",

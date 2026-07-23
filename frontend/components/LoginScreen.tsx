@@ -12,6 +12,16 @@ import { Header } from "./Header";
 import { SettingsModal } from "./SettingsModal";
 import { usePublicConfig } from "@/contexts/PublicConfigContext";
 
+// Non-secret UI preference: the read-only-account hint was dismissed with OK.
+// A plain JS-readable cookie (not HttpOnly) — it carries no session data.
+const RO_HINT_DISMISSED_COOKIE = "stuck_ro_hint_dismissed";
+const RO_HINT_COOKIE_MAX_AGE = 60 * 60 * 24 * 365; // 1 year
+
+function isRoHintDismissed(): boolean {
+  if (typeof document === "undefined") return false;
+  return document.cookie.split("; ").includes(`${RO_HINT_DISMISSED_COOKIE}=1`);
+}
+
 export function LoginScreen({ onEnterDemo }: { onEnterDemo: () => void }) {
   const session = useSession();
   const { t } = useI18n();
@@ -30,6 +40,12 @@ export function LoginScreen({ onEnterDemo }: { onEnterDemo: () => void }) {
   // (contract v2.2, optional field — absent on older backends).
   const [ngfwPort, setNgfwPort] = useState<number | null>(null);
   const [unrestrictedNgfw, setUnrestrictedNgfw] = useState(false);
+  const [roHintDismissed, setRoHintDismissed] = useState(isRoHintDismissed);
+
+  function dismissRoHint() {
+    document.cookie = `${RO_HINT_DISMISSED_COOKIE}=1; Max-Age=${RO_HINT_COOKIE_MAX_AGE}; ` + `Path=/; SameSite=Lax`;
+    setRoHintDismissed(true);
+  }
 
   const defaultServerLocked = defaultServer.length > 0;
 
@@ -232,6 +248,48 @@ export function LoginScreen({ onEnterDemo }: { onEnterDemo: () => void }) {
               {fieldErrors.login && <span style={errStyle}>{fieldErrors.login}</span>}
             </label>
 
+            {/* Recommend a read-only administrator account — shown right
+                where the admin decides which account to type. OK hides it;
+                the choice persists via a non-secret cookie. */}
+            {!roHintDismissed && (
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "flex-start",
+                  gap: 8,
+                  fontSize: 12.5,
+                  color: "var(--accent)",
+                  background: "var(--accent-soft)",
+                  borderRadius: "var(--radius-sm)",
+                  padding: "10px 12px",
+                  marginTop: -6,
+                  lineHeight: 1.45,
+                }}
+              >
+                <span aria-hidden="true" style={{ fontWeight: 700 }}>
+                  ⓘ
+                </span>
+                <span style={{ flex: 1 }}>{t("login.readonlyHint")}</span>
+                <button
+                  type="button"
+                  onClick={dismissRoHint}
+                  style={{
+                    alignSelf: "center",
+                    background: "none",
+                    border: "1px solid currentColor",
+                    borderRadius: "var(--radius-sm)",
+                    color: "inherit",
+                    cursor: "pointer",
+                    fontSize: 12,
+                    fontWeight: 600,
+                    padding: "3px 10px",
+                  }}
+                >
+                  {t("common.ok")}
+                </button>
+              </div>
+            )}
+
             <label style={fieldLabelStyle}>
               {t("login.passwordLabel")}
               <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
@@ -316,26 +374,6 @@ export function LoginScreen({ onEnterDemo }: { onEnterDemo: () => void }) {
             </button>
 
             <div style={{ fontSize: 12, color: "var(--muted)", textAlign: "center" }}>{t("login.footnote")}</div>
-
-            {/* FR-1.7 (v2): recommend a read-only administrator account. */}
-            <div
-              style={{
-                display: "flex",
-                alignItems: "flex-start",
-                gap: 8,
-                fontSize: 12.5,
-                color: "var(--accent)",
-                background: "var(--accent-soft)",
-                borderRadius: "var(--radius-sm)",
-                padding: "10px 12px",
-                lineHeight: 1.45,
-              }}
-            >
-              <span aria-hidden="true" style={{ fontWeight: 700 }}>
-                ⓘ
-              </span>
-              <span>{t("login.readonlyHint")}</span>
-            </div>
           </div>
         </form>
       </div>

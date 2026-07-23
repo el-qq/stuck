@@ -15,6 +15,7 @@ export const en = {
   "common.cancel": "Cancel",
   "common.save": "Save",
   "common.close": "Close",
+  "common.ok": "OK",
   "common.retry": "Retry",
   "common.showDetails": "Show details",
   "common.hideDetails": "Hide details",

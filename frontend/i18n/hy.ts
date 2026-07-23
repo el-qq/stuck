@@ -8,6 +8,7 @@ export const hy: Record<keyof typeof en, string> = {
   "common.cancel": "Չեղարկել",
   "common.save": "Պահպանել",
   "common.close": "Փակել",
+  "common.ok": "Լավ",
   "common.retry": "Կրկնել",
   "common.showDetails": "Ցուցադրել մանրամասները",
   "common.hideDetails": "Թաքցնել մանրամասները",

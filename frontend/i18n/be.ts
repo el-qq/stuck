@@ -8,6 +8,7 @@ export const be: Record<keyof typeof en, string> = {
   "common.cancel": "Скасаваць",
   "common.save": "Захаваць",
   "common.close": "Закрыць",
+  "common.ok": "ОК",
   "common.retry": "Паўтарыць",
   "common.showDetails": "Паказаць падрабязнасці",
   "common.hideDetails": "Схаваць падрабязнасці",

@@ -8,6 +8,7 @@ export const ms: Record<keyof typeof en, string> = {
   "common.cancel": "Batal",
   "common.save": "Simpan",
   "common.close": "Tutup",
+  "common.ok": "OK",
   "common.retry": "Cuba lagi",
   "common.showDetails": "Tunjuk butiran",
   "common.hideDetails": "Sembunyi butiran",

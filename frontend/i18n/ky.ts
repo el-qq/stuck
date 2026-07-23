@@ -8,6 +8,7 @@ export const ky: Record<keyof typeof en, string> = {
   "common.cancel": "Жокко чыгаруу",
   "common.save": "Сактоо",
   "common.close": "Жабуу",
+  "common.ok": "ОК",
   "common.retry": "Кайталоо",
   "common.showDetails": "Чоо-жайын көрсөтүү",
   "common.hideDetails": "Чоо-жайын жашыруу",
