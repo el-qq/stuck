@@ -149,7 +149,7 @@ export const en = {
   "snapshots.current": "Current state",
   "snapshots.listTitle": "Saved snapshots",
   "snapshots.limitCounter": "{count} of {limit}",
-  "snapshots.commentPlaceholder": "Comment (optional)",
+  "snapshots.namePlaceholder": "Name (optional)",
   "snapshots.create": "Create snapshot",
   "snapshots.creating": "Creating…",
   "snapshots.import": "Import from file",

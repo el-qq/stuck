@@ -3,7 +3,8 @@
 import React, { DragEvent } from "react";
 import { useI18n } from "@/i18n";
 import { SnapshotOrCurrentId } from "@/lib/types";
-import { formatSnapshotDate, importedSnapshotFileName, SnapshotChoice, SnapshotComparisonSide, snapshotCountsTotal } from "./snapshotComparison";
+import { SnapshotChoice, SnapshotComparisonSide } from "./snapshotComparison";
+import { presentSnapshotChoice } from "./snapshotChoicePresentation";
 
 interface Props {
   before: SnapshotChoice;
@@ -43,9 +44,7 @@ function SideTarget({
   onDropChoice: (side: SnapshotComparisonSide, id: SnapshotOrCurrentId) => void;
 }) {
   const { t, locale } = useI18n();
-  const fileName = importedSnapshotFileName(choice);
-  const detailsLabel = fileName ?? choice.comment;
-  const total = snapshotCountsTotal(choice.counts);
+  const presentation = presentSnapshotChoice(choice, locale, t("snapshots.current"));
 
   function handleDrop(event: DragEvent<HTMLButtonElement>) {
     event.preventDefault();
@@ -65,17 +64,24 @@ function SideTarget({
       aria-pressed={active}
     >
       <span className="snapshot-comparison__target-label">{side === "before" ? t("snapshots.before") : t("snapshots.after")}</span>
-      <span className="snapshot-comparison__target-title">
-        {choice.source === "current" ? t("snapshots.current") : formatSnapshotDate(choice.created_at, locale)}
-      </span>
-      {choice.rules_updated_at && <span className="snapshot-comparison__target-meta">{formatSnapshotDate(choice.rules_updated_at, locale)}</span>}
-      {total > 0 && <span className="snapshot-comparison__target-meta">{t("snapshots.rowCounts", { count: total })}</span>}
-      {choice.source === "imported" && <span className="snapshot-comparison__target-meta">{t("snapshots.sourceImported")}</span>}
-      {detailsLabel && (
-        <span className="snapshot-comparison__target-meta snapshot-comparison__target-file" title={detailsLabel}>
-          {detailsLabel}
+      <span className="snapshot-comparison__target-title">{presentation.title}</span>
+      {(presentation.imported || presentation.foreignServer) && (
+        <span className="snapshot-comparison__target-badges">
+          {presentation.imported && <span className="snapshot-comparison__target-source">{t("snapshots.sourceImported")}</span>}
+          {presentation.foreignServer && (
+            <span className="snapshot-comparison__target-source" data-foreign={true}>
+              {t("snapshots.foreignBadge")}
+            </span>
+          )}
         </span>
       )}
+      {presentation.date && <span className="snapshot-comparison__target-meta">{presentation.date}</span>}
+      {presentation.fileName && (
+        <span className="snapshot-comparison__target-meta snapshot-comparison__target-file" title={presentation.fileName}>
+          {presentation.fileName}
+        </span>
+      )}
+      {presentation.total > 0 && <span className="snapshot-comparison__target-meta">{t("snapshots.rowCounts", { count: presentation.total })}</span>}
     </button>
   );
 }

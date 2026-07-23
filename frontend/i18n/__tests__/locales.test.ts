@@ -245,7 +245,7 @@ describe("i18n locales (FR-6: Localization)", () => {
       "snapshots.current",
       "snapshots.listTitle",
       "snapshots.limitCounter",
-      "snapshots.commentPlaceholder",
+      "snapshots.namePlaceholder",
       "snapshots.create",
       "snapshots.creating",
       "snapshots.import",

@@ -121,7 +121,7 @@ export const hy: Record<keyof typeof en, string> = {
   "snapshots.current": "Ընթացիկ վիճակ",
   "snapshots.listTitle": "Պահված նկարներ",
   "snapshots.limitCounter": "{count} / {limit}",
-  "snapshots.commentPlaceholder": "Մեկնաբանություն (ըստ ցանկության)",
+  "snapshots.namePlaceholder": "Անվանում (ըստ ցանկության)",
   "snapshots.create": "Ստեղծել նկար",
   "snapshots.creating": "Ստեղծվում է…",
   "snapshots.import": "Ներմուծել ֆայլից",

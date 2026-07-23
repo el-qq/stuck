@@ -129,7 +129,7 @@ export const ms: Record<keyof typeof en, string> = {
   "snapshots.current": "Keadaan semasa",
   "snapshots.listTitle": "Syot kilat disimpan",
   "snapshots.limitCounter": "{count} daripada {limit}",
-  "snapshots.commentPlaceholder": "Komen (pilihan)",
+  "snapshots.namePlaceholder": "Nama (pilihan)",
   "snapshots.create": "Cipta syot kilat",
   "snapshots.creating": "Mencipta…",
   "snapshots.import": "Import daripada fail",

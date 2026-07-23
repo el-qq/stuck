@@ -227,7 +227,7 @@ test("live: create snapshot success and list update", async ({ page }) => {
 
   // Click Create and fill comment
   await page.getByRole("button", { name: "Create snapshot" }).click();
-  const input = page.getByPlaceholder("Comment (optional)");
+  const input = page.getByPlaceholder("Name (optional)");
   await input.fill("My snapshot");
 
   // Submit
@@ -297,7 +297,7 @@ test("live: create snapshot error on limit reached", async ({ page }) => {
 
   // Try to create
   await page.getByRole("button", { name: "Create snapshot" }).click();
-  await page.getByPlaceholder("Comment (optional)").fill("Will fail");
+  await page.getByPlaceholder("Name (optional)").fill("Will fail");
   await page.getByRole("button", { name: "Create" }).click();
 
   // Error message should appear

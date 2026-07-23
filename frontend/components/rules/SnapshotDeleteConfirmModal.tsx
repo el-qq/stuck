@@ -73,10 +73,9 @@ function formatDate(iso: string, locale: string): string {
 
 const buttonStyle: React.CSSProperties = {
   flex: "1 1 130px",
-  border: "none",
+  border: "1px solid var(--line)",
   borderRadius: "var(--radius-sm)",
   padding: 11,
   fontSize: 14,
   fontWeight: 700,
-  color: "var(--accent-contrast)",
 };

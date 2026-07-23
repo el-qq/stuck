@@ -2,18 +2,22 @@
 
 import { useCallback, useMemo, useState } from "react";
 import { DEMO_CURRENT_SNAPSHOT, DEMO_SNAPSHOT_DIFF, DEMO_SNAPSHOTS, DEMO_SNAPSHOTS_LIMIT } from "@/lib/demoData";
+import { getSnapshotSelection, setSnapshotSelection } from "@/lib/snapshotSelectionStorage";
 import { CURRENT_SNAPSHOT_ID, SnapshotDescriptor, SnapshotDiffResponse, SnapshotOrCurrentId } from "@/lib/types";
-import type { SnapshotComparisonSide } from "@/components/rules/snapshotComparison";
 import type { SnapshotWorkspaceState } from "@/components/rules/snapshotWorkspaceState";
+import { useSnapshotComparisonSelection, type SnapshotComparisonSelection } from "@/hooks/useSnapshotComparisonSelection";
 
 /** Fully local snapshot adapter. It intentionally has no API/session imports:
  * comparison remains interactive, while persistent snapshot mutations are
  * represented by disabled controls in the shared workspace. */
 export function useDemoRuleSnapshots(): SnapshotWorkspaceState {
   const [comment, setComment] = useState("");
-  const [beforeId, setBeforeId] = useState<SnapshotOrCurrentId>(CURRENT_SNAPSHOT_ID);
-  const [afterId, setAfterId] = useState<SnapshotOrCurrentId>(CURRENT_SNAPSHOT_ID);
-  const [activeSide, setActiveSide] = useState<SnapshotComparisonSide>("before");
+  const initialSelection = useMemo(() => getSnapshotSelection("demo", "offline"), []);
+  const persistSelection = useCallback((selection: SnapshotComparisonSelection) => setSnapshotSelection("demo", "offline", selection), []);
+  const { beforeId, afterId, activeSide, setActiveSide, assign, swapSides } = useSnapshotComparisonSelection({
+    initialSelection,
+    onSelectionPersist: persistSelection,
+  });
 
   const diff = useMemo<SnapshotDiffResponse | null>(() => {
     if (beforeId === afterId) return null;
@@ -25,22 +29,6 @@ export function useDemoRuleSnapshots(): SnapshotWorkspaceState {
       b: asDiffSide(after),
       comparison_mode: before.source === "imported" || after.source === "imported" ? "anonymized" : "full",
     };
-  }, [afterId, beforeId]);
-
-  const assign = useCallback((side: SnapshotComparisonSide, id: SnapshotOrCurrentId) => {
-    if (side === "before") {
-      setBeforeId(id);
-      setActiveSide("after");
-    } else {
-      setAfterId(id);
-      setActiveSide("before");
-    }
-  }, []);
-
-  const swapSides = useCallback(() => {
-    setBeforeId(afterId);
-    setAfterId(beforeId);
-    setActiveSide("before");
   }, [afterId, beforeId]);
 
   const noAction = useCallback(async () => undefined, []);

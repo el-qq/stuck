@@ -44,6 +44,10 @@ evaluates traces locally.
   order.
 - `frontend/lib/storage.ts` stores only non-sensitive conveniences: the last
   NGFW host and the ten most recent checked addresses.
+  `snapshotSelectionStorage.ts` uses per-tab `sessionStorage` for at most two
+  opaque snapshot ids and the active comparison side, scoped to one
+  administrator/NGFW pair; it never stores snapshot metadata, rules,
+  credentials or session material.
 - `frontend/i18n/` contains complete, key-compatible locale dictionaries.
 - IBM Plex WOFF2 files are bundled from exact npm packages at build time; the
   browser has no font-CDN dependency. The OFL text is shipped with the UI.

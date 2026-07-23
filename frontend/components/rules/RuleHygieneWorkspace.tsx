@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { useDemoUnavailableNotice } from "@/hooks/useDemoUnavailableNotice";
 import { useI18n } from "@/i18n";
 import { RuleHygieneReport } from "@/lib/types";
 import { HygieneCounters, HygieneTable, RuleHygieneReportView } from "./RuleHygieneReportView";
@@ -21,6 +22,7 @@ interface Props {
  * input; only the live adapter supplies a re-check action. */
 export function RuleHygieneWorkspace({ report, loading, error, section, onSectionChange, onRecheck, backendActionsUnavailable = false, port }: Props) {
   const { t, locale } = useI18n();
+  const showDemoUnavailableNotice = useDemoUnavailableNotice(backendActionsUnavailable);
   const sectionCount = (table: HygieneTable) => report?.findings.filter((finding) => finding.table === table).length ?? 0;
 
   return (
@@ -82,8 +84,9 @@ export function RuleHygieneWorkspace({ report, loading, error, section, onSectio
           <button
             type="button"
             className="btn-primary"
-            onClick={backendActionsUnavailable ? undefined : onRecheck}
-            disabled={backendActionsUnavailable || loading}
+            onClick={backendActionsUnavailable ? showDemoUnavailableNotice : onRecheck}
+            disabled={loading}
+            aria-disabled={backendActionsUnavailable || undefined}
             title={backendActionsUnavailable ? t("demo.backendActionUnavailable") : undefined}
             data-demo-unavailable={backendActionsUnavailable || undefined}
             style={{ width: "100%", border: "none", borderRadius: "var(--radius-sm)", padding: 11, fontSize: 13.5, fontWeight: 700 }}

@@ -119,7 +119,7 @@ export const be: Record<keyof typeof en, string> = {
   "snapshots.current": "Бягучы стан",
   "snapshots.listTitle": "Захаваныя здымкі",
   "snapshots.limitCounter": "{count} з {limit}",
-  "snapshots.commentPlaceholder": "Каментар (неабавязкова)",
+  "snapshots.namePlaceholder": "Назва (неабавязкова)",
   "snapshots.create": "Стварыць здымак",
   "snapshots.creating": "Стварэнне…",
   "snapshots.import": "Імпарт з файла",

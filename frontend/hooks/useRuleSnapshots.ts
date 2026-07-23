@@ -1,15 +1,16 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSession } from "@/contexts/SessionContext";
 import { useToast } from "@/contexts/ToastContext";
 import { useApiErrorMessage } from "@/hooks/useApiErrorMessage";
 import * as api from "@/lib/api";
 import { ApiError, toApiError } from "@/lib/errors";
 import { readFileAsText } from "@/lib/fileRead";
+import { getSnapshotSelection, setSnapshotSelection } from "@/lib/snapshotSelectionStorage";
 import { CURRENT_SNAPSHOT_ID, SnapshotDescriptor, SnapshotDiffResponse, SnapshotOrCurrentId } from "@/lib/types";
-import { SnapshotComparisonSide } from "@/components/rules/snapshotComparison";
 import type { SnapshotWorkspaceState } from "@/components/rules/snapshotWorkspaceState";
+import { useSnapshotComparisonSelection, type SnapshotComparisonSelection } from "@/hooks/useSnapshotComparisonSelection";
 
 interface UseRuleSnapshotsOptions {
   /** Only load the list and a diff after its tab becomes visible. */
@@ -48,12 +49,6 @@ export function useRuleSnapshots({ active, enabled }: UseRuleSnapshotsOptions): 
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
-  // The neutral current → current state avoids a misleading green success
-  // message before the administrator has selected two distinct states.
-  const [beforeId, setBeforeId] = useState<SnapshotOrCurrentId>(CURRENT_SNAPSHOT_ID);
-  const [afterId, setAfterId] = useState<SnapshotOrCurrentId>(CURRENT_SNAPSHOT_ID);
-  const [activeSide, setActiveSide] = useState<SnapshotComparisonSide>("before");
-
   const [diff, setDiff] = useState<SnapshotDiffResponse | null>(null);
   const [diffLoading, setDiffLoading] = useState(false);
   const [diffError, setDiffError] = useState<string | null>(null);
@@ -67,6 +62,20 @@ export function useRuleSnapshots({ active, enabled }: UseRuleSnapshotsOptions): 
     setDiffError(null);
     setDiffLoading(false);
   }, []);
+
+  const snapshotAdmin = session.session?.login ?? "";
+  const snapshotServer = session.session?.server ?? "";
+  const initialSelection = useMemo(() => getSnapshotSelection(snapshotAdmin, snapshotServer), [snapshotAdmin, snapshotServer]);
+  const persistSelection = useCallback(
+    (selection: SnapshotComparisonSelection) => setSnapshotSelection(snapshotAdmin, snapshotServer, selection),
+    [snapshotAdmin, snapshotServer],
+  );
+
+  const { beforeId, afterId, activeSide, setActiveSide, assign, swapSides, resetDeletedSnapshot } = useSnapshotComparisonSelection({
+    onSelectionChange: clearDiff,
+    initialSelection,
+    onSelectionPersist: persistSelection,
+  });
 
   const loadSnapshots = useCallback(async () => {
     setLoading(true);
@@ -84,6 +93,15 @@ export function useRuleSnapshots({ active, enabled }: UseRuleSnapshotsOptions): 
       setLoading(false);
     }
   }, [errorMessage, session]);
+
+  useEffect(() => {
+    if (!listLoaded) return;
+    const availableIds = new Set(snapshots.map((snapshot) => snapshot.id));
+    // A snapshot can also disappear through another session. Retain the other
+    // selected side, but replace a missing side with the safe current state.
+    if (beforeId !== CURRENT_SNAPSHOT_ID && !availableIds.has(beforeId)) resetDeletedSnapshot(beforeId);
+    if (afterId !== CURRENT_SNAPSHOT_ID && !availableIds.has(afterId)) resetDeletedSnapshot(afterId);
+  }, [afterId, beforeId, listLoaded, resetDeletedSnapshot, snapshots]);
 
   const loadDiff = useCallback(
     async (before: SnapshotOrCurrentId, after: SnapshotOrCurrentId) => {
@@ -121,27 +139,6 @@ export function useRuleSnapshots({ active, enabled }: UseRuleSnapshotsOptions): 
     // refresh, not context render churn, define a comparison request.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active, enabled, beforeId, afterId, currentRevision]);
-
-  const assign = useCallback(
-    (side: SnapshotComparisonSide, id: SnapshotOrCurrentId) => {
-      clearDiff();
-      if (side === "before") {
-        setBeforeId(id);
-        setActiveSide("after");
-      } else {
-        setAfterId(id);
-        setActiveSide("before");
-      }
-    },
-    [clearDiff],
-  );
-
-  const swapSides = useCallback(() => {
-    clearDiff();
-    setBeforeId(afterId);
-    setAfterId(beforeId);
-    setActiveSide("before");
-  }, [afterId, beforeId, clearDiff]);
 
   const createSnapshot = useCallback(async () => {
     setCreating(true);
@@ -208,12 +205,7 @@ export function useRuleSnapshots({ active, enabled }: UseRuleSnapshotsOptions): 
     setDeleteError(null);
     try {
       await api.deleteRuleSnapshot(deleteTarget.id);
-      const removedWasSelected = beforeId === deleteTarget.id || afterId === deleteTarget.id;
-      if (removedWasSelected) {
-        clearDiff();
-        setBeforeId((id) => (id === deleteTarget.id ? CURRENT_SNAPSHOT_ID : id));
-        setAfterId((id) => (id === deleteTarget.id ? CURRENT_SNAPSHOT_ID : id));
-      }
+      resetDeletedSnapshot(deleteTarget.id);
       setDeleteTarget(null);
       await loadSnapshots();
     } catch (caught) {
@@ -223,7 +215,7 @@ export function useRuleSnapshots({ active, enabled }: UseRuleSnapshotsOptions): 
     } finally {
       setDeletingId(null);
     }
-  }, [afterId, beforeId, clearDiff, deleteTarget, errorMessage, loadSnapshots, session]);
+  }, [deleteTarget, errorMessage, loadSnapshots, resetDeletedSnapshot, session]);
 
   /** Called after `rules/refresh`. It cancels only a comparison containing
    * `current`; a historical snapshot-to-snapshot diff stays valid. */

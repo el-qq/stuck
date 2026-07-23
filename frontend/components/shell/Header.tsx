@@ -2,6 +2,7 @@
 
 import React, { useLayoutEffect, useRef } from "react";
 import { useSession } from "@/contexts/SessionContext";
+import { useDemoUnavailableNotice } from "@/hooks/useDemoUnavailableNotice";
 import { useI18n } from "@/i18n";
 import { APP_VERSION } from "@/lib/version";
 
@@ -55,6 +56,7 @@ export function Header({
 }: HeaderProps) {
   const session = useSession();
   const { t, locale } = useI18n();
+  const showDemoUnavailableNotice = useDemoUnavailableNotice(demoMode);
   const headerRef = useRef<HTMLElement>(null);
   const showsRules = !anonymous || demoMode;
   const showsIdentity = !anonymous && !demoMode;
@@ -105,8 +107,10 @@ export function Header({
       <div className="app-header__actions">
         {showsRules && (
           <button
-            onClick={demoMode ? undefined : onRefresh}
-            disabled={demoMode || refreshing || !accessAllowed}
+            type="button"
+            onClick={demoMode ? showDemoUnavailableNotice : onRefresh}
+            disabled={refreshing || !accessAllowed}
+            aria-disabled={demoMode || undefined}
             title={demoMode ? t("demo.backendActionUnavailable") : undefined}
             data-demo-unavailable={demoMode || undefined}
             className="app-header__button btn-soft"
@@ -118,8 +122,10 @@ export function Header({
 
         {showsRules && exportEnabled && (
           <button
-            onClick={demoMode ? undefined : onExport}
-            disabled={demoMode || exporting}
+            type="button"
+            onClick={demoMode ? showDemoUnavailableNotice : onExport}
+            disabled={exporting}
+            aria-disabled={demoMode || undefined}
             title={demoMode ? t("demo.backendActionUnavailable") : undefined}
             data-demo-unavailable={demoMode || undefined}
             className="app-header__button btn-soft"
