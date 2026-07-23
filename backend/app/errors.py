@@ -37,6 +37,14 @@ ERROR_HTTP_STATUS: dict[str, int] = {
     "readonly_admin_required": 403,
     "not_authenticated": 401,
     "session_expired": 401,
+    # Rule snapshots (docs/source/snapshots.md, развилка f): the per-pair
+    # snapshot limit and the three import-validation failures. The limit error
+    # carries details={"limit"}; import errors carry details={"reason"} /
+    # {"format"} / {"limit_bytes"} respectively.
+    "snapshot_limit_reached": 409,
+    "snapshot_import_invalid": 400,
+    "snapshot_import_unsupported_format": 400,
+    "snapshot_import_too_large": 413,
     "server_unreachable": 502,
     "api_changed": 502,
     "ngfw_error": 502,

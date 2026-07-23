@@ -15,9 +15,12 @@ from __future__ import annotations
 import asyncio
 import time
 from dataclasses import dataclass, field
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from ..ngfw import schemas as S
+
+if TYPE_CHECKING:  # import only for annotations; snapshots.store imports us.
+    from .snapshots.store import SnapshotEntry
 
 
 @dataclass
@@ -90,6 +93,13 @@ class Binding:
     admin_login: str
     server: str
     snapshot: RulesSnapshot | None = None
+    # Named point-in-time snapshots of this pair (docs/source/snapshots.md).
+    # Stored ON the binding on purpose: ``BindingPool.discard`` then removes
+    # them together with the pair, logout keeps them, restart clears them —
+    # the exact snapshot lifecycle demanded by AGENTS.md invariant 5. Entries
+    # are ``snapshots.store.SnapshotEntry`` objects (no secrets); the list is
+    # managed exclusively through ``app.domain.snapshots.store``.
+    saved_snapshots: list["SnapshotEntry"] = field(default_factory=list)
 
     @property
     def rules_updated_at(self) -> float | None:

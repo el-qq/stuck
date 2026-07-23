@@ -27,6 +27,10 @@ from fastapi import APIRouter, Depends, Query, Response
 from ..config import Settings, get_settings
 from ..deps import current_session, get_binding_pool, get_or_load_snapshot
 from ..domain import trace_engine
+
+# Anonymization is shared with the snapshot diff (docs/source/snapshots.md h.2)
+# and lives in the domain layer as the single source of truth.
+from ..domain.anonymize import anonymize as _anonymize, identity_map as _identity_map
 from ..domain.binding_pool import BindingPool, RulesSnapshot
 from ..domain.session_store import Session
 from ..errors import StuckError
@@ -38,12 +42,6 @@ _export_log = logging.getLogger("stuck.export")
 router = APIRouter(prefix="/api", tags=["export"])
 
 RULES_EXPORT_FORMAT = "stuck.rules/v2"
-
-# These fields are useful in the product UI, but are neither needed to replay
-# the rules nor appropriate for a diagnostic attachment shared outside the
-# installation. ``title`` and ``domain_name`` are included because aliases and
-# directory domains can reveal the same personal information under other keys.
-_ANONYMIZED_FIELDS = frozenset({"comment", "description", "domain_name", "login", "name", "title"})
 
 
 def _iso(ts: float) -> str:
@@ -57,34 +55,6 @@ def _dump(models) -> list[dict[str, Any]]:
 def _dump_one(model) -> dict[str, Any]:
     """Export only fields the trace engine understands, never vendor extras."""
     return model.model_dump(mode="json", include=set(type(model).model_fields))
-
-
-def _identity_map(snap: RulesSnapshot) -> dict[str, str]:
-    """Assign deterministic opaque IDs while preserving rule/user links."""
-    replacements: dict[str, str] = {}
-    for index, user in enumerate(snap.users, start=1):
-        replacements.setdefault(str(user.id), f"user-{index}")
-
-    group_index = 0
-    for user in snap.users:
-        if user.parent_id is None:
-            continue
-        group_id = str(user.parent_id)
-        if group_id not in replacements:
-            group_index += 1
-            replacements[group_id] = f"group-{group_index}"
-    return replacements
-
-
-def _anonymize(value: Any, replacements: dict[str, str]) -> Any:
-    """Remove display data recursively and replace known user/group IDs."""
-    if isinstance(value, dict):
-        return {key: _anonymize(item, replacements) for key, item in value.items() if key not in _ANONYMIZED_FIELDS}
-    if isinstance(value, list):
-        return [_anonymize(item, replacements) for item in value]
-    if isinstance(value, str):
-        return replacements.get(value, value)
-    return value
 
 
 def _find_user(snap: RulesSnapshot, user_id: str) -> S.NgfwUser:

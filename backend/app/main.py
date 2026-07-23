@@ -18,7 +18,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from . import __version__
-from .api import auth, config, export, hygiene, session as session_api, trace, users
+from .api import auth, config, export, hygiene, session as session_api, snapshots, trace, users
 from .config import get_settings
 from .domain.binding_pool import BindingPool
 from .domain.pending_2fa import PendingTwoFactorStore
@@ -184,6 +184,7 @@ def create_app() -> FastAPI:
     app.include_router(trace.router)
     app.include_router(export.router)
     app.include_router(hygiene.router)
+    app.include_router(snapshots.router)
 
     @app.get("/api/health", tags=["health"])
     async def health():
@@ -196,6 +197,7 @@ def create_app() -> FastAPI:
             "ngfw_port": settings.STUCK_NGFW_PORT,
             "rules_export_enabled": settings.STUCK_ENABLE_RULES_EXPORT,
             "rule_hygiene_enabled": settings.STUCK_ENABLE_RULE_HYGIENE,
+            "rule_snapshots_enabled": settings.STUCK_ENABLE_RULE_SNAPSHOTS,
             "ngfw_access_mode": settings.ngfw_access_mode,
         }
 

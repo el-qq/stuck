@@ -38,6 +38,10 @@ describe("lib/errors.ts", () => {
         "ngfw_error",
         "not_found",
         "internal_error",
+        "snapshot_limit_reached",
+        "snapshot_import_invalid",
+        "snapshot_import_unsupported_format",
+        "snapshot_import_too_large",
       ];
 
       for (const code of knownCodes) {

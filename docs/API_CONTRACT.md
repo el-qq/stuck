@@ -21,24 +21,28 @@ interface ErrorEnvelope {
 }
 ```
 
-| Code                            | HTTP | Meaning                                                                           |
-| ------------------------------- | ---: | --------------------------------------------------------------------------------- |
-| `validation_error`              |  400 | Invalid request body or value                                                     |
-| `invalid_server_address`        |  400 | Server is not a bare IPv4/hostname                                                |
-| `ngfw_host_not_allowed`         |  403 | Host is outside this installation's NGFW policy                                   |
-| `invalid_credentials`           |  401 | NGFW rejected administrator credentials                                           |
-| `second_factor_required`        |  401 | NGFW requires a second factor STUCK cannot complete (no challenge)                |
-| `second_factor_invalid`         |  401 | Rejected 2FA code; `details.can_retry` says whether another try is worth it       |
-| `second_factor_expired`         |  401 | The 2FA challenge window closed (TTL) or the pending entry is unknown             |
-| `insufficient_ngfw_permissions` |  403 | Current NGFW role cannot run diagnostics; details contain only `role_id`          |
-| `readonly_admin_required`       |  403 | Read-only-admin mode rejects a non-read-only role; details contain only `role_id` |
-| `not_authenticated`             |  401 | Missing or unknown STUCK session                                                  |
-| `session_expired`               |  401 | STUCK or NGFW session can no longer be used                                       |
-| `not_found`                     |  404 | Resource or disabled feature is unavailable                                       |
-| `server_unreachable`            |  502 | NGFW/network timeout or connection failure                                        |
-| `api_changed`                   |  502 | Required NGFW response shape changed                                              |
-| `ngfw_error`                    |  502 | Other NGFW failure                                                                |
-| `internal_error`                |  500 | Unexpected backend failure; details are hidden                                    |
+| Code                                 | HTTP | Meaning                                                                           |
+| ------------------------------------ | ---: | --------------------------------------------------------------------------------- |
+| `validation_error`                   |  400 | Invalid request body or value                                                     |
+| `invalid_server_address`             |  400 | Server is not a bare IPv4/hostname                                                |
+| `ngfw_host_not_allowed`              |  403 | Host is outside this installation's NGFW policy                                   |
+| `invalid_credentials`                |  401 | NGFW rejected administrator credentials                                           |
+| `second_factor_required`             |  401 | NGFW requires a second factor STUCK cannot complete (no challenge)                |
+| `second_factor_invalid`              |  401 | Rejected 2FA code; `details.can_retry` says whether another try is worth it       |
+| `second_factor_expired`              |  401 | The 2FA challenge window closed (TTL) or the pending entry is unknown             |
+| `insufficient_ngfw_permissions`      |  403 | Current NGFW role cannot run diagnostics; details contain only `role_id`          |
+| `readonly_admin_required`            |  403 | Read-only-admin mode rejects a non-read-only role; details contain only `role_id` |
+| `not_authenticated`                  |  401 | Missing or unknown STUCK session                                                  |
+| `session_expired`                    |  401 | STUCK or NGFW session can no longer be used                                       |
+| `not_found`                          |  404 | Resource or disabled feature is unavailable                                       |
+| `snapshot_limit_reached`             |  409 | The pair's snapshot limit is reached; `details.limit` carries the limit           |
+| `snapshot_import_invalid`            |  400 | Import body is not a valid `stuck.rules/v2` document; `details.reason` explains   |
+| `snapshot_import_unsupported_format` |  400 | `format` is present but not supported; `details.format` echoes it (or null)       |
+| `snapshot_import_too_large`          |  413 | Import body exceeds the limit; `details.limit_bytes` carries it                   |
+| `server_unreachable`                 |  502 | NGFW/network timeout or connection failure                                        |
+| `api_changed`                        |  502 | Required NGFW response shape changed                                              |
+| `ngfw_error`                         |  502 | Other NGFW failure                                                                |
+| `internal_error`                     |  500 | Unexpected backend failure; details are hidden                                    |
 
 Frontend locale dictionaries must contain every known error code and tolerate
 unknown codes with a generic fallback.
@@ -55,6 +59,7 @@ unknown codes with a generic fallback.
   ngfw_access_mode?: "allowlist" | "unrestricted";
   rules_export_enabled?: boolean;
   rule_hygiene_enabled?: boolean;
+  rule_snapshots_enabled?: boolean;
 }
 ```
 
@@ -182,6 +187,7 @@ best-effort closes its NGFW session. The non-secret rules snapshot remains.
   };
   rules_export_enabled?: boolean;
   rule_hygiene_enabled?: boolean;
+  rule_snapshots_enabled?: boolean;
   ngfw_port?: number;
 }
 ```
@@ -508,6 +514,160 @@ An `overly_broad` finding (a universal any→any accept) is graded by context:
 unconditionally), `info` when enabled drop rules precede it (the deliberate
 "deny exceptions, allow the rest" tail), `warning` otherwise (a broad allow
 with no exception carved out). Only enabled rules take part in the analysis.
+
+## Rule snapshots and diff
+
+Named, in-memory points in time of the current pair's rules plus a structured
+comparison of two states. Controlled by backend configuration
+(`STUCK_ENABLE_RULE_SNAPSHOTS`, surfaced as `rule_snapshots_enabled` in
+`GET /api/health` and `GET /api/session`); disabled behaves as 404 on every
+endpoint below. All endpoints require `stuck_session` and
+`access_profile.trace_allowed`; the binding always comes from the session.
+Snapshots live only in backend memory: logout keeps them, a role degradation
+that discards the pair removes them, a restart clears them. Creating or
+diffing snapshots performs no NGFW write; the only NGFW interaction is the
+ordinary read-only snapshot load (lazy or `refresh: true`).
+
+### `GET /api/rules/snapshots`
+
+```ts
+{
+  binding: {
+    admin: string;
+    server: string;
+  }
+  limit: number; // effective per-pair limit (manual + imported combined)
+  snapshots: Array<{
+    id: string; // opaque, unique within the pair
+    created_at: string;
+    rules_updated_at: string; // when the data was read from NGFW
+    comment: string | null;
+    source: "manual" | "imported";
+    counts: Record<string, number>;
+    // present only when source === "imported":
+    exported_at?: string; // exported_at of the imported file
+    server?: string; // binding.server of the imported file
+    foreign_server?: boolean; // file server != current pair's server
+  }>; // sorted by created_at desc
+}
+```
+
+### `POST /api/rules/snapshots`
+
+```ts
+// request
+{ comment?: string; refresh?: boolean }
+
+// response
+{ ok: true; snapshot: { /* one list element, source: "manual" */ } }
+```
+
+`comment` is trimmed and limited to 200 characters (`validation_error`
+otherwise). `refresh: true` re-pulls the snapshot through the active NGFW
+session first (like the export). A full pair answers
+`409 snapshot_limit_reached` with `details.limit`; nothing is evicted
+silently.
+
+### `DELETE /api/rules/snapshots/{snapshot_id}`
+
+```ts
+{
+  ok: true;
+}
+```
+
+An unknown id — including another pair's id, which is simply absent from the
+current binding — and a repeated deletion answer `404 not_found`.
+
+### `POST /api/rules/snapshots/import`
+
+Accepts a rules-export document (`stuck.rules/v2` from
+`GET /api/rules/export`) and stores it as an `imported` snapshot of the
+current pair. NGFW is not called at all; the file can never select another
+binding — a differing `binding.server` only sets `foreign_server: true`.
+
+```ts
+// request (body limit 20 MiB → 413 snapshot_import_too_large)
+{
+  comment?: string;
+  export: unknown; // the export document (object, or its raw JSON text)
+}
+
+// response
+{ ok: true; snapshot: { /* one list element, source: "imported" */ } }
+```
+
+Validation is a strict envelope with tolerant elements: `format` must be
+exactly `stuck.rules/v2` (another value →
+`snapshot_import_unsupported_format`), `snapshot`, `exported_at`,
+`rules_updated_at` and `binding.server` are required; unknown element fields
+are ignored while wrong types of required fields are rejected. Failures answer
+`400 snapshot_import_invalid` with `details.reason` in
+`json | structure | filtered_export | field_too_long`. A one-user slice
+(`filtered_by_user_id != null`) is not comparable with a full snapshot and is
+rejected. Imported snapshots count against the same per-pair limit.
+
+### `GET /api/rules/snapshots/diff?a=<id|current>&b=<id|current>`
+
+`a`/`b` reference a saved snapshot id or the literal `current` (the live
+snapshot, loaded lazily). `a === b` is a valid empty diff. UI convention: A is
+"before", B is "after"; `added` means "present in B only".
+
+```ts
+type DiffTable =
+  | "fw_pre_filter" | "fw_forward" | "fw_input" | "fw_dnat" | "fw_snat"
+  | "hw_mac" | "hw_src_ip" | "hw_dst_ip" | "hw_src_dst_ip"
+  | "cf_rules" | "shaper_rules" | "ips_bypass"
+  | "aliases" | "users";
+
+type DiffKind = "added" | "removed" | "changed" | "moved";
+
+interface DiffEntry {
+  kind: DiffKind;
+  id: string;
+  name: string | null; // display name for the UI; always null in anonymized mode
+  position_a: number | null; // 1-based; null for added
+  position_b: number | null; // null for removed
+  changed_fields?: Array<{ field: string; from: unknown; to: unknown }>;
+}
+
+// response
+{
+  binding: { admin: string; server: string };
+  a: { id: string | "current"; created_at: string; rules_updated_at: string;
+       comment: string | null; source: "manual" | "imported" | "current";
+       foreign_server?: boolean }; // present only for imported sides
+  b: { /* same shape as a */ };
+  generated_at: string;
+  // "full" — both sides are live snapshots; "anonymized" — at least one side
+  // was imported: both sides are normalized to the anonymized export form,
+  // display fields and user identification are excluded from comparison. The
+  // UI must show a banner for "anonymized".
+  comparison_mode: "full" | "anonymized";
+  summary: { added: number; removed: number; changed: number; moved: number;
+             states_changed: number; tables_changed: number };
+  tables: Array<{ table: DiffTable; entries: DiffEntry[] }>; // only non-empty
+  states: Array<{ key: string; from: unknown; to: unknown }>;
+}
+```
+
+Semantics:
+
+- Rules are matched by `id`; `moved` uses the longest common subsequence of
+  ids, so inserting one rule does not report every other rule as moved. A rule
+  both changed and repositioned is a single `changed` entry with both
+  positions.
+- `changed_fields` contains normalized known-schema values only; vendor extras
+  never produce differences.
+- `states` keys (`cf_state.enabled`, `hw_settings.mode`, `av_enabled`, ...)
+  are an open vocabulary like `reason_key`: the frontend must tolerate unknown
+  keys. A hardware section absent on one side makes the `hw_*` tables
+  incomparable — they are skipped and only the `hw_settings.mode` state entry
+  is reported.
+- In anonymized mode positional `user-N`/`group-N` labels may drift when the
+  user list changed between export and now; the `users` table is only
+  approximately reliable there and the UI banner must say so.
+- An unknown snapshot id in `a`/`b` answers `404 not_found`.
 
 ## Contract invariants
 

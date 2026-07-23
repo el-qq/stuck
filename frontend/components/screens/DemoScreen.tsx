@@ -4,9 +4,19 @@ import React, { useRef, useState } from "react";
 import { useI18n } from "@/i18n";
 import { PipelineOrder } from "../trace/PipelineOrder";
 import { DomainType, TraceResponse } from "@/lib/types";
-import { DEMO_HYGIENE_REPORT, DEMO_TARGETS, DEFAULT_DEMO_TARGET, DEMO_USERS, runDemoTrace } from "@/lib/demoData";
+import {
+  DEMO_HYGIENE_REPORT,
+  DEMO_SNAPSHOT_DIFF,
+  DEMO_SNAPSHOTS,
+  DEMO_SNAPSHOTS_LIMIT,
+  DEMO_TARGETS,
+  DEFAULT_DEMO_TARGET,
+  DEMO_USERS,
+  runDemoTrace,
+} from "@/lib/demoData";
 import { SERVICE_PRESETS } from "@/lib/servicePresets";
 import { HygieneCounters, HygieneTable, RuleHygieneReportView, hygieneBadgeColor } from "../rules/RuleHygieneReportView";
+import { diffBadgeColor, SnapshotDiffView } from "../rules/SnapshotDiffView";
 import { Header } from "../shell/Header";
 import { SettingsModal } from "../shell/SettingsModal";
 import { WorkspaceTabs } from "../shell/WorkspaceTabs";
@@ -25,9 +35,10 @@ export function DemoScreen({ onExit }: { onExit: () => void }) {
   const { t, locale } = useI18n();
 
   const [settingsOpen, setSettingsOpen] = useState(false);
-  // Top-level workspace tab: the traffic check or the offline rule-hygiene
-  // showcase (lib/demoData.ts) — no /api/* calls either way.
-  const [tab, setTab] = useState<"check" | "hygiene">("check");
+  // Top-level workspace tab: the traffic check, the offline rule-hygiene
+  // showcase, or the offline rule-snapshots/diff showcase (lib/demoData.ts) —
+  // no /api/* calls in any of them.
+  const [tab, setTab] = useState<"check" | "hygiene" | "snapshots">("check");
   // Left-panel section navigation of the hygiene tab: all chains or one chain.
   const [hygieneSection, setHygieneSection] = useState<"all" | HygieneTable>("all");
   const [mode, setMode] = useState<"all" | "user">("all");
@@ -52,6 +63,13 @@ export function DemoScreen({ onExit }: { onExit: () => void }) {
     setResult(runDemoTrace(selectedTarget, user, t));
     setRunKey((k) => k + 1);
   }
+
+  const demoDiffChangeCount =
+    DEMO_SNAPSHOT_DIFF.summary.added +
+    DEMO_SNAPSHOT_DIFF.summary.removed +
+    DEMO_SNAPSHOT_DIFF.summary.changed +
+    DEMO_SNAPSHOT_DIFF.summary.moved +
+    DEMO_SNAPSHOT_DIFF.summary.states_changed;
 
   // Top-level sections. The bar itself is sticky under the header
   // (WorkspaceTabs), so scrolling the results never hides the tabs.
@@ -82,6 +100,21 @@ export function DemoScreen({ onExit }: { onExit: () => void }) {
           </span>
         )}
       </button>
+      <button
+        role="tab"
+        id="tab-snapshots"
+        aria-selected={tab === "snapshots"}
+        aria-controls="tabpanel-snapshots"
+        className="workspace-tabs__tab"
+        onClick={() => setTab("snapshots")}
+      >
+        {t("snapshots.title")}
+        {demoDiffChangeCount > 0 && (
+          <span className="workspace-tabs__badge" style={{ background: diffBadgeColor(DEMO_SNAPSHOT_DIFF.summary) }}>
+            {demoDiffChangeCount}
+          </span>
+        )}
+      </button>
     </WorkspaceTabs>
   );
 
@@ -97,69 +130,142 @@ export function DemoScreen({ onExit }: { onExit: () => void }) {
 
       {workspaceTabs}
 
-      {/* Both tabpanels stay MOUNTED and toggle via display — unmounting the
-          check panel would reset useStageReveal and replay the animation on
-          every return to the tab. display:none also hides it from a11y. */}
-      <main
-        role="tabpanel"
-        id="tabpanel-hygiene"
-        aria-labelledby="tab-hygiene"
-        className="hygiene-workspace"
-        style={tab === "hygiene" ? undefined : { display: "none" }}
-      >
-        {/* Left panel mirrors the check tab: summary + section navigation. */}
-        <aside className="hygiene-workspace__controls">
-          <div className="check-panel">
-            <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 6 }}>{t("hygiene.title")}</div>
-            <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 14 }}>
-              {t("hygiene.updated", { time: formatDemoTime(DEMO_HYGIENE_REPORT.rules_updated_at, locale) })}
+      {/* The check tabpanel below stays MOUNTED and toggles via display —
+          unmounting it would reset useStageReveal and replay the animation on
+          every return to the tab. Hygiene and snapshots have no such
+          animation state, so each is conditionally rendered (only the active
+          one is ever in the DOM) — keeping both mounted at once would
+          duplicate the group labels they share (e.g. "Firewall · Forward"),
+          breaking strict-mode text queries. */}
+      {tab === "hygiene" && (
+        <main role="tabpanel" id="tabpanel-hygiene" aria-labelledby="tab-hygiene" className="hygiene-workspace">
+          {/* Left panel mirrors the check tab: summary + section navigation. */}
+          <aside className="hygiene-workspace__controls">
+            <div className="check-panel">
+              <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 6 }}>{t("hygiene.title")}</div>
+              <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 14 }}>
+                {t("hygiene.updated", { time: formatDemoTime(DEMO_HYGIENE_REPORT.rules_updated_at, locale) })}
+              </div>
+
+              {/* The subtitle sits right before the severity counters. */}
+              <div style={{ fontSize: 12.5, color: "var(--muted)", lineHeight: 1.5, marginBottom: 10 }}>{t("hygiene.subtitle")}</div>
+              <HygieneCounters summary={DEMO_HYGIENE_REPORT.summary} />
+
+              <div style={{ height: 1, background: "var(--line)", margin: "16px 0" }} />
+
+              <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--muted)", marginBottom: 8 }}>{t("hygiene.sections")}</div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                <button className="hygiene-nav__item" aria-pressed={hygieneSection === "all"} onClick={() => setHygieneSection("all")}>
+                  {t("hygiene.sectionAll")}
+                  <span className="hygiene-nav__count">{DEMO_HYGIENE_REPORT.summary.total}</span>
+                </button>
+                <div style={{ fontSize: 12, fontWeight: 600, color: "var(--muted)", margin: "6px 0 2px" }}>{t("hygiene.sectionFirewall")}</div>
+                <button
+                  className="hygiene-nav__item hygiene-nav__item--child"
+                  aria-pressed={hygieneSection === "fw_forward"}
+                  onClick={() => setHygieneSection("fw_forward")}
+                >
+                  {t("hygiene.tableForward")}
+                  <span className="hygiene-nav__count">{hygieneTableCount("fw_forward")}</span>
+                </button>
+                <button
+                  className="hygiene-nav__item hygiene-nav__item--child"
+                  aria-pressed={hygieneSection === "fw_input"}
+                  onClick={() => setHygieneSection("fw_input")}
+                >
+                  {t("hygiene.tableInput")}
+                  <span className="hygiene-nav__count">{hygieneTableCount("fw_input")}</span>
+                </button>
+                <button
+                  className="hygiene-nav__item"
+                  style={{ marginTop: 6 }}
+                  aria-pressed={hygieneSection === "hw_filter"}
+                  onClick={() => setHygieneSection("hw_filter")}
+                >
+                  {t("stage.hw_filter")}
+                  <span className="hygiene-nav__count">{hygieneTableCount("hw_filter")}</span>
+                </button>
+              </div>
             </div>
+          </aside>
+          <section className="hygiene-workspace__result">
+            <RuleHygieneReportView report={DEMO_HYGIENE_REPORT} showCounters={false} filterTable={hygieneSection === "all" ? null : hygieneSection} />
+          </section>
+        </main>
+      )}
 
-            {/* The subtitle sits right before the severity counters. */}
-            <div style={{ fontSize: 12.5, color: "var(--muted)", lineHeight: 1.5, marginBottom: 10 }}>{t("hygiene.subtitle")}</div>
-            <HygieneCounters summary={DEMO_HYGIENE_REPORT.summary} />
+      {/* Offline rule-snapshots/diff showcase: a static saved list (create /
+          delete / import require a live NGFW connection, so this demo shows
+          them disabled) and a fixed comparison illustrating every diff kind
+          plus both the "anonymized" and "foreign_server" banners at once. */}
+      {tab === "snapshots" && (
+        <main role="tabpanel" id="tabpanel-snapshots" aria-labelledby="tab-snapshots" className="hygiene-workspace">
+          <aside className="hygiene-workspace__controls">
+            <div className="check-panel">
+              <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 6 }}>{t("snapshots.title")}</div>
+              <div style={{ fontSize: 12.5, color: "var(--muted)", lineHeight: 1.5, marginBottom: 14 }}>{t("snapshots.subtitle")}</div>
 
-            <div style={{ height: 1, background: "var(--line)", margin: "16px 0" }} />
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+                <span style={{ fontSize: 12.5, fontWeight: 600, color: "var(--muted)" }}>{t("snapshots.listTitle")}</span>
+                <span className="hygiene-nav__count">{t("snapshots.limitCounter", { count: DEMO_SNAPSHOTS.length, limit: DEMO_SNAPSHOTS_LIMIT })}</span>
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 14 }}>
+                {DEMO_SNAPSHOTS.map((s) => (
+                  <div
+                    key={s.id}
+                    style={{
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: 2,
+                      border: "1px solid var(--line)",
+                      borderRadius: "var(--radius-sm)",
+                      padding: "8px 10px",
+                    }}
+                  >
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                      <span style={{ fontSize: 12.5, fontWeight: 700 }}>{formatDemoTime(s.created_at, locale)}</span>
+                      <span
+                        style={{
+                          fontSize: 10.5,
+                          fontWeight: 700,
+                          color: s.source === "imported" ? "var(--info)" : "var(--muted)",
+                          border: `1px solid ${s.source === "imported" ? "var(--info)" : "var(--muted)"}`,
+                          borderRadius: 4,
+                          padding: "1px 5px",
+                        }}
+                      >
+                        {s.source === "imported" ? t("snapshots.sourceImported") : t("snapshots.sourceManual")}
+                      </span>
+                      {s.foreign_server && (
+                        <span
+                          style={{
+                            fontSize: 10.5,
+                            fontWeight: 700,
+                            color: "var(--warn)",
+                            border: "1px solid var(--warn)",
+                            borderRadius: 4,
+                            padding: "1px 5px",
+                          }}
+                        >
+                          {t("snapshots.foreignBadge")}
+                        </span>
+                      )}
+                    </div>
+                    {s.comment && <div style={{ fontSize: 12, color: "var(--muted)" }}>{s.comment}</div>}
+                  </div>
+                ))}
+              </div>
 
-            <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--muted)", marginBottom: 8 }}>{t("hygiene.sections")}</div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-              <button className="hygiene-nav__item" aria-pressed={hygieneSection === "all"} onClick={() => setHygieneSection("all")}>
-                {t("hygiene.sectionAll")}
-                <span className="hygiene-nav__count">{DEMO_HYGIENE_REPORT.summary.total}</span>
-              </button>
-              <div style={{ fontSize: 12, fontWeight: 600, color: "var(--muted)", margin: "6px 0 2px" }}>{t("hygiene.sectionFirewall")}</div>
-              <button
-                className="hygiene-nav__item hygiene-nav__item--child"
-                aria-pressed={hygieneSection === "fw_forward"}
-                onClick={() => setHygieneSection("fw_forward")}
-              >
-                {t("hygiene.tableForward")}
-                <span className="hygiene-nav__count">{hygieneTableCount("fw_forward")}</span>
-              </button>
-              <button
-                className="hygiene-nav__item hygiene-nav__item--child"
-                aria-pressed={hygieneSection === "fw_input"}
-                onClick={() => setHygieneSection("fw_input")}
-              >
-                {t("hygiene.tableInput")}
-                <span className="hygiene-nav__count">{hygieneTableCount("fw_input")}</span>
-              </button>
-              <button
-                className="hygiene-nav__item"
-                style={{ marginTop: 6 }}
-                aria-pressed={hygieneSection === "hw_filter"}
-                onClick={() => setHygieneSection("hw_filter")}
-              >
-                {t("stage.hw_filter")}
-                <span className="hygiene-nav__count">{hygieneTableCount("hw_filter")}</span>
-              </button>
+              <div style={{ height: 1, background: "var(--line)", margin: "0 0 14px" }} />
+
+              <div style={{ fontSize: 12, color: "var(--muted)", lineHeight: 1.5 }}>{t("demo.bannerText")}</div>
             </div>
-          </div>
-        </aside>
-        <section className="hygiene-workspace__result">
-          <RuleHygieneReportView report={DEMO_HYGIENE_REPORT} showCounters={false} filterTable={hygieneSection === "all" ? null : hygieneSection} />
-        </section>
-      </main>
+          </aside>
+          <section className="hygiene-workspace__result">
+            <SnapshotDiffView diff={DEMO_SNAPSHOT_DIFF} />
+          </section>
+        </main>
+      )}
 
       <div role="tabpanel" id="tabpanel-check" aria-labelledby="tab-check" style={{ display: tab === "check" ? "contents" : "none" }}>
         <CheckWorkspace

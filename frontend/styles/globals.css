@@ -336,9 +336,12 @@ button {
   overflow-wrap: anywhere;
 }
 
-/* Top-level workspace tabs (check / rule hygiene): a standalone bar below the
-   header, sticky right under it so scrolling never hides the tabs. Its height
-   is published as --stuck-tabs-h (WorkspaceTabs.tsx). */
+/* Top-level workspace tabs (check / rule hygiene / rule snapshots): a
+   standalone bar below the header, sticky right under it so scrolling never
+   hides the tabs. Its height is published as --stuck-tabs-h
+   (WorkspaceTabs.tsx). With up to three tabs it may not fit narrow viewports
+   — it scrolls horizontally WITHIN ITSELF (invariant §12: wide content gets
+   its own overflow-x container) instead of overflowing the page body. */
 .workspace-tabs {
   display: flex;
   gap: 8px;
@@ -350,6 +353,8 @@ button {
   top: var(--stuck-header-h, 64px);
   z-index: 15;
   background: var(--bg);
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .workspace-tabs__tab {
@@ -357,6 +362,8 @@ button {
   align-items: center;
   justify-content: center;
   gap: 8px;
+  flex: 0 0 auto;
+  white-space: nowrap;
   border: 1px solid var(--line);
   background: var(--panel);
   color: var(--muted);
@@ -1139,9 +1146,10 @@ button {
     padding: 10px 12px;
   }
 
-  /* Two tabs split the width; ≥44px tall for comfortable touch targets. */
+  /* Natural width (not stretched to split the bar — with up to three tabs
+     that would squeeze/wrap them) — the bar itself scrolls horizontally if
+     they don't all fit. ≥44px tall for comfortable touch targets. */
   .workspace-tabs__tab {
-    flex: 1;
     min-height: 44px;
   }
 

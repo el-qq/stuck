@@ -76,6 +76,14 @@ class Settings(BaseSettings):
     # rules) over the current snapshot. Read-only; disabling answers 404 and
     # hides the panel in the UI, exactly like the rules export.
     STUCK_ENABLE_RULE_HYGIENE: bool = True
+    # Named in-memory rule snapshots and the snapshot diff panel
+    # (docs/source/snapshots.md). Read-only; disabling answers 404 on every
+    # snapshot endpoint and hides the panel in the UI, like export/hygiene.
+    STUCK_ENABLE_RULE_SNAPSHOTS: bool = True
+    # Maximum saved snapshots per (admin, server) pair — one shared limit for
+    # manual and imported snapshots (решение В11). Reaching it is an explicit
+    # 409 snapshot_limit_reached, never a silent eviction (решение В4).
+    STUCK_SNAPSHOT_LIMIT_PER_BINDING: int = Field(default=10, ge=1, le=50)
     # Opt-in login policy: accept only NGFW administrators with the built-in
     # read-only role (predefined_admin_readonly). Any other role — including
     # the full administrator — is rejected after a successful NGFW
