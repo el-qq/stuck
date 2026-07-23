@@ -1,9 +1,11 @@
 "use client";
 
 import React, { DragEvent, useRef } from "react";
+import { useDemoUnavailableNotice } from "@/hooks/useDemoUnavailableNotice";
 import { useI18n } from "@/i18n";
 import { SnapshotDescriptor, SnapshotOrCurrentId } from "@/lib/types";
-import { formatSnapshotDate, importedSnapshotFileName, SnapshotChoice, SnapshotComparisonSide, snapshotCountsTotal } from "./snapshotComparison";
+import { SnapshotChoice, SnapshotComparisonSide } from "./snapshotComparison";
+import { presentSnapshotChoice } from "./snapshotChoicePresentation";
 
 interface Props {
   /** Includes the pinned `current` state as its first item. */
@@ -58,6 +60,7 @@ export function SnapshotsListPanel({
   backendActionsUnavailable = false,
 }: Props) {
   const { t } = useI18n();
+  const showDemoUnavailableNotice = useDemoUnavailableNotice(backendActionsUnavailable);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const snapshots = choices.filter((choice): choice is SnapshotDescriptor => choice.source !== "current");
 
@@ -102,7 +105,8 @@ export function SnapshotsListPanel({
         value={comment}
         onChange={(event) => onCommentChange(event.target.value)}
         disabled={backendActionsUnavailable}
-        placeholder={t("snapshots.commentPlaceholder")}
+        aria-label={t("snapshots.namePlaceholder")}
+        placeholder={t("snapshots.namePlaceholder")}
         maxLength={200}
         style={{ ...inputStyle, marginBottom: 8 }}
       />
@@ -110,8 +114,9 @@ export function SnapshotsListPanel({
         <button
           type="button"
           className="btn-primary"
-          onClick={backendActionsUnavailable ? undefined : onCreate}
-          disabled={backendActionsUnavailable || creating || loading}
+          onClick={backendActionsUnavailable ? showDemoUnavailableNotice : onCreate}
+          disabled={creating || loading}
+          aria-disabled={backendActionsUnavailable || undefined}
           title={backendActionsUnavailable ? t("demo.backendActionUnavailable") : undefined}
           data-demo-unavailable={backendActionsUnavailable || undefined}
           style={actionButtonStyle}
@@ -121,8 +126,9 @@ export function SnapshotsListPanel({
         <button
           type="button"
           className="btn-outline"
-          onClick={backendActionsUnavailable ? undefined : () => fileInputRef.current?.click()}
-          disabled={backendActionsUnavailable || importing}
+          onClick={backendActionsUnavailable ? showDemoUnavailableNotice : () => fileInputRef.current?.click()}
+          disabled={importing}
+          aria-disabled={backendActionsUnavailable || undefined}
           title={backendActionsUnavailable ? t("demo.backendActionUnavailable") : undefined}
           data-demo-unavailable={backendActionsUnavailable || undefined}
           style={actionButtonStyle}
@@ -185,15 +191,14 @@ function SnapshotChoiceRow({
   backendActionsUnavailable: boolean;
 }) {
   const { t, locale } = useI18n();
-  const total = snapshotCountsTotal(choice.counts);
-  const fileName = importedSnapshotFileName(choice);
-  const itemLabel = choice.source === "current" ? t("snapshots.current") : formatSnapshotDate(choice.created_at, locale);
-  // A date alone makes adjacent snapshots indistinguishable to screen-reader
-  // users. Keep the visible compact row, but expose its useful identity too.
-  const accessibleLabel = [itemLabel, choice.comment, fileName].filter(Boolean).join(", ");
+  const showDemoUnavailableNotice = useDemoUnavailableNotice(backendActionsUnavailable);
+  const presentation = presentSnapshotChoice(choice, locale, t("snapshots.current"));
+  const accessibleLabel = [presentation.title, presentation.imported ? t("snapshots.sourceImported") : null, presentation.date, presentation.fileName]
+    .filter(Boolean)
+    .join(", ");
 
   return (
-    <div className="snapshot-picker__row" data-before={isBefore} data-after={isAfter}>
+    <div className="snapshot-picker__row" data-before={isBefore} data-after={isAfter} data-active-side={activeSide}>
       <button
         type="button"
         draggable
@@ -203,31 +208,33 @@ function SnapshotChoiceRow({
         aria-label={accessibleLabel}
       >
         <span className="snapshot-picker__item-head">
-          <span className="snapshot-picker__item-date">{itemLabel}</span>
+          <span className="snapshot-picker__item-title">{presentation.title}</span>
           <SelectionBadges before={isBefore} after={isAfter} />
         </span>
-        {choice.source !== "current" && (
+        {presentation.imported && (
           <span className="snapshot-picker__badges">
-            <SourceBadge source={choice.source} />
-            {choice.foreign_server && <span className="snapshot-picker__badge snapshot-picker__badge--foreign">{t("snapshots.foreignBadge")}</span>}
+            <span className="snapshot-picker__badge" data-imported={true}>
+              {t("snapshots.sourceImported")}
+            </span>
+            {presentation.foreignServer && <span className="snapshot-picker__badge snapshot-picker__badge--foreign">{t("snapshots.foreignBadge")}</span>}
           </span>
         )}
-        {choice.source !== "current" && choice.comment && <span className="snapshot-picker__comment">{choice.comment}</span>}
-        {fileName && (
-          <span className="snapshot-picker__comment" title={fileName}>
-            {fileName}
+        {presentation.date && <span className="snapshot-picker__count">{presentation.date}</span>}
+        {presentation.fileName && (
+          <span className="snapshot-picker__comment" title={presentation.fileName}>
+            {presentation.fileName}
           </span>
         )}
-        {choice.rules_updated_at && <span className="snapshot-picker__count">{formatSnapshotDate(choice.rules_updated_at, locale)}</span>}
-        {total > 0 && <span className="snapshot-picker__count">{t("snapshots.rowCounts", { count: total })}</span>}
+        {presentation.total > 0 && <span className="snapshot-picker__count">{t("snapshots.rowCounts", { count: presentation.total })}</span>}
       </button>
       {choice.source !== "current" && (
         <button
           type="button"
           className="btn-ghost snapshot-picker__delete"
           aria-label={t("snapshots.delete")}
-          onClick={backendActionsUnavailable ? undefined : () => onDeleteRequest(choice)}
-          disabled={backendActionsUnavailable || deleting}
+          onClick={backendActionsUnavailable ? showDemoUnavailableNotice : () => onDeleteRequest(choice)}
+          disabled={deleting}
+          aria-disabled={backendActionsUnavailable || undefined}
           title={backendActionsUnavailable ? t("demo.backendActionUnavailable") : t("snapshots.delete")}
           data-demo-unavailable={backendActionsUnavailable || undefined}
         >
@@ -245,15 +252,6 @@ function SelectionBadges({ before, after }: { before: boolean; after: boolean })
     <span className="snapshot-picker__selection">
       {before && <span data-side="before">{t("snapshots.before")}</span>}
       {after && <span data-side="after">{t("snapshots.after")}</span>}
-    </span>
-  );
-}
-
-function SourceBadge({ source }: { source: SnapshotDescriptor["source"] }) {
-  const { t } = useI18n();
-  return (
-    <span className="snapshot-picker__badge" data-imported={source === "imported"}>
-      {source === "imported" ? t("snapshots.sourceImported") : t("snapshots.sourceManual")}
     </span>
   );
 }

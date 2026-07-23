@@ -120,7 +120,7 @@ export const ky: Record<keyof typeof en, string> = {
   "snapshots.current": "Учурдагы абал",
   "snapshots.listTitle": "Сакталган снапшоттор",
   "snapshots.limitCounter": "{limit} ичинен {count}",
-  "snapshots.commentPlaceholder": "Комментарий (милдеттүү эмес)",
+  "snapshots.namePlaceholder": "Аталышы (милдеттүү эмес)",
   "snapshots.create": "Снапшот түзүү",
   "snapshots.creating": "Түзүлүүдө…",
   "snapshots.import": "Файлдан импорттоо",

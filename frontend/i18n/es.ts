@@ -130,7 +130,7 @@ export const es: Record<keyof typeof en, string> = {
   "snapshots.current": "Estado actual",
   "snapshots.listTitle": "Instantáneas guardadas",
   "snapshots.limitCounter": "{count} de {limit}",
-  "snapshots.commentPlaceholder": "Comentario (opcional)",
+  "snapshots.namePlaceholder": "Nombre (opcional)",
   "snapshots.create": "Crear instantánea",
   "snapshots.creating": "Creando…",
   "snapshots.import": "Importar desde archivo",

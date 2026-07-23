@@ -127,7 +127,7 @@ export const kk: Record<keyof typeof en, string> = {
   "snapshots.current": "Ағымдағы күй",
   "snapshots.listTitle": "Сақталған снапшоттар",
   "snapshots.limitCounter": "{limit} ішінен {count}",
-  "snapshots.commentPlaceholder": "Түсініктеме (міндетті емес)",
+  "snapshots.namePlaceholder": "Атауы (міндетті емес)",
   "snapshots.create": "Снапшот жасау",
   "snapshots.creating": "Жасалуда…",
   "snapshots.import": "Файлдан импорттау",

@@ -459,19 +459,29 @@ button {
   background: var(--panel2);
 }
 
-.snapshot-picker__row[data-before="true"] {
+.snapshot-picker__row[data-before="true"][data-after="false"] {
   border-color: var(--accent);
-  background: var(--accent-soft);
 }
 
-.snapshot-picker__row[data-after="true"] {
-  box-shadow: inset -3px 0 var(--ok);
+.snapshot-picker__row[data-before="false"][data-after="true"] {
+  border-color: var(--ok);
 }
 
 .snapshot-picker__row[data-before="true"][data-after="true"] {
-  box-shadow:
-    inset -3px 0 var(--ok),
-    inset 3px 0 var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 50%, var(--ok));
+}
+
+/* The selected cards retain their colored border and badge. Only the side
+   currently being populated gets a colored background, so the list remains
+   a clear answer to “what will this next click change?”. */
+.snapshot-picker__row[data-active-side="before"][data-before="true"] {
+  background: var(--accent-soft);
+  box-shadow: inset 3px 0 var(--accent);
+}
+
+.snapshot-picker__row[data-active-side="after"][data-after="true"] {
+  background: var(--ok-soft);
+  box-shadow: inset -3px 0 var(--ok);
 }
 
 .snapshot-picker__item {
@@ -498,11 +508,17 @@ button {
   min-width: 0;
 }
 
+/* Source labels use the same compact horizontal row in the picker and the
+   Before/After cards. */
+.snapshot-picker__badges {
+  flex-wrap: nowrap;
+}
+
 .snapshot-picker__item-head {
   justify-content: space-between;
 }
 
-.snapshot-picker__item-date {
+.snapshot-picker__item-title {
   min-width: 0;
   overflow: hidden;
   font-size: 12.5px;
@@ -639,6 +655,29 @@ button {
   font-size: 11.5px;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.snapshot-comparison__target-source {
+  border: 1px solid var(--info);
+  border-radius: 999px;
+  color: var(--info);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.2;
+  padding: 2px 6px;
+}
+
+.snapshot-comparison__target-badges {
+  align-self: flex-start;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  gap: 4px;
+}
+
+.snapshot-comparison__target-source[data-foreign="true"] {
+  border-color: var(--warn);
+  color: var(--warn);
 }
 
 .snapshot-comparison__swap {
@@ -1543,6 +1582,29 @@ button {
 .btn-primary:disabled {
   cursor: not-allowed;
   opacity: 0.6;
+}
+
+/* Demo controls never receive a backend callback. They use aria-disabled
+   instead of native disabled so a click can explain why the action is absent. */
+.btn-primary[aria-disabled="true"],
+.btn-soft[aria-disabled="true"],
+.btn-outline[aria-disabled="true"],
+.btn-ghost[aria-disabled="true"] {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.btn-primary[aria-disabled="true"]:hover,
+.btn-soft[aria-disabled="true"]:hover {
+  filter: none;
+}
+
+.btn-outline[aria-disabled="true"]:hover {
+  border-color: var(--line);
+}
+
+.btn-ghost[aria-disabled="true"]:hover {
+  color: var(--muted);
 }
 
 .btn-soft {

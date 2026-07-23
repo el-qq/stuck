@@ -126,7 +126,7 @@ export const ru: Record<keyof typeof en, string> = {
   "snapshots.current": "Текущее состояние",
   "snapshots.listTitle": "Сохранённые снапшоты",
   "snapshots.limitCounter": "{count} из {limit}",
-  "snapshots.commentPlaceholder": "Комментарий (необязательно)",
+  "snapshots.namePlaceholder": "Название (необязательно)",
   "snapshots.create": "Создать снапшот",
   "snapshots.creating": "Создание…",
   "snapshots.import": "Импорт из файла",

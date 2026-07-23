@@ -126,7 +126,7 @@ export const fr: Record<keyof typeof en, string> = {
   "snapshots.current": "État actuel",
   "snapshots.listTitle": "Instantanés enregistrés",
   "snapshots.limitCounter": "{count} sur {limit}",
-  "snapshots.commentPlaceholder": "Commentaire (facultatif)",
+  "snapshots.namePlaceholder": "Nom (facultatif)",
   "snapshots.create": "Créer un instantané",
   "snapshots.creating": "Création…",
   "snapshots.import": "Importer depuis un fichier",
