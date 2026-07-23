@@ -1,12 +1,12 @@
 import React, { useState } from "react";
 import { useSession } from "@/contexts/SessionContext";
 import { useI18n } from "@/i18n";
-import { LoginScreen } from "@/components/LoginScreen";
-import { MainScreen } from "@/components/MainScreen";
-import { DemoScreen } from "@/components/DemoScreen";
-import { TwoFactorForm } from "@/components/TwoFactorForm";
-import { Header } from "@/components/Header";
-import { SettingsModal } from "@/components/SettingsModal";
+import { LoginScreen } from "@/components/auth/LoginScreen";
+import { TwoFactorForm } from "@/components/auth/TwoFactorForm";
+import { DemoScreen } from "@/components/screens/DemoScreen";
+import { MainScreen } from "@/components/screens/MainScreen";
+import { Header } from "@/components/shell/Header";
+import { SettingsModal } from "@/components/shell/SettingsModal";
 
 export default function App() {
   const { status, twoFactorPending, completeTwoFactor, cancelTwoFactor } = useSession();

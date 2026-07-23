@@ -2,17 +2,17 @@
 
 import React, { useRef, useState } from "react";
 import { useI18n } from "@/i18n";
-import { PipelineOrder } from "./PipelineOrder";
+import { PipelineOrder } from "../trace/PipelineOrder";
 import { DomainType, TraceResponse } from "@/lib/types";
 import { DEMO_HYGIENE_REPORT, DEMO_TARGETS, DEFAULT_DEMO_TARGET, DEMO_USERS, runDemoTrace } from "@/lib/demoData";
 import { SERVICE_PRESETS } from "@/lib/servicePresets";
-import { Header } from "./Header";
-import { WorkspaceTabs } from "./WorkspaceTabs";
-import { HygieneCounters, HygieneTable, RuleHygieneReportView, hygieneBadgeColor } from "./RuleHygieneReportView";
-import { SettingsModal } from "./SettingsModal";
-import { UserPicker } from "./UserPicker";
-import { TraceResult } from "./TraceResult";
-import { CheckWorkspace, EmptyTraceResult } from "./CheckWorkspace";
+import { HygieneCounters, HygieneTable, RuleHygieneReportView, hygieneBadgeColor } from "../rules/RuleHygieneReportView";
+import { Header } from "../shell/Header";
+import { SettingsModal } from "../shell/SettingsModal";
+import { WorkspaceTabs } from "../shell/WorkspaceTabs";
+import { CheckWorkspace, EmptyTraceResult } from "../trace/CheckWorkspace";
+import { TraceResult } from "../trace/TraceResult";
+import { UserPicker } from "../trace/UserPicker";
 import { useMobileResultScroll } from "@/hooks/useMobileResultScroll";
 
 /**

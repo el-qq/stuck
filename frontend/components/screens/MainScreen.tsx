@@ -9,16 +9,16 @@ import * as api from "@/lib/api";
 import { ApiError, toApiError } from "@/lib/errors";
 import { RuleHygieneReport, RulesRefreshResponse, TraceResponse } from "@/lib/types";
 import { downloadBlob, defaultRulesExportFilename } from "@/lib/download";
-import { Header } from "./Header";
-import { WorkspaceTabs } from "./WorkspaceTabs";
-import { SettingsModal } from "./SettingsModal";
-import { RulesRefreshModal } from "./RulesRefreshModal";
-import { RulesExportConfirmModal } from "./RulesExportConfirmModal";
-import { HygieneCounters, HygieneTable, RuleHygieneReportView, hygieneBadgeColor } from "./RuleHygieneReportView";
-import { AccessDiagnosticModal } from "./AccessDiagnosticModal";
-import { TraceForm, TraceSubmitPayload } from "./TraceForm";
-import { TraceResult } from "./TraceResult";
-import { CheckWorkspace, EmptyTraceResult } from "./CheckWorkspace";
+import { AccessDiagnosticModal } from "../auth/AccessDiagnosticModal";
+import { HygieneCounters, HygieneTable, RuleHygieneReportView, hygieneBadgeColor } from "../rules/RuleHygieneReportView";
+import { RulesExportConfirmModal } from "../rules/RulesExportConfirmModal";
+import { RulesRefreshModal } from "../rules/RulesRefreshModal";
+import { Header } from "../shell/Header";
+import { SettingsModal } from "../shell/SettingsModal";
+import { WorkspaceTabs } from "../shell/WorkspaceTabs";
+import { CheckWorkspace, EmptyTraceResult } from "../trace/CheckWorkspace";
+import { TraceForm, TraceSubmitPayload } from "../trace/TraceForm";
+import { TraceResult } from "../trace/TraceResult";
 import { useMobileResultScroll } from "@/hooks/useMobileResultScroll";
 
 export function MainScreen() {

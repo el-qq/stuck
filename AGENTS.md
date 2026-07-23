@@ -52,7 +52,11 @@ TypeScript frontend. An offline demo mirrors the UI without contacting NGFW.
 - `backend/app/ngfw/` — NGFW client, endpoint adapters and tolerant schemas.
 - `backend/app/domain/` — sessions, isolated rule snapshots and trace engine.
 - `backend/tools/ngfw_testdata/` — separate write-capable lab utility.
-- `frontend/components/` — application screens and trace presentation.
+- `frontend/components/auth/` — login, 2FA and access-diagnostic UI.
+- `frontend/components/trace/` — target, subject, pipeline and trace-result UI.
+- `frontend/components/rules/` — rules refresh/export and hygiene presentation.
+- `frontend/components/shell/` — shared header, tabs, settings and toasts.
+- `frontend/components/screens/` — top-level live and demo workspaces.
 - `frontend/lib/` — API types/client, local storage and demo data.
 - `frontend/i18n/` — all supported locale dictionaries.
 - `docs/API_CONTRACT.md` — public frontend/backend API.
@@ -73,6 +77,34 @@ TypeScript frontend. An offline demo mirrors the UI without contacting NGFW.
    their contract or invariants change.
 5. Run the narrow tests first, then the full applicable checks. Run e2e tests
    only when the change affects browser-observable behavior or e2e coverage.
+
+## Code organization and refactoring
+
+1. Organize production code by one cohesive, independently changeable
+   responsibility. Do not accumulate routing, orchestration, state management,
+   transport, parsing and presentation in one "utility" or screen file.
+2. Keep public boundaries thin and stable: API routers validate/depend on
+   request state and delegate; domain/NGFW modules expose focused operations;
+   frontend screens compose components and hooks rather than owning every
+   effect and field implementation themselves.
+3. For frontend work, move reusable or asynchronous state/effects into named
+   hooks, and render independently testable controls in focused components.
+   Keep browser storage and API access in `frontend/lib/`, never inside a
+   presentation component.
+4. For backend work, separate lifecycle/workflow logic from HTTP handlers and
+   from NGFW transport. Preserve existing public import paths with a small
+   facade when a split would otherwise break consumers or tests.
+5. Treat roughly 250 lines in a production source file as a mandatory
+   architecture-review trigger, not a mechanical limit. If it contains several
+   responsibilities or a difficult-to-follow function, split it in the same
+   change by domain. A larger cohesive adapter, schema collection or generated
+   shape is acceptable only with a clear module docstring and logical sections.
+6. Comment non-obvious invariants, security boundaries, ordered evaluation and
+   deliberately fail-closed decisions at the code that enforces them. Names and
+   small functions should explain ordinary control flow without commentary.
+7. Refactoring must retain API contracts and behavior. Do not edit tests merely
+   to accommodate a new internal layout; update imports only where a test is an
+   intentional consumer of a moved public unit.
 
 ## Commands
 
