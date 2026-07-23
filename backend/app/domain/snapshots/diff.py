@@ -7,7 +7,9 @@ on demand, never stored.
 Coverage (решение В5):
 - level 1 — every ordered rule table (first-match order is significant);
 - level 2 — module states / scalar settings (``states``);
-- level 3 — objects: ``aliases`` values and structural ``users`` fields.
+- level 3 — objects: ``aliases`` values, structural ``users`` fields and the
+  network context used by the trace engine (local DNS zones, LAN networks and
+  NGFW interface addresses).
 
 Change kinds per ordered table, matched by rule ``id``:
 - ``added``   — id only in B;
@@ -55,6 +57,19 @@ ORDERED_TABLES: tuple[tuple[str, str], ...] = (
 )
 
 _HW_TABLES = frozenset({"hw_mac", "hw_src_ip", "hw_dst_ip", "hw_src_dst_ip"})
+
+# These collections influence trace evaluation but are not first-match rule
+# chains. Their transport order is irrelevant, so they must never report a
+# misleading ``moved`` entry merely because NGFW returned the same objects in a
+# different order. The count shown for a saved snapshot includes all three.
+_UNORDERED_MODEL_TABLES: tuple[tuple[str, str], ...] = (
+    ("aliases", "aliases"),
+    ("dns_zones", "dns_zones"),
+)
+_UNORDERED_STRING_TABLES: tuple[tuple[str, str], ...] = (
+    ("lan_networks", "lan_networks"),
+    ("ngfw_addresses", "ngfw_addresses"),
+)
 
 # Level-3 users diff compares ONLY structural fields (решение В5): display
 # fields of users are never diffed, in any mode.
@@ -205,6 +220,61 @@ def _diff_ordered(
     return entries
 
 
+def _diff_unordered(
+    norms_a: list[dict[str, Any]],
+    norms_b: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Diff id-keyed objects whose order has no semantic meaning.
+
+    ``aliases``, users and network context are maps/sets from the trace
+    engine's point of view. Reporting a movement for them would imply a policy
+    order that does not exist, so this variant deliberately emits only added,
+    removed and changed entries. Positions are always ``None`` for the same
+    reason.
+    """
+    by_id_a = {str(norm.get("id")): norm for norm in norms_a}
+    by_id_b = {str(norm.get("id")): norm for norm in norms_b}
+    entries: list[dict[str, Any]] = []
+
+    for id_ in sorted(set(by_id_a) - set(by_id_b)):
+        norm = by_id_a[id_]
+        entries.append(
+            {
+                "kind": "removed",
+                "id": id_,
+                "name": _display_name(norm),
+                "position_a": None,
+                "position_b": None,
+            }
+        )
+    for id_ in sorted(set(by_id_b) - set(by_id_a)):
+        norm = by_id_b[id_]
+        entries.append(
+            {
+                "kind": "added",
+                "id": id_,
+                "name": _display_name(norm),
+                "position_a": None,
+                "position_b": None,
+            }
+        )
+    for id_ in sorted(set(by_id_a) & set(by_id_b)):
+        norm_a = by_id_a[id_]
+        norm_b = by_id_b[id_]
+        if norm_a != norm_b:
+            entries.append(
+                {
+                    "kind": "changed",
+                    "id": id_,
+                    "name": _display_name(norm_b),
+                    "position_a": None,
+                    "position_b": None,
+                    "changed_fields": _changed_fields(norm_a, norm_b),
+                }
+            )
+    return entries
+
+
 def _normalize_models(
     models: list[BaseModel],
     replacements: dict[str, str] | None,
@@ -223,6 +293,33 @@ def _normalize_users(snap: RulesSnapshot, replacements: dict[str, str] | None) -
             norm = anonymize(norm, replacements)
         norms.append(norm)
     return norms
+
+
+def _normalize_strings(values: list[str], replacements: dict[str, str] | None) -> list[dict[str, Any]]:
+    """Give an unordered string set the same id-keyed shape as objects.
+
+    LAN networks and NGFW addresses are membership collections. Sorting and
+    de-duplicating here makes the diff immune to harmless response ordering or
+    duplicate rows while still reporting every added or removed value.
+    """
+    norms = [{"id": value} for value in sorted(set(values))]
+    if replacements is not None:
+        norms = [anonymize(norm, replacements) for norm in norms]
+    return norms
+
+
+def _append_entries(
+    tables: list[dict[str, Any]],
+    summary: dict[str, int],
+    table: str,
+    entries: list[dict[str, Any]],
+) -> None:
+    """Store one non-empty table and account for its public summary kinds."""
+    if not entries:
+        return
+    tables.append({"table": table, "entries": entries})
+    for entry in entries:
+        summary[entry["kind"]] += 1
 
 
 def diff_snapshots(a: RulesSnapshot, b: RulesSnapshot, *, anonymized: bool) -> dict[str, Any]:
@@ -251,28 +348,37 @@ def diff_snapshots(a: RulesSnapshot, b: RulesSnapshot, *, anonymized: bool) -> d
             _normalize_models(getattr(a, attr), repl_a),
             _normalize_models(getattr(b, attr), repl_b),
         )
-        if entries:
-            tables.append({"table": table_key, "entries": entries})
-            for entry in entries:
-                summary[entry["kind"]] += 1
+        _append_entries(tables, summary, table_key, entries)
 
-    # Level 3: aliases (object values change rule semantics without touching
-    # the rules — решение В9 reports just the alias entry) and structural
-    # users fields.
-    alias_entries = _diff_ordered(
-        _normalize_models(list(a.aliases.values()), repl_a),
-        _normalize_models(list(b.aliases.values()), repl_b),
+    # Level 3: these are objects/sets, not ordered policies. Alias values and
+    # network context can alter a trace result even when no rule changed.
+    for table_key, attr in _UNORDERED_MODEL_TABLES:
+        models_a = list(a.aliases.values()) if attr == "aliases" else getattr(a, attr)
+        models_b = list(b.aliases.values()) if attr == "aliases" else getattr(b, attr)
+        _append_entries(
+            tables,
+            summary,
+            table_key,
+            _diff_unordered(_normalize_models(models_a, repl_a), _normalize_models(models_b, repl_b)),
+        )
+
+    _append_entries(
+        tables,
+        summary,
+        "users",
+        _diff_unordered(_normalize_users(a, repl_a), _normalize_users(b, repl_b)),
     )
-    if alias_entries:
-        tables.append({"table": "aliases", "entries": alias_entries})
-        for entry in alias_entries:
-            summary[entry["kind"]] += 1
 
-    user_entries = _diff_ordered(_normalize_users(a, repl_a), _normalize_users(b, repl_b))
-    if user_entries:
-        tables.append({"table": "users", "entries": user_entries})
-        for entry in user_entries:
-            summary[entry["kind"]] += 1
+    for table_key, attr in _UNORDERED_STRING_TABLES:
+        _append_entries(
+            tables,
+            summary,
+            table_key,
+            _diff_unordered(
+                _normalize_strings(getattr(a, attr), repl_a),
+                _normalize_strings(getattr(b, attr), repl_b),
+            ),
+        )
 
     states: list[dict[str, Any]] = []
     for key, read in _STATE_READERS:

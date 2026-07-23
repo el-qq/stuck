@@ -65,7 +65,7 @@ export function SnapshotDeleteConfirmModal({ snapshot, deleting, errorText, onCa
 
 function formatDate(iso: string, locale: string): string {
   try {
-    return new Intl.DateTimeFormat(locale, { dateStyle: "short", timeStyle: "short" }).format(new Date(iso));
+    return new Intl.DateTimeFormat(locale, { dateStyle: "short", timeStyle: "medium" }).format(new Date(iso));
   } catch {
     return iso;
   }

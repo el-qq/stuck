@@ -30,7 +30,7 @@ interface HeaderProps {
 function formatDateTime(iso: string | null, locale: string): string {
   if (!iso) return "—";
   try {
-    return new Intl.DateTimeFormat(locale, { dateStyle: "short", timeStyle: "short" }).format(new Date(iso));
+    return new Intl.DateTimeFormat(locale, { dateStyle: "short", timeStyle: "medium" }).format(new Date(iso));
   } catch {
     return "—";
   }

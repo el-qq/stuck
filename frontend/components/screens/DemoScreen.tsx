@@ -5,6 +5,7 @@ import { useI18n } from "@/i18n";
 import { PipelineOrder } from "../trace/PipelineOrder";
 import { DomainType, TraceResponse } from "@/lib/types";
 import {
+  DEMO_CURRENT_SNAPSHOT,
   DEMO_HYGIENE_REPORT,
   DEMO_SNAPSHOT_DIFF,
   DEMO_SNAPSHOTS,
@@ -16,7 +17,8 @@ import {
 } from "@/lib/demoData";
 import { SERVICE_PRESETS } from "@/lib/servicePresets";
 import { HygieneCounters, HygieneTable, RuleHygieneReportView, hygieneBadgeColor } from "../rules/RuleHygieneReportView";
-import { diffBadgeColor, SnapshotDiffView } from "../rules/SnapshotDiffView";
+import { diffBadgeColor } from "../rules/SnapshotDiffView";
+import { DemoSnapshotComparison } from "../rules/DemoSnapshotComparison";
 import { Header } from "../shell/Header";
 import { SettingsModal } from "../shell/SettingsModal";
 import { WorkspaceTabs } from "../shell/WorkspaceTabs";
@@ -194,77 +196,11 @@ export function DemoScreen({ onExit }: { onExit: () => void }) {
         </main>
       )}
 
-      {/* Offline rule-snapshots/diff showcase: a static saved list (create /
-          delete / import require a live NGFW connection, so this demo shows
-          them disabled) and a fixed comparison illustrating every diff kind
-          plus both the "anonymized" and "foreign_server" banners at once. */}
+      {/* The demo reproduces the proposed comparison interaction locally:
+          selecting a target then a snapshot works on touch; drag-and-drop is
+          an optional desktop shortcut. */}
       {tab === "snapshots" && (
-        <main role="tabpanel" id="tabpanel-snapshots" aria-labelledby="tab-snapshots" className="hygiene-workspace">
-          <aside className="hygiene-workspace__controls">
-            <div className="check-panel">
-              <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 6 }}>{t("snapshots.title")}</div>
-              <div style={{ fontSize: 12.5, color: "var(--muted)", lineHeight: 1.5, marginBottom: 14 }}>{t("snapshots.subtitle")}</div>
-
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-                <span style={{ fontSize: 12.5, fontWeight: 600, color: "var(--muted)" }}>{t("snapshots.listTitle")}</span>
-                <span className="hygiene-nav__count">{t("snapshots.limitCounter", { count: DEMO_SNAPSHOTS.length, limit: DEMO_SNAPSHOTS_LIMIT })}</span>
-              </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 14 }}>
-                {DEMO_SNAPSHOTS.map((s) => (
-                  <div
-                    key={s.id}
-                    style={{
-                      display: "flex",
-                      flexDirection: "column",
-                      gap: 2,
-                      border: "1px solid var(--line)",
-                      borderRadius: "var(--radius-sm)",
-                      padding: "8px 10px",
-                    }}
-                  >
-                    <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-                      <span style={{ fontSize: 12.5, fontWeight: 700 }}>{formatDemoTime(s.created_at, locale)}</span>
-                      <span
-                        style={{
-                          fontSize: 10.5,
-                          fontWeight: 700,
-                          color: s.source === "imported" ? "var(--info)" : "var(--muted)",
-                          border: `1px solid ${s.source === "imported" ? "var(--info)" : "var(--muted)"}`,
-                          borderRadius: 4,
-                          padding: "1px 5px",
-                        }}
-                      >
-                        {s.source === "imported" ? t("snapshots.sourceImported") : t("snapshots.sourceManual")}
-                      </span>
-                      {s.foreign_server && (
-                        <span
-                          style={{
-                            fontSize: 10.5,
-                            fontWeight: 700,
-                            color: "var(--warn)",
-                            border: "1px solid var(--warn)",
-                            borderRadius: 4,
-                            padding: "1px 5px",
-                          }}
-                        >
-                          {t("snapshots.foreignBadge")}
-                        </span>
-                      )}
-                    </div>
-                    {s.comment && <div style={{ fontSize: 12, color: "var(--muted)" }}>{s.comment}</div>}
-                  </div>
-                ))}
-              </div>
-
-              <div style={{ height: 1, background: "var(--line)", margin: "0 0 14px" }} />
-
-              <div style={{ fontSize: 12, color: "var(--muted)", lineHeight: 1.5 }}>{t("demo.bannerText")}</div>
-            </div>
-          </aside>
-          <section className="hygiene-workspace__result">
-            <SnapshotDiffView diff={DEMO_SNAPSHOT_DIFF} />
-          </section>
-        </main>
+        <DemoSnapshotComparison current={DEMO_CURRENT_SNAPSHOT} snapshots={DEMO_SNAPSHOTS} limit={DEMO_SNAPSHOTS_LIMIT} exampleDiff={DEMO_SNAPSHOT_DIFF} />
       )}
 
       <div role="tabpanel" id="tabpanel-check" aria-labelledby="tab-check" style={{ display: tab === "check" ? "contents" : "none" }}>
@@ -440,7 +376,7 @@ function hygieneTableCount(table: HygieneTable): number {
 
 function formatDemoTime(iso: string, locale: string): string {
   try {
-    return new Intl.DateTimeFormat(locale, { dateStyle: "short", timeStyle: "short" }).format(new Date(iso));
+    return new Intl.DateTimeFormat(locale, { dateStyle: "short", timeStyle: "medium" }).format(new Date(iso));
   } catch {
     return iso;
   }

@@ -94,7 +94,7 @@ TypeScript frontend. An offline demo mirrors the UI without contacting NGFW.
 4. For backend work, separate lifecycle/workflow logic from HTTP handlers and
    from NGFW transport. Preserve existing public import paths with a small
    facade when a split would otherwise break consumers or tests.
-5. Treat roughly 250 lines in a production source file as a mandatory
+5. Treat roughly 500 lines in a production source file as a mandatory
    architecture-review trigger, not a mechanical limit. If it contains several
    responsibilities or a difficult-to-follow function, split it in the same
    change by domain. A larger cohesive adapter, schema collection or generated

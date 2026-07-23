@@ -548,6 +548,7 @@ ordinary read-only snapshot load (lazy or `refresh: true`).
     exported_at?: string; // exported_at of the imported file
     server?: string; // binding.server of the imported file
     foreign_server?: boolean; // file server != current pair's server
+    file_name?: string; // safe basename supplied by the importing browser
   }>; // sorted by created_at desc
 }
 ```
@@ -590,6 +591,9 @@ binding — a differing `binding.server` only sets `foreign_server: true`.
 // request (body limit 20 MiB → 413 snapshot_import_too_large)
 {
   comment?: string;
+  // Optional browser File.name. The backend keeps only its safe basename and
+  // never uses it as a file-system path.
+  file_name?: string;
   export: unknown; // the export document (object, or its raw JSON text)
 }
 
@@ -605,7 +609,9 @@ are ignored while wrong types of required fields are rejected. Failures answer
 `400 snapshot_import_invalid` with `details.reason` in
 `json | structure | filtered_export | field_too_long`. A one-user slice
 (`filtered_by_user_id != null`) is not comparable with a full snapshot and is
-rejected. Imported snapshots count against the same per-pair limit.
+rejected. `file_name`, when present, must be printable text up to 200
+characters; path components are stripped before it is returned in the imported
+snapshot descriptor. Imported snapshots count against the same per-pair limit.
 
 ### `GET /api/rules/snapshots/diff?a=<id|current>&b=<id|current>`
 
@@ -618,7 +624,8 @@ type DiffTable =
   | "fw_pre_filter" | "fw_forward" | "fw_input" | "fw_dnat" | "fw_snat"
   | "hw_mac" | "hw_src_ip" | "hw_dst_ip" | "hw_src_dst_ip"
   | "cf_rules" | "shaper_rules" | "ips_bypass"
-  | "aliases" | "users";
+  | "aliases" | "users" | "dns_zones" | "lan_networks"
+  | "ngfw_addresses";
 
 type DiffKind = "added" | "removed" | "changed" | "moved";
 
@@ -636,7 +643,7 @@ interface DiffEntry {
   binding: { admin: string; server: string };
   a: { id: string | "current"; created_at: string; rules_updated_at: string;
        comment: string | null; source: "manual" | "imported" | "current";
-       foreign_server?: boolean }; // present only for imported sides
+       foreign_server?: boolean; file_name?: string }; // imported sides only
   b: { /* same shape as a */ };
   generated_at: string;
   // "full" — both sides are live snapshots; "anonymized" — at least one side
@@ -653,10 +660,15 @@ interface DiffEntry {
 
 Semantics:
 
-- Rules are matched by `id`; `moved` uses the longest common subsequence of
-  ids, so inserting one rule does not report every other rule as moved. A rule
-  both changed and repositioned is a single `changed` entry with both
-  positions.
+- Ordered rules are matched by `id`; `moved` uses the longest common
+  subsequence of ids, so inserting one rule does not report every other rule as
+  moved. A rule both changed and repositioned is a single `changed` entry with
+  both positions.
+- `aliases`, structural `users`, DNS zones, LAN networks and NGFW addresses
+  are unordered objects/sets. They report only `added`, `removed` and
+  `changed`, never `moved`; both positions are `null`. This covers every
+  collection reported by snapshot `counts`, so a count difference cannot be
+  presented as an empty diff.
 - `changed_fields` contains normalized known-schema values only; vendor extras
   never produce differences.
 - `states` keys (`cf_state.enabled`, `hw_settings.mode`, `av_enabled`, ...)

@@ -93,8 +93,12 @@ Creating a snapshot copies already-loaded in-memory data and performs no NGFW
 call. Manual and imported snapshots count against one configurable per-pair
 limit; reaching it is an explicit error, never a silent eviction. Imported
 snapshots come from the anonymized rules export, are marked as anonymized and
-never contain secrets or user display data. A snapshot diff is a pure,
-on-demand function of two snapshots and is never stored.
+never contain secrets or user display data. An imported entry may retain the
+safe basename supplied by the browser only for display; client paths and file
+contents are never retained as metadata. A snapshot diff is a pure, on-demand
+function of two snapshots and is never stored. It compares ordered policies,
+module state, aliases and the unordered network context that influences a
+trace (DNS zones, LAN networks and NGFW addresses).
 
 Consequences:
 

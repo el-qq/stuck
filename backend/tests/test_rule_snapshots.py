@@ -86,7 +86,12 @@ class TestSnapshotStore:
         binding, _ = pool.ensure("admin", "srv")
         rule_snapshots.add_entry(binding, rule_snapshots.create_manual(_snap(), None), limit=1)
         imported = rule_snapshots.create_imported(
-            _snap(), None, exported_at="2026-07-23T00:00:00Z", server="srv", foreign_server=False
+            _snap(),
+            None,
+            exported_at="2026-07-23T00:00:00Z",
+            server="srv",
+            foreign_server=False,
+            file_name="rules.json",
         )
         with pytest.raises(StuckError) as exc:
             rule_snapshots.add_entry(binding, imported, limit=1)
@@ -99,6 +104,7 @@ class TestSnapshotStore:
             exported_at="2026-07-23T00:00:00Z",
             server="10.0.0.9",
             foreign_server=True,
+            file_name="production-rules.json",
         )
         assert entry.source == "imported"
         assert entry.anonymized is True
@@ -106,6 +112,7 @@ class TestSnapshotStore:
         assert entry.server == "10.0.0.9"
         assert entry.foreign_server is True
         assert entry.rules_updated_at == 555.0
+        assert entry.file_name == "production-rules.json"
 
 
 class TestSnapshotLifecycle:

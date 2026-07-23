@@ -108,6 +108,10 @@ test("demo: snapshots tab is visible with demo data", async ({ page }) => {
   await snapshotsTab.click();
   await expect(snapshotsTab).toHaveAttribute("aria-selected", "true");
 
+  // The redesigned picker starts at current → current. Select the imported
+  // reference as the "Before" side to reveal the populated demo comparison.
+  await page.getByRole("button", { name: /Reference export from the staging NGFW/ }).click();
+
   // Check that demo content is rendered from DEMO_SNAPSHOT_DIFF
   // Look for actual rule names from the demo diff data
   await expect(page.getByText("Allow VPN subnet to internet")).toBeVisible();
