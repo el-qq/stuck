@@ -19,6 +19,8 @@ export const ky: Record<keyof typeof en, string> = {
   "demo.exit": "Демодон чыгуу",
   "demo.categoryVideo": "Видео хостинг",
   "demo.targetsLabel": "Демо максаттар",
+  "demo.backendActionUnavailable": "Демодо жеткиликсиз",
+  "demo.backendActionsUnavailable": "NGFW менен туташууну талап кылган аракеттер демо режиминде жеткиликсиз.",
   "login.title": "Кирүү",
   "login.subtitle": "Администратордун маалыматтарын жана NGFW серверинин дарегин киргизиңиз",
   "login.serverLabel": "Сервер",

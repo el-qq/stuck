@@ -9,6 +9,22 @@ import { NgfwUser, UserSourceAddress } from "@/lib/types";
 
 export type TraceMode = "all" | "user";
 
+/** Read model for the shared trace form. Live and demo adapters expose this
+ * identical shape so the rendered controls cannot drift by mode. */
+export interface TraceSubjectsState {
+  users: NgfwUser[];
+  usersLoading: boolean;
+  usersError: string | null;
+  selectedUserId: string | null;
+  setSelectedUserId: (id: string | null) => void;
+  selectedUser: NgfwUser | null;
+  sourceAddresses: UserSourceAddress[];
+  sourceAddressesLoading: boolean;
+  sourceAddressesError: string | null;
+  selectedSourceIp: string | null;
+  setSelectedSourceIp: (ip: string | null) => void;
+}
+
 interface Options {
   mode: TraceMode;
   rulesLoaded: boolean;
@@ -22,7 +38,7 @@ interface Options {
  * Each effect ignores stale responses so switching mode/user cannot overwrite
  * a newer selection with an earlier response.
  */
-export function useTraceSubjects({ mode, rulesLoaded, usersVersion }: Options) {
+export function useTraceSubjects({ mode, rulesLoaded, usersVersion }: Options): TraceSubjectsState {
   const session = useSession();
   const errorMessage = useApiErrorMessage();
   const [users, setUsers] = useState<NgfwUser[]>([]);

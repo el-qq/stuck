@@ -28,6 +28,8 @@ export const en = {
   "demo.exit": "Exit demo",
   "demo.categoryVideo": "Video hosting",
   "demo.targetsLabel": "Demo targets",
+  "demo.backendActionUnavailable": "Unavailable in demo",
+  "demo.backendActionsUnavailable": "Actions that require a connection to NGFW are unavailable in demo mode.",
 
   // ---- login screen ----
   "login.title": "Sign in",

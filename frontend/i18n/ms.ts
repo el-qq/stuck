@@ -20,6 +20,8 @@ export const ms: Record<keyof typeof en, string> = {
   "demo.exit": "Keluar demo",
   "demo.categoryVideo": "Pengehosan video",
   "demo.targetsLabel": "Sasaran demo",
+  "demo.backendActionUnavailable": "Tidak tersedia dalam demo",
+  "demo.backendActionsUnavailable": "Tindakan yang memerlukan sambungan ke NGFW tidak tersedia dalam mod demo.",
 
   "login.title": "Log masuk",
   "login.subtitle": "Masukkan kelayakan pentadbir dan alamat pelayan NGFW",

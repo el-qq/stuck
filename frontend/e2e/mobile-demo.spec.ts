@@ -352,15 +352,13 @@ test("demo derives the service from its selected target", async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 720 });
   await openDemo(page);
 
-  const portField = page.locator("[data-service-preset]");
+  const portField = page.getByLabel("Port / service");
   await expect(portField).toHaveValue("443");
   await expect(portField).toHaveAttribute("title", "HTTPS");
-  await expect(portField).toHaveAttribute("data-service-preset", "HTTPS");
 
   await page.getByRole("button", { name: "failure.com:8080" }).click();
   await expect(portField).toHaveValue("8080");
   await expect(portField).toHaveAttribute("title", "Port 8080");
-  await expect(portField).toHaveAttribute("data-service-preset", "");
   await expectNoHorizontalOverflow(page);
 });
 
@@ -450,7 +448,9 @@ test("Russian dark theme remains responsive", async ({ page }) => {
   await darkTheme.click();
   await expect(darkTheme).toBeFocused();
 
-  const language = page.getByRole("combobox");
+  // The shared trace form also has a datalist-backed port combobox. The
+  // settings language control is the page's only semantic <select>.
+  const language = page.locator("select");
   await language.focus();
   await language.selectOption("ru");
   await expect(language).toBeFocused();

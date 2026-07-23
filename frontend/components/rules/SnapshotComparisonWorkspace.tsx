@@ -7,10 +7,10 @@ import { SnapshotComparisonTargets } from "./SnapshotComparisonTargets";
 import { SnapshotDeleteConfirmModal } from "./SnapshotDeleteConfirmModal";
 import { SnapshotsListPanel } from "./SnapshotsListPanel";
 import { currentSnapshotChoice, findSnapshotChoice } from "./snapshotComparison";
-import { RuleSnapshotsState } from "@/hooks/useRuleSnapshots";
+import type { SnapshotWorkspaceState } from "./snapshotWorkspaceState";
 
 interface Props {
-  state: RuleSnapshotsState;
+  state: SnapshotWorkspaceState;
   rulesUpdatedAt: string | null;
   port?: number;
 }
@@ -47,6 +47,7 @@ export function SnapshotComparisonWorkspace({ state, rulesUpdatedAt, port }: Pro
             afterId={state.afterId}
             activeSide={state.activeSide}
             onAssign={state.assign}
+            backendActionsUnavailable={!state.backendActionsAvailable}
           />
         </aside>
         <section className="hygiene-workspace__result">

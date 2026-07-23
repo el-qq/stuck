@@ -100,6 +100,11 @@ async function openDemo(page: Page) {
 test("demo: snapshots tab is visible with demo data", async ({ page }) => {
   await openDemo(page);
 
+  // The demo deliberately mirrors the signed-in header, but actions that
+  // require a backend remain visible and cannot initiate a request.
+  await expect(page.getByRole("button", { name: "Refresh" })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Export rules" })).toBeDisabled();
+
   // The tab should be visible
   const snapshotsTab = page.getByRole("tab", { name: /Rule snapshots/ });
   await expect(snapshotsTab).toBeVisible();
@@ -119,6 +124,14 @@ test("demo: snapshots tab is visible with demo data", async ({ page }) => {
   // Check for banners
   await expect(page.getByText(/imported snapshot.*anonymized form/)).toBeVisible();
   await expect(page.getByText(/different NGFW server/)).toBeVisible();
+
+  await expect(page.getByRole("button", { name: "Create snapshot" })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Import from file" })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Delete" }).first()).toBeDisabled();
+  await expect(page.getByText("Actions that require a connection to NGFW are unavailable in demo mode.")).toBeVisible();
+
+  await page.getByRole("tab", { name: /Rule hygiene/ }).click();
+  await expect(page.getByRole("button", { name: "Refresh and check" })).toBeDisabled();
 });
 
 test("live: snapshots tab is available when logged in and enabled", async ({ page }) => {

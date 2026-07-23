@@ -20,6 +20,8 @@ export const kk: Record<keyof typeof en, string> = {
   "demo.exit": "Демодан шығу",
   "demo.categoryVideo": "Бейне хостингтер",
   "demo.targetsLabel": "Демо-нысандар",
+  "demo.backendActionUnavailable": "Демо режимінде қолжетімсіз",
+  "demo.backendActionsUnavailable": "NGFW-ге қосылуды қажет ететін әрекеттер демо режимінде қолжетімсіз.",
 
   "login.title": "Кіру",
   "login.subtitle": "Әкімші логині мен құпия сөзін және NGFW серверінің мекенжайын енгізіңіз",

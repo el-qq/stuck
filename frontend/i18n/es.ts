@@ -20,6 +20,8 @@ export const es: Record<keyof typeof en, string> = {
   "demo.exit": "Salir de la demostración",
   "demo.categoryVideo": "Alojamiento de vídeo",
   "demo.targetsLabel": "Objetivos de demostración",
+  "demo.backendActionUnavailable": "No disponible en la demostración",
+  "demo.backendActionsUnavailable": "Las acciones que requieren conexión con NGFW no están disponibles en el modo de demostración.",
 
   "login.title": "Iniciar sesión",
   "login.subtitle": "Introduzca las credenciales de administrador y la dirección del servidor NGFW",

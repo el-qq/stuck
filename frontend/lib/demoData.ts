@@ -8,8 +8,20 @@
  * animation and result view are reused unchanged.
  */
 
-import { NgfwUser, RuleHygieneReport, SnapshotDescriptor, SnapshotDiffResponse, StageKey, StageStatus, TraceResponse, TraceStage, STAGE_ORDER } from "./types";
+import {
+  NgfwUser,
+  RuleHygieneReport,
+  SnapshotDescriptor,
+  SnapshotDiffResponse,
+  StageKey,
+  StageStatus,
+  TraceResponse,
+  TraceStage,
+  UserSourceAddress,
+  STAGE_ORDER,
+} from "./types";
 import { MessageKey } from "@/i18n/en";
+import { parseTarget } from "./servicePresets";
 
 /**
  * The two selectable demo targets (iteration 5). The outcome is determined by
@@ -55,6 +67,37 @@ export const DEMO_USERS: NgfwUser[] = [
   { id: "u5", login: "o.smirnov", name: "Oleg Smirnov", enabled: true, domain_type: "local", group_id: "g-sales" },
   { id: "u6", login: "guest-204", name: "Guest #204", enabled: false, domain_type: "local", group_id: "g-guests" },
 ];
+
+/** Static source choices make the demo use the same user scenario controls as
+ * the live workspace. They are examples only and never originate from NGFW. */
+export const DEMO_SOURCE_ADDRESSES: Record<string, UserSourceAddress[]> = {
+  u1: [{ ip: "192.0.2.101", subnet: "192.0.2.0/24", external_ip: null, auth_module: "demo", node_name: "demo-lan", active: true, assigned: true }],
+  u2: [
+    { ip: "192.0.2.102", subnet: "192.0.2.0/24", external_ip: null, auth_module: "demo", node_name: "demo-lan", active: true, assigned: true },
+    { ip: "198.51.100.102", subnet: "198.51.100.0/24", external_ip: null, auth_module: "demo", node_name: "demo-wifi", active: true, assigned: false },
+  ],
+  u3: [{ ip: "192.0.2.103", subnet: "192.0.2.0/24", external_ip: null, auth_module: "demo", node_name: "demo-lan", active: true, assigned: true }],
+  u4: [{ ip: "192.0.2.104", subnet: "192.0.2.0/24", external_ip: null, auth_module: "demo", node_name: "demo-lan", active: true, assigned: true }],
+  u5: [{ ip: "192.0.2.105", subnet: "192.0.2.0/24", external_ip: null, auth_module: "demo", node_name: "demo-lan", active: true, assigned: true }],
+  u6: [],
+};
+
+/** Map form input to a deterministic local fixture. Unknown targets use the
+ * allowed example; demo mode never claims to query a real NGFW policy. */
+export function demoTargetForInput(raw: string): DemoTarget {
+  const parsed = parseTarget(raw);
+  const host = parsed.host || raw.trim();
+  const port = parsed.port ?? 443;
+  return (
+    DEMO_TARGETS.find((target) => target.host === host && target.dst_port === port) ?? {
+      address: port ? `${host}:${port}` : host,
+      host,
+      dst_port: port,
+      resolved_ip: "203.0.113.10",
+      outcome: "allowed",
+    }
+  );
+}
 
 type StageSpec = Partial<Record<StageKey, { status: StageStatus; detail?: TraceStage["detail"] }>>;
 
@@ -105,7 +148,7 @@ const BLOCKED_SCENARIO: Scenario = {
  * `t` localizes the free-text category label; stage titles/reasons stay as
  * i18n keys the UI already knows how to render.
  */
-export function runDemoTrace(target: DemoTarget, user: NgfwUser | null, t: (key: MessageKey) => string): TraceResponse {
+export function runDemoTrace(target: DemoTarget, user: NgfwUser | null, t: (key: MessageKey) => string, sourceIp?: string): TraceResponse {
   const scenario = target.outcome === "blocked" ? BLOCKED_SCENARIO : ALLOWED_SCENARIO;
   const blockIndex = scenario.blockedAt ? STAGE_ORDER.indexOf(scenario.blockedAt) : -1;
 
@@ -135,7 +178,7 @@ export function runDemoTrace(target: DemoTarget, user: NgfwUser | null, t: (key:
       normalized_url: target.host,
       host: target.host,
       resolved_ip: target.resolved_ip,
-      source_ip: user ? "192.0.2.100" : null,
+      source_ip: user ? (sourceIp ?? "192.0.2.100") : null,
       dst_port: target.dst_port,
       protocol: "tcp",
       effective_destination_ip: target.resolved_ip,

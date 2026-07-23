@@ -19,6 +19,8 @@ export const hy: Record<keyof typeof en, string> = {
   "demo.exit": "Դուրս գալ ցուցադրումից",
   "demo.categoryVideo": "Տեսահոսթինգներ",
   "demo.targetsLabel": "Ցուցադրական թիրախներ",
+  "demo.backendActionUnavailable": "Ցուցադրման ռեժիմում հասանելի չէ",
+  "demo.backendActionsUnavailable": "NGFW-ին միացում պահանջող գործողությունները ցուցադրման ռեժիմում հասանելի չեն։",
   "login.title": "Մուտք",
   "login.subtitle": "Մուտքագրեք ադմինիստրատորի տվյալներն ու NGFW սերվերի հասցեն",
   "login.serverLabel": "Սերվեր",

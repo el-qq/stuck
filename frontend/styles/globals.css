@@ -424,259 +424,9 @@ button {
   min-width: 0;
 }
 
-/* ---- demo snapshot comparison ----
-   The saved list is the comparison picker: users first activate one target
-   card, then click a snapshot.  Desktop drag-and-drop is a shortcut only;
-   every action remains an ordinary button for keyboard and touch use. */
-.demo-snapshot-picker__hint {
-  padding: 10px 12px;
-  border-radius: var(--radius-sm);
-  background: var(--info-soft);
-  color: var(--info);
-  font-size: 12px;
-  line-height: 1.45;
-}
-
-.demo-snapshot-picker__list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.demo-snapshot-picker__item {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  width: 100%;
-  min-width: 0;
-  padding: 11px 12px;
-  color: var(--text);
-  text-align: left;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-sm);
-  background: var(--panel);
-  cursor: pointer;
-  transition:
-    border-color 0.15s ease,
-    background 0.15s ease,
-    transform 0.15s ease;
-}
-
-.demo-snapshot-picker__item:hover {
-  background: var(--panel2);
-  transform: translateY(-1px);
-}
-
-.demo-snapshot-picker__item[data-before="true"] {
-  border-color: var(--accent);
-  background: var(--accent-soft);
-}
-
-.demo-snapshot-picker__item[data-after="true"] {
-  box-shadow: inset -3px 0 var(--ok);
-}
-
-.demo-snapshot-picker__item[data-before="true"][data-after="true"] {
-  border-color: var(--accent);
-  box-shadow:
-    inset -3px 0 var(--ok),
-    inset 3px 0 var(--accent);
-}
-
-.demo-snapshot-picker__item-head,
-.demo-snapshot-picker__badges,
-.demo-snapshot-picker__selection {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  min-width: 0;
-}
-
-.demo-snapshot-picker__item-head {
-  justify-content: space-between;
-}
-
-.demo-snapshot-picker__item-date {
-  min-width: 0;
-  overflow: hidden;
-  font-size: 12.5px;
-  font-weight: 700;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.demo-snapshot-picker__selection {
-  flex-shrink: 0;
-}
-
-.demo-snapshot-picker__selection > span,
-.demo-snapshot-picker__badge {
-  display: inline-flex;
-  align-items: center;
-  min-height: 18px;
-  padding: 1px 5px;
-  border: 1px solid var(--muted);
-  border-radius: 4px;
-  color: var(--muted);
-  font-size: 10px;
-  font-weight: 700;
-  line-height: 1.2;
-  white-space: nowrap;
-}
-
-.demo-snapshot-picker__selection > span[data-side="before"] {
-  border-color: var(--accent);
-  color: var(--accent);
-}
-
-.demo-snapshot-picker__selection > span[data-side="after"] {
-  border-color: var(--ok);
-  color: var(--ok);
-}
-
-.demo-snapshot-picker__badge[data-imported="true"] {
-  border-color: var(--info);
-  color: var(--info);
-}
-
-.demo-snapshot-picker__badge--foreign {
-  border-color: var(--warn);
-  color: var(--warn);
-}
-
-.demo-snapshot-picker__comment,
-.demo-snapshot-picker__count {
-  overflow: hidden;
-  color: var(--muted);
-  font-size: 11.5px;
-  line-height: 1.35;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.demo-comparison__targets {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
-  gap: 10px;
-  align-items: stretch;
-}
-
-.demo-comparison__target {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  min-width: 0;
-  min-height: 112px;
-  padding: 15px 16px;
-  color: var(--text);
-  text-align: left;
-  border: 1px dashed var(--line);
-  border-radius: var(--radius-md);
-  background: var(--panel);
-  cursor: pointer;
-  transition:
-    border-color 0.15s ease,
-    background 0.15s ease,
-    box-shadow 0.15s ease;
-}
-
-.demo-comparison__target[data-side="before"] {
-  border-color: color-mix(in srgb, var(--accent) 58%, var(--line));
-}
-
-.demo-comparison__target[data-side="after"] {
-  border-color: color-mix(in srgb, var(--ok) 58%, var(--line));
-}
-
-.demo-comparison__target[data-active="true"] {
-  border-style: solid;
-  box-shadow: 0 0 0 3px var(--accent-soft);
-}
-
-.demo-comparison__target[data-side="after"][data-active="true"] {
-  box-shadow: 0 0 0 3px var(--ok-soft);
-}
-
-.demo-comparison__target-label {
-  color: var(--accent);
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-
-.demo-comparison__target[data-side="after"] .demo-comparison__target-label {
-  color: var(--ok);
-}
-
-.demo-comparison__target-title {
-  min-width: 0;
-  overflow: hidden;
-  font-size: 14px;
-  font-weight: 700;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.demo-comparison__target-meta {
-  color: var(--muted);
-  font-size: 11.5px;
-}
-
-.demo-comparison__target-file {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.demo-comparison__swap {
-  align-self: center;
-  width: 38px;
-  height: 38px;
-  border: 1px solid var(--line);
-  border-radius: 50%;
-  background: var(--panel);
-  color: var(--muted);
-  font-size: 20px;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.demo-comparison__swap:hover {
-  color: var(--accent);
-  border-color: var(--accent);
-}
-
-.demo-comparison__result {
-  min-width: 0;
-  padding: 4px 0;
-}
-
-.demo-comparison__empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  min-height: 260px;
-  padding: 32px;
-  border: 1.5px dashed var(--line);
-  border-radius: var(--radius-lg);
-  color: var(--muted);
-  font-size: 13.5px;
-  line-height: 1.5;
-  text-align: center;
-}
-
-.demo-comparison__empty > span {
-  margin-bottom: 12px;
-  color: var(--skip);
-  font-size: 36px;
-}
-
-/* ---- live snapshot comparison ----
-   Mirrors the demo interaction without coupling production components to
-   demo-only classes. The picker rows are buttons for every input method;
-   drag-and-drop simply reaches the same selected target on desktop. */
+/* ---- snapshot comparison ----
+   Picker rows are buttons for every input method; drag-and-drop simply
+   reaches the same selected target on desktop. */
 .snapshot-picker__hint {
   padding: 10px 12px;
   border-radius: var(--radius-sm);
@@ -1433,6 +1183,48 @@ button {
   min-height: 44px;
 }
 
+.trace-check-panel__notice,
+.demo-unavailable-hint {
+  margin: 10px 0 0;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  color: var(--warn);
+  background: var(--warn-soft);
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+
+.demo-unavailable-hint {
+  color: var(--muted);
+  background: var(--panel2);
+}
+
+.trace-check-panel__pipeline {
+  margin-top: 16px;
+  padding: 16px 18px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  color: var(--muted);
+  background: var(--panel2);
+  font-size: 12.5px;
+  line-height: 1.55;
+}
+
+.workspace-loading {
+  padding: 22px 0;
+  color: var(--muted);
+  font-size: 13.5px;
+}
+
+.workspace-error {
+  padding: 12px 14px;
+  border-radius: var(--radius-sm);
+  color: var(--bad);
+  background: var(--bad-soft);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
 /* ---- user picker ---- */
 
 .user-picker {
@@ -2080,19 +1872,6 @@ button {
     left: 12px !important;
     width: auto;
     max-width: none !important;
-  }
-
-  .demo-comparison__targets {
-    grid-template-columns: 1fr;
-  }
-
-  .demo-comparison__swap {
-    justify-self: center;
-    transform: rotate(90deg);
-  }
-
-  .demo-comparison__target {
-    min-height: 96px;
   }
 
   .snapshot-comparison__targets {
