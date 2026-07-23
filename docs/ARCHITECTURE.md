@@ -23,6 +23,9 @@ evaluates traces locally.
 ### Frontend
 
 - `frontend/components/` contains login, demo, trace and settings UI.
+- `TraceForm` composes trace-target and user/source-IP controls; its hooks keep
+  target normalization and dynamic subject-address loading independent from the
+  presentational controls.
 - `frontend/lib/api.ts` is the only backend transport. Requests are same-origin,
   include credentials and use the typed envelope from `API_CONTRACT.md`.
 - A matched rule may link to its NGFW administration section. The URL is built
