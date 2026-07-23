@@ -87,10 +87,12 @@ jobs:
         working-directory: backend
         run: pip install --require-hashes -r requirements-dev.txt
 
-      # Same as `npm run test:backend`, without the venv path.
+      # Same as `npm run test:backend`, without the venv path. Every test
+      # boots its own loopback Uvicorn server on an ephemeral port, so the
+      # suite is parallel-safe; -n auto matches the runner's core count.
       - name: Backend tests (pytest)
         working-directory: backend
-        run: python -m pytest tests/ tools/ngfw_testdata/tests/
+        run: python -m pytest -n auto tests/ tools/ngfw_testdata/tests/
 
   frontend:
     needs: lint
