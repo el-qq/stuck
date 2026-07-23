@@ -11,7 +11,8 @@ import { RuleHygieneReport, RulesRefreshResponse, TraceResponse } from "@/lib/ty
 import { downloadBlob, defaultRulesExportFilename } from "@/lib/download";
 import { useRuleSnapshots } from "@/hooks/useRuleSnapshots";
 import { AccessDiagnosticModal } from "../auth/AccessDiagnosticModal";
-import { HygieneCounters, HygieneTable, RuleHygieneReportView, hygieneBadgeColor } from "../rules/RuleHygieneReportView";
+import { HygieneTable, hygieneBadgeColor } from "../rules/RuleHygieneReportView";
+import { RuleHygieneWorkspace } from "../rules/RuleHygieneWorkspace";
 import { RulesExportConfirmModal } from "../rules/RulesExportConfirmModal";
 import { RulesRefreshModal } from "../rules/RulesRefreshModal";
 import { diffBadgeColor } from "../rules/SnapshotDiffView";
@@ -28,7 +29,7 @@ export function MainScreen() {
   const session = useSession();
   const toast = useToast();
   const errorMessage = useApiErrorMessage();
-  const { t, locale } = useI18n();
+  const { t } = useI18n();
 
   const [settingsOpen, setSettingsOpen] = useState(false);
   // Older backends omit the profile; retain their existing UI behavior.  New
@@ -276,100 +277,15 @@ export function MainScreen() {
           they share (e.g. "Firewall · Forward"), breaking strict-mode text
           queries. Only the active one of the two is ever in the DOM. */}
       {hygieneEnabled && tab === "hygiene" && (
-        <main role="tabpanel" id="tabpanel-hygiene" aria-labelledby="tab-hygiene" className="hygiene-workspace">
-          {/* Left panel mirrors the check tab: summary + section navigation. */}
-          <aside className="hygiene-workspace__controls">
-            <div className="check-panel">
-              <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 6 }}>{t("hygiene.title")}</div>
-              {hygieneReport && (
-                <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 14 }}>
-                  {t("hygiene.updated", { time: formatTime(hygieneReport.rules_updated_at, locale) })}
-                </div>
-              )}
-
-              {/* The subtitle sits right before the severity counters. */}
-              <div style={{ fontSize: 12.5, color: "var(--muted)", lineHeight: 1.5, marginBottom: 10 }}>{t("hygiene.subtitle")}</div>
-              {hygieneReport && (
-                <>
-                  <HygieneCounters summary={hygieneReport.summary} />
-
-                  <div style={{ height: 1, background: "var(--line)", margin: "16px 0" }} />
-
-                  <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--muted)", marginBottom: 8 }}>{t("hygiene.sections")}</div>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                    <button className="hygiene-nav__item" aria-pressed={hygieneSection === "all"} onClick={() => setHygieneSection("all")}>
-                      {t("hygiene.sectionAll")}
-                      <span className="hygiene-nav__count">{hygieneReport.summary.total}</span>
-                    </button>
-                    <div style={{ fontSize: 12, fontWeight: 600, color: "var(--muted)", margin: "6px 0 2px" }}>{t("hygiene.sectionFirewall")}</div>
-                    <button
-                      className="hygiene-nav__item hygiene-nav__item--child"
-                      aria-pressed={hygieneSection === "fw_forward"}
-                      onClick={() => setHygieneSection("fw_forward")}
-                    >
-                      {t("hygiene.tableForward")}
-                      <span className="hygiene-nav__count">{hygieneReport.findings.filter((f) => f.table === "fw_forward").length}</span>
-                    </button>
-                    <button
-                      className="hygiene-nav__item hygiene-nav__item--child"
-                      aria-pressed={hygieneSection === "fw_input"}
-                      onClick={() => setHygieneSection("fw_input")}
-                    >
-                      {t("hygiene.tableInput")}
-                      <span className="hygiene-nav__count">{hygieneReport.findings.filter((f) => f.table === "fw_input").length}</span>
-                    </button>
-                    <button
-                      className="hygiene-nav__item"
-                      style={{ marginTop: 6 }}
-                      aria-pressed={hygieneSection === "hw_filter"}
-                      onClick={() => setHygieneSection("hw_filter")}
-                    >
-                      {t("stage.hw_filter")}
-                      <span className="hygiene-nav__count">{hygieneReport.findings.filter((f) => f.table === "hw_filter").length}</span>
-                    </button>
-                  </div>
-
-                  <div style={{ height: 1, background: "var(--line)", margin: "16px 0" }} />
-                </>
-              )}
-              {/* Re-check re-pulls the snapshot (?refresh=true), like export. */}
-              <button
-                className="btn-primary"
-                onClick={() => void loadHygiene(true)}
-                disabled={hygieneLoading}
-                style={{ width: "100%", border: "none", borderRadius: "var(--radius-sm)", padding: 11, fontSize: 13.5, fontWeight: 700 }}
-              >
-                {hygieneLoading ? t("hygiene.rechecking") : t("hygiene.recheck")}
-              </button>
-            </div>
-          </aside>
-          <section className="hygiene-workspace__result">
-            {hygieneLoading && !hygieneReport && <div style={{ padding: "22px 0", fontSize: 13.5, color: "var(--muted)" }}>{t("hygiene.loading")}</div>}
-            {hygieneError && !hygieneLoading && (
-              <div
-                role="alert"
-                style={{
-                  fontSize: 13,
-                  color: "var(--bad)",
-                  background: "var(--bad-soft)",
-                  borderRadius: "var(--radius-sm)",
-                  padding: "12px 14px",
-                  lineHeight: 1.5,
-                }}
-              >
-                {hygieneError}
-              </div>
-            )}
-            {hygieneReport && !hygieneError && (
-              <RuleHygieneReportView
-                report={hygieneReport}
-                port={session.session?.ngfw_port}
-                showCounters={false}
-                filterTable={hygieneSection === "all" ? null : hygieneSection}
-              />
-            )}
-          </section>
-        </main>
+        <RuleHygieneWorkspace
+          report={hygieneReport}
+          loading={hygieneLoading}
+          error={hygieneError}
+          section={hygieneSection}
+          onSectionChange={setHygieneSection}
+          onRecheck={() => void loadHygiene(true)}
+          port={session.session?.ngfw_port}
+        />
       )}
 
       {snapshotsEnabled && tab === "snapshots" && (
@@ -450,12 +366,4 @@ export function MainScreen() {
       )}
     </div>
   );
-}
-
-function formatTime(iso: string, locale: string): string {
-  try {
-    return new Intl.DateTimeFormat(locale, { dateStyle: "short", timeStyle: "medium" }).format(new Date(iso));
-  } catch {
-    return iso;
-  }
 }

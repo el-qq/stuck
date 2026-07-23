@@ -28,6 +28,8 @@ interface Props {
   afterId: SnapshotOrCurrentId;
   activeSide: SnapshotComparisonSide;
   onAssign: (side: SnapshotComparisonSide, id: SnapshotOrCurrentId) => void;
+  /** Keep backend-backed actions visible but inert in the offline demo. */
+  backendActionsUnavailable?: boolean;
 }
 
 /**
@@ -53,6 +55,7 @@ export function SnapshotsListPanel({
   afterId,
   activeSide,
   onAssign,
+  backendActionsUnavailable = false,
 }: Props) {
   const { t } = useI18n();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -87,6 +90,7 @@ export function SnapshotsListPanel({
             onDragStart={handleDragStart}
             deleting={deletingId === choice.id}
             onDeleteRequest={onDeleteRequest}
+            backendActionsUnavailable={backendActionsUnavailable}
           />
         ))}
       </div>
@@ -97,15 +101,32 @@ export function SnapshotsListPanel({
         className="form-control"
         value={comment}
         onChange={(event) => onCommentChange(event.target.value)}
+        disabled={backendActionsUnavailable}
         placeholder={t("snapshots.commentPlaceholder")}
         maxLength={200}
         style={{ ...inputStyle, marginBottom: 8 }}
       />
       <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
-        <button type="button" className="btn-primary" onClick={onCreate} disabled={creating || loading} style={actionButtonStyle}>
+        <button
+          type="button"
+          className="btn-primary"
+          onClick={backendActionsUnavailable ? undefined : onCreate}
+          disabled={backendActionsUnavailable || creating || loading}
+          title={backendActionsUnavailable ? t("demo.backendActionUnavailable") : undefined}
+          data-demo-unavailable={backendActionsUnavailable || undefined}
+          style={actionButtonStyle}
+        >
           {creating ? t("snapshots.creating") : t("snapshots.create")}
         </button>
-        <button type="button" className="btn-outline" onClick={() => fileInputRef.current?.click()} disabled={importing} style={actionButtonStyle}>
+        <button
+          type="button"
+          className="btn-outline"
+          onClick={backendActionsUnavailable ? undefined : () => fileInputRef.current?.click()}
+          disabled={backendActionsUnavailable || importing}
+          title={backendActionsUnavailable ? t("demo.backendActionUnavailable") : undefined}
+          data-demo-unavailable={backendActionsUnavailable || undefined}
+          style={actionButtonStyle}
+        >
           {importing ? t("snapshots.importing") : t("snapshots.import")}
         </button>
         <input
@@ -122,6 +143,7 @@ export function SnapshotsListPanel({
           }}
         />
       </div>
+      {backendActionsUnavailable && <p className="demo-unavailable-hint">{t("demo.backendActionsUnavailable")}</p>}
       {importError && (
         <div role="alert" className="snapshot-comparison__error">
           {importError}
@@ -150,6 +172,7 @@ function SnapshotChoiceRow({
   onDragStart,
   deleting,
   onDeleteRequest,
+  backendActionsUnavailable,
 }: {
   choice: SnapshotChoice;
   isBefore: boolean;
@@ -159,11 +182,15 @@ function SnapshotChoiceRow({
   onDragStart: (event: DragEvent<HTMLButtonElement>, id: SnapshotOrCurrentId) => void;
   deleting: boolean;
   onDeleteRequest: (snapshot: SnapshotDescriptor) => void;
+  backendActionsUnavailable: boolean;
 }) {
   const { t, locale } = useI18n();
   const total = snapshotCountsTotal(choice.counts);
   const fileName = importedSnapshotFileName(choice);
   const itemLabel = choice.source === "current" ? t("snapshots.current") : formatSnapshotDate(choice.created_at, locale);
+  // A date alone makes adjacent snapshots indistinguishable to screen-reader
+  // users. Keep the visible compact row, but expose its useful identity too.
+  const accessibleLabel = [itemLabel, choice.comment, fileName].filter(Boolean).join(", ");
 
   return (
     <div className="snapshot-picker__row" data-before={isBefore} data-after={isAfter}>
@@ -173,7 +200,7 @@ function SnapshotChoiceRow({
         className="snapshot-picker__item"
         onClick={() => onAssign(activeSide, choice.id)}
         onDragStart={(event) => onDragStart(event, choice.id)}
-        aria-label={itemLabel}
+        aria-label={accessibleLabel}
       >
         <span className="snapshot-picker__item-head">
           <span className="snapshot-picker__item-date">{itemLabel}</span>
@@ -199,9 +226,10 @@ function SnapshotChoiceRow({
           type="button"
           className="btn-ghost snapshot-picker__delete"
           aria-label={t("snapshots.delete")}
-          title={t("snapshots.delete")}
-          onClick={() => onDeleteRequest(choice)}
-          disabled={deleting}
+          onClick={backendActionsUnavailable ? undefined : () => onDeleteRequest(choice)}
+          disabled={backendActionsUnavailable || deleting}
+          title={backendActionsUnavailable ? t("demo.backendActionUnavailable") : t("snapshots.delete")}
+          data-demo-unavailable={backendActionsUnavailable || undefined}
         >
           {deleting ? "…" : "✕"}
         </button>

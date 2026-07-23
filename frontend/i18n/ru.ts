@@ -20,6 +20,8 @@ export const ru: Record<keyof typeof en, string> = {
   "demo.exit": "Выйти из демо",
   "demo.categoryVideo": "Видеохостинги",
   "demo.targetsLabel": "Демо-цели",
+  "demo.backendActionUnavailable": "Недоступно в демо",
+  "demo.backendActionsUnavailable": "Действия, требующие подключения к NGFW, недоступны в демо-режиме.",
 
   "login.title": "Вход",
   "login.subtitle": "Введите логин и пароль администратора и адрес сервера NGFW",

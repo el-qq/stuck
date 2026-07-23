@@ -48,6 +48,10 @@ evaluates traces locally.
 - IBM Plex WOFF2 files are bundled from exact npm packages at build time; the
   browser has no font-CDN dependency. The OFL text is shipped with the UI.
 - Demo mode uses `frontend/lib/demoData.ts` and performs no backend requests.
+  Its trace, hygiene and snapshot adapters feed the same presentation
+  components as the signed-in workspace. Actions that would refresh, export,
+  create, import or delete backend state stay visible but are disabled; the
+  demo adapters import neither the API client nor session state.
 
 ### Backend
 

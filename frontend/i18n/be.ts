@@ -19,6 +19,8 @@ export const be: Record<keyof typeof en, string> = {
   "demo.exit": "Выйсці з дэма",
   "demo.categoryVideo": "Відэахостынгі",
   "demo.targetsLabel": "Дэма-мэты",
+  "demo.backendActionUnavailable": "Недаступна ў дэма",
+  "demo.backendActionsUnavailable": "Дзеянні, якім патрэбна падлучэнне да NGFW, недаступныя ў дэма-рэжыме.",
   "login.title": "Уваход",
   "login.subtitle": "Увядзіце ўліковыя даныя адміністратара і адрас сервера NGFW",
   "login.serverLabel": "Сервер",

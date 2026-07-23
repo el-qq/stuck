@@ -15,8 +15,11 @@ interface HeaderProps {
   refreshing?: boolean;
   onRefresh?: () => void;
   onOpenSettings: () => void;
-  /** Iteration 4: shown in demo mode (anonymous topbar) to leave the demo. */
+  /** Shown only in demo mode to leave the offline workspace. */
   onExitDemo?: () => void;
+  /** Demo intentionally mirrors the signed-in header, but backend actions are
+   * visibly disabled and never receive callbacks. */
+  demoMode?: boolean;
   /** §3.8: render the rules-export button only when the backend
    *  enabled the feature (rules_export_enabled). Authenticated mode only. */
   exportEnabled?: boolean;
@@ -44,6 +47,7 @@ export function Header({
   onRefresh,
   onOpenSettings,
   onExitDemo,
+  demoMode = false,
   exportEnabled = false,
   exporting = false,
   onExport,
@@ -52,6 +56,8 @@ export function Header({
   const session = useSession();
   const { t, locale } = useI18n();
   const headerRef = useRef<HTMLElement>(null);
+  const showsRules = !anonymous || demoMode;
+  const showsIdentity = !anonymous && !demoMode;
 
   // Publish the real header height (it wraps to more rows on mobile and grows
   // with the tab bar) so sticky panels/scroll margins offset below it exactly.
@@ -72,14 +78,14 @@ export function Header({
         <div className="app-header__title">{t("common.appName")}</div>
         <span className="app-header__version">v{APP_VERSION}</span>
       </div>
-      {!anonymous && (
+      {showsIdentity && (
         <div className="app-header__identity mono" title={session.session ? `${session.session.login}@${session.session.server}` : ""}>
           {session.session ? `${session.session.login}@${session.session.server}` : ""}
         </div>
       )}
       <div className="app-header__spacer" />
 
-      {!anonymous && (
+      {showsRules && (
         <div className="app-header__rules">
           <span
             aria-hidden="true"
@@ -97,15 +103,27 @@ export function Header({
       )}
 
       <div className="app-header__actions">
-        {!anonymous && (
-          <button onClick={onRefresh} disabled={refreshing || !accessAllowed} className="app-header__button btn-soft">
+        {showsRules && (
+          <button
+            onClick={demoMode ? undefined : onRefresh}
+            disabled={demoMode || refreshing || !accessAllowed}
+            title={demoMode ? t("demo.backendActionUnavailable") : undefined}
+            data-demo-unavailable={demoMode || undefined}
+            className="app-header__button btn-soft"
+          >
             <span style={{ display: "inline-block", animation: refreshing ? "spin 1s linear infinite" : "none" }}>⟳</span>{" "}
             {refreshing ? t("header.refreshing") : t("header.refresh")}
           </button>
         )}
 
-        {!anonymous && exportEnabled && (
-          <button onClick={onExport} disabled={exporting} className="app-header__button btn-soft">
+        {showsRules && exportEnabled && (
+          <button
+            onClick={demoMode ? undefined : onExport}
+            disabled={demoMode || exporting}
+            title={demoMode ? t("demo.backendActionUnavailable") : undefined}
+            data-demo-unavailable={demoMode || undefined}
+            className="app-header__button btn-soft"
+          >
             {exporting ? t("header.exporting") : `⬇ ${t("header.exportRules")}`}
           </button>
         )}
@@ -120,7 +138,7 @@ export function Header({
           </button>
         )}
 
-        {!anonymous && (
+        {!anonymous && !demoMode && (
           <button onClick={() => session.logout()} className="app-header__button btn-ghost">
             {t("header.logout")}
           </button>

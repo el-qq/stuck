@@ -9,6 +9,7 @@ import { ApiError, toApiError } from "@/lib/errors";
 import { readFileAsText } from "@/lib/fileRead";
 import { CURRENT_SNAPSHOT_ID, SnapshotDescriptor, SnapshotDiffResponse, SnapshotOrCurrentId } from "@/lib/types";
 import { SnapshotComparisonSide } from "@/components/rules/snapshotComparison";
+import type { SnapshotWorkspaceState } from "@/components/rules/snapshotWorkspaceState";
 
 interface UseRuleSnapshotsOptions {
   /** Only load the list and a diff after its tab becomes visible. */
@@ -23,7 +24,11 @@ interface UseRuleSnapshotsOptions {
  * response for an old A/B choice or pre-refresh `current` never replaces the
  * result for the choice now visible to the administrator.
  */
-export function useRuleSnapshots({ active, enabled }: UseRuleSnapshotsOptions) {
+export interface RuleSnapshotsState extends SnapshotWorkspaceState {
+  invalidateCurrentDiff: () => void;
+}
+
+export function useRuleSnapshots({ active, enabled }: UseRuleSnapshotsOptions): RuleSnapshotsState {
   const session = useSession();
   const toast = useToast();
   const errorMessage = useApiErrorMessage();
@@ -263,7 +268,6 @@ export function useRuleSnapshots({ active, enabled }: UseRuleSnapshotsOptions) {
     diffError,
     invalidateCurrentDiff,
     diffChangeCount,
+    backendActionsAvailable: true,
   };
 }
-
-export type RuleSnapshotsState = ReturnType<typeof useRuleSnapshots>;

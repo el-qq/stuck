@@ -19,6 +19,8 @@ export const fr: Record<keyof typeof en, string> = {
   "demo.exit": "Quitter la démo",
   "demo.categoryVideo": "Hébergement vidéo",
   "demo.targetsLabel": "Cibles de démonstration",
+  "demo.backendActionUnavailable": "Indisponible dans la démo",
+  "demo.backendActionsUnavailable": "Les actions nécessitant une connexion à NGFW sont indisponibles en mode démo.",
   "login.title": "Se connecter",
   "login.subtitle": "Saisissez les identifiants administrateur et l’adresse du serveur NGFW",
   "login.serverLabel": "Serveur",
@@ -117,7 +119,8 @@ export const fr: Record<keyof typeof en, string> = {
   "snapshots.compareB": "B (postérieur)",
   "snapshots.before": "Avant",
   "snapshots.after": "Après",
-  "snapshots.selectionHint": "Choisissez Avant ou Après, puis un instantané. Sur ordinateur de bureau, vous pouvez aussi faire glisser un instantané vers un côté.",
+  "snapshots.selectionHint":
+    "Choisissez Avant ou Après, puis un instantané. Sur ordinateur de bureau, vous pouvez aussi faire glisser un instantané vers un côté.",
   "snapshots.selectionEmpty": "Choisissez un autre instantané enregistré ou importé pour commencer la comparaison.",
   "snapshots.swapSides": "Inverser avant et après",
   "snapshots.current": "État actuel",
