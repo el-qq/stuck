@@ -6,10 +6,13 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
+    "build:demo": "tsc --noEmit && vite build --mode github-pages-demo",
+    "verify:demo-build": "node scripts/verify-demo-build.mjs",
     "start": "vite preview",
     "typecheck": "tsc --noEmit",
     "test": "vitest",
-    "test:e2e": "npm run build && playwright test"
+    "test:e2e": "npm run build && playwright test",
+    "test:e2e:demo": "STUCK_DEMO_E2E=1 playwright test e2e/github-pages-demo.spec.ts"
   },
   "dependencies": {
     "@ibm/plex-mono": "2.5.0",

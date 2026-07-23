@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useLayoutEffect, useRef } from "react";
-import { useSession } from "@/contexts/SessionContext";
 import { useDemoUnavailableNotice } from "@/hooks/useDemoUnavailableNotice";
 import { useI18n } from "@/i18n";
 import { APP_VERSION } from "@/lib/version";
@@ -28,6 +27,13 @@ interface HeaderProps {
   onExport?: () => void;
   /** Prevent snapshot actions for a server-confirmed insufficient role. */
   accessAllowed?: boolean;
+  /**
+   * Signed-in identity is supplied by the live screen instead of read here.
+   * Keeping this shell component independent from session state lets the
+   * static offline demo reuse it without bundling its API-backed provider.
+   */
+  identity?: { login: string; server: string } | null;
+  onLogout?: () => void;
 }
 
 /** UI-locale formatting; omitted timeZone intentionally uses the browser's current zone. */
@@ -53,13 +59,14 @@ export function Header({
   exporting = false,
   onExport,
   accessAllowed = true,
+  identity = null,
+  onLogout,
 }: HeaderProps) {
-  const session = useSession();
   const { t, locale } = useI18n();
   const showDemoUnavailableNotice = useDemoUnavailableNotice(demoMode);
   const headerRef = useRef<HTMLElement>(null);
   const showsRules = !anonymous || demoMode;
-  const showsIdentity = !anonymous && !demoMode;
+  const showsIdentity = !anonymous && !demoMode && identity !== null;
 
   // Publish the real header height (it wraps to more rows on mobile and grows
   // with the tab bar) so sticky panels/scroll margins offset below it exactly.
@@ -81,8 +88,8 @@ export function Header({
         <span className="app-header__version">v{APP_VERSION}</span>
       </div>
       {showsIdentity && (
-        <div className="app-header__identity mono" title={session.session ? `${session.session.login}@${session.session.server}` : ""}>
-          {session.session ? `${session.session.login}@${session.session.server}` : ""}
+        <div className="app-header__identity mono" title={`${identity.login}@${identity.server}`}>
+          {identity.login}@{identity.server}
         </div>
       )}
       <div className="app-header__spacer" />
@@ -144,8 +151,8 @@ export function Header({
           </button>
         )}
 
-        {!anonymous && !demoMode && (
-          <button onClick={() => session.logout()} className="app-header__button btn-ghost">
+        {!anonymous && !demoMode && onLogout && (
+          <button onClick={onLogout} className="app-header__button btn-ghost">
             {t("header.logout")}
           </button>
         )}

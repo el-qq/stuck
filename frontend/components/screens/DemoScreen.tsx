@@ -24,7 +24,14 @@ import { TraceResult } from "../trace/TraceResult";
  * actions stay in their normal places but are disabled by explicit capability
  * flags; this module deliberately imports neither an API client nor session.
  */
-export function DemoScreen({ onExit }: { onExit: () => void }) {
+interface DemoScreenProps {
+  onExit?: () => void;
+  /** The live application's public configuration. The standalone static demo
+   * uses the safe default and deliberately does not bootstrap this value. */
+  traceAnimationEnabled?: boolean;
+}
+
+export function DemoScreen({ onExit, traceAnimationEnabled = true }: DemoScreenProps) {
   const { t } = useI18n();
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [tab, setTab] = useState<"check" | "hygiene" | "snapshots">("check");
@@ -112,7 +119,7 @@ export function DemoScreen({ onExit }: { onExit: () => void }) {
         <CheckWorkspace
           resultRef={resultRef}
           controls={<DemoTraceForm submitting={false} onSubmit={handleCheck} />}
-          result={result ? <TraceResult key={runKey} result={result} /> : <EmptyTraceResult />}
+          result={result ? <TraceResult key={runKey} result={result} traceAnimationEnabled={traceAnimationEnabled} /> : <EmptyTraceResult />}
         />
       </div>
 

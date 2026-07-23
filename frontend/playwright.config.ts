@@ -1,6 +1,7 @@
 import { defineConfig, devices } from "@playwright/test";
 
 const executablePath = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH;
+const staticDemoE2E = process.env.STUCK_DEMO_E2E === "1";
 
 export default defineConfig({
   testDir: "./e2e",
@@ -17,9 +18,11 @@ export default defineConfig({
     launchOptions: executablePath ? { executablePath } : undefined,
   },
   webServer: {
-    command: "npm start -- --host 127.0.0.1 --port 3100",
+    command: staticDemoE2E ? "VITE_BASE_PATH=/ npm run build:demo && npm start -- --host 127.0.0.1 --port 3100" : "npm start -- --host 127.0.0.1 --port 3100",
     url: "http://127.0.0.1:3100",
-    reuseExistingServer: !process.env.CI,
+    // A pre-existing live preview is not a valid substitute for the static
+    // demo under test: it would hide an accidental API dependency.
+    reuseExistingServer: staticDemoE2E ? false : !process.env.CI,
     timeout: 30_000,
   },
 });
