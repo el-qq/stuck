@@ -3,6 +3,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useSession } from "@/contexts/SessionContext";
 import { useToast } from "@/contexts/ToastContext";
+import { usePublicConfig } from "@/contexts/PublicConfigContext";
 import { useApiErrorMessage } from "@/hooks/useApiErrorMessage";
 import { useI18n } from "@/i18n";
 import * as api from "@/lib/api";
@@ -30,6 +31,7 @@ export function MainScreen() {
   const toast = useToast();
   const errorMessage = useApiErrorMessage();
   const { t } = useI18n();
+  const { traceAnimationEnabled } = usePublicConfig();
 
   const [settingsOpen, setSettingsOpen] = useState(false);
   // Older backends omit the profile; retain their existing UI behavior.  New
@@ -258,6 +260,8 @@ export function MainScreen() {
   return (
     <div className="app-shell">
       <Header
+        identity={session.session ? { login: session.session.login, server: session.session.server } : null}
+        onLogout={() => void session.logout()}
         rulesLoaded={rulesLoaded}
         rulesUpdatedAt={rulesUpdatedAt}
         refreshing={refreshing}
@@ -331,7 +335,18 @@ export function MainScreen() {
               />
             </>
           }
-          result={traceResult ? <TraceResult result={traceResult} /> : <EmptyTraceResult />}
+          result={
+            traceResult ? (
+              <TraceResult
+                result={traceResult}
+                traceAnimationEnabled={traceAnimationEnabled}
+                ngfwServer={session.session?.server}
+                ngfwPort={session.session?.ngfw_port}
+              />
+            ) : (
+              <EmptyTraceResult />
+            )
+          }
         />
       </div>
 

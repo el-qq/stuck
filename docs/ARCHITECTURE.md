@@ -54,8 +54,13 @@ evaluates traces locally.
 - Demo mode uses `frontend/lib/demoData.ts` and performs no backend requests.
   Its trace, hygiene and snapshot adapters feed the same presentation
   components as the signed-in workspace. Actions that would refresh, export,
-  create, import or delete backend state stay visible but are disabled; the
-  demo adapters import neither the API client nor session state.
+  create, import or delete backend state remain visibly unavailable and
+  explain why when applicable; the demo adapters import neither the API client
+  nor session state.
+- `frontend/demo-main.tsx` is the dedicated static-demo entry. It composes
+  only settings, localization and toast providers, intentionally excluding the
+  API-backed public-config and session providers. `npm run build:demo` selects
+  it and `npm run verify:demo-build` rejects an emitted `/api/` route.
 
 ### Backend
 
@@ -241,6 +246,20 @@ Development uses FastAPI and the Vite proxy on separate localhost ports.
 `docker-compose.yml` builds the backend and static frontend; Caddy publishes one
 HTTPS origin and routes `/api/*` to FastAPI. Secure cookies are enabled in that
 deployment.
+
+### GitHub Pages offline demo
+
+`.github/workflows/deploy-demo.yml` deploys only the static demo artifact after
+a push to `main` (and may also be run manually). It receives no repository
+secrets and never deploys the regular application entry, API proxy or backend.
+The workflow builds `frontend/demo-main.tsx`, verifies that the emitted files
+contain no `/api/` route, then uses GitHub Pages' artifact deployment actions.
+
+For repository Pages, the workflow defaults to `/<repository>/`. A custom
+domain may define the repository Actions variable `PAGES_BASE_PATH=/` (or a
+different slash-delimited base path). The repository administrator must enable
+**Settings → Pages → Build and deployment → Source: GitHub Actions** once;
+subsequent pushes publish the workflow's reported Pages URL.
 
 Python dependency locks are generated with the same release line used by the
 backend base image. All container bases use a human-readable exact tag together

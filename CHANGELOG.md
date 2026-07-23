@@ -6,6 +6,8 @@ All notable user-visible changes are recorded here. The project follows
 
 ## Next
 
+- An API-free interactive demo can be deployed to GitHub Pages. It is built
+  from local fixtures only and makes no request to an NGFW or STUCK backend.
 - Rule snapshots with diff over time. Administrators can save named
   point-in-time snapshots of the rules of their NGFW pair, import a previously
   exported rules JSON as a snapshot, and compare any two states (including the

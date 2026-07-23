@@ -22,6 +22,13 @@ and IP-dependent decisions remain explicitly unknown.
 
 [Animated demo of the STUCK cabinet](demo/demo_0.1.0.mp4)
 
+The interactive offline demo can be published to GitHub Pages without an NGFW
+or backend. Enable **Settings → Pages → Build and deployment → Source: GitHub
+Actions** once; each push to `main` then runs
+[`deploy-demo.yml`](.github/workflows/deploy-demo.yml). Repository Pages uses
+`/<repository>/` by default. For a custom domain, define the repository Actions
+variable `PAGES_BASE_PATH=/` before deploying.
+
 ## Key capabilities ✨
 
 - **🔎 Traffic trace** — check a domain, IP address or `host:port`; service and
@@ -97,20 +104,22 @@ STUCK_ALLOW_ANY_NGFW=true docker compose up --build
 
 ## Development commands
 
-| Command                              | Purpose                                                             |
-| ------------------------------------ | ------------------------------------------------------------------- |
-| `npm run setup`                      | Install the exact locked backend and frontend dependencies          |
-| `npm start`                          | Start the backend and Vite development server                       |
-| `npm test`                           | Run backend and frontend unit/integration tests                     |
-| `npm --prefix frontend run test:e2e` | Run browser tests                                                   |
-| `npm --prefix frontend run build`    | Type-check and build the frontend                                   |
-| `npm run lint:editorconfig`          | Enforce repository-wide EditorConfig rules                          |
-| `npm run format`                     | Auto-format Python, frontend, configuration and documentation files |
-| `npm run format:check`               | Verify formatting without modifying files                           |
-| `npm run deps:update`                | Update both dependency graphs and verify the result                 |
-| `npm run deps:audit`                 | Audit locked Python and npm dependencies for known vulnerabilities  |
-| `npm run version:set -- <version>`   | Set the application version consistently                            |
-| `npm run version:check`              | Verify version consistency                                          |
+| Command                                   | Purpose                                                             |
+| ----------------------------------------- | ------------------------------------------------------------------- |
+| `npm run setup`                           | Install the exact locked backend and frontend dependencies          |
+| `npm start`                               | Start the backend and Vite development server                       |
+| `npm test`                                | Run backend and frontend unit/integration tests                     |
+| `npm --prefix frontend run test:e2e`      | Run browser tests                                                   |
+| `npm --prefix frontend run build:demo`    | Build the API-free GitHub Pages demo                                |
+| `npm --prefix frontend run test:e2e:demo` | Verify the published-demo entry never requests `/api/*`             |
+| `npm --prefix frontend run build`         | Type-check and build the frontend                                   |
+| `npm run lint:editorconfig`               | Enforce repository-wide EditorConfig rules                          |
+| `npm run format`                          | Auto-format Python, frontend, configuration and documentation files |
+| `npm run format:check`                    | Verify formatting without modifying files                           |
+| `npm run deps:update`                     | Update both dependency graphs and verify the result                 |
+| `npm run deps:audit`                      | Audit locked Python and npm dependencies for known vulnerabilities  |
+| `npm run version:set -- <version>`        | Set the application version consistently                            |
+| `npm run version:check`                   | Verify version consistency                                          |
 
 Configuration is loaded from [backend/conf/stuck.conf](backend/conf/stuck.conf);
 environment variables with the same names take precedence. Complete resolved
@@ -200,7 +209,8 @@ Every pull request (and every push to `main`) runs the GitHub Actions pipeline
 - `backend` — pytest: the application tests plus the `tools/ngfw_testdata`
   suite.
 - `frontend` — TypeScript type check and vitest.
-- `e2e` — Playwright browser tests (Chromium).
+- `e2e` — Playwright browser tests (Chromium), including the static GitHub
+  Pages demo with API requests forbidden.
 - `docker` — builds both container images.
 - `audit` — pip-audit and npm audit; advisory only, it never blocks a PR.
 

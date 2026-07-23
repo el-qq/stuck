@@ -6,12 +6,19 @@ import { MessageKey } from "@/i18n/en";
 import { TraceResponse } from "@/lib/types";
 import { downloadTraceExport } from "@/lib/traceExport";
 import { useStageReveal } from "@/hooks/useStageReveal";
-import { usePublicConfig } from "@/contexts/PublicConfigContext";
 import { StageNode } from "./StageNode";
 
-export function TraceResult({ result }: { result: TraceResponse }) {
+interface TraceResultProps {
+  result: TraceResponse;
+  /** Public configuration is resolved at the screen boundary. Supplying it
+   * keeps this renderer reusable by the API-free offline demo. */
+  traceAnimationEnabled?: boolean;
+  ngfwServer?: string;
+  ngfwPort?: number;
+}
+
+export function TraceResult({ result, traceAnimationEnabled = true, ngfwServer, ngfwPort }: TraceResultProps) {
   const { t, tOptional } = useI18n();
-  const { traceAnimationEnabled } = usePublicConfig();
   const { revealCount, flowing, done, skip, animateStages } = useStageReveal(result.stages, traceAnimationEnabled);
 
   const stages = [...result.stages].sort((a, b) => a.order - b.order);
@@ -196,6 +203,8 @@ export function TraceResult({ result }: { result: TraceResponse }) {
               revealed
               animate={animateStages}
               flowingConnector={flowing && trafficIndex === revealCount - 1}
+              ngfwServer={ngfwServer}
+              ngfwPort={ngfwPort}
             />
           );
         })}

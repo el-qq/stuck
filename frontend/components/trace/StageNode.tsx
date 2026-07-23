@@ -2,7 +2,6 @@
 
 import React from "react";
 import { useI18n } from "@/i18n";
-import { useSession } from "@/contexts/SessionContext";
 import { MessageKey } from "@/i18n/en";
 import { TraceStage } from "@/lib/types";
 import { ngfwRuleSectionUrl } from "@/lib/ngfwRuleLink";
@@ -29,18 +28,22 @@ interface Props {
   revealed: boolean;
   animate: boolean;
   flowingConnector: boolean;
+  /** Live workspace supplies this optional context for an NGFW console link.
+   * The offline demo deliberately omits it: a static example must not point
+   * to an administrator's local appliance. */
+  ngfwServer?: string;
+  ngfwPort?: number;
 }
 
-export function StageNode({ stage, isLast, revealed, animate, flowingConnector }: Props) {
+export function StageNode({ stage, isLast, revealed, animate, flowingConnector, ngfwServer, ngfwPort }: Props) {
   const { t, tOptional } = useI18n();
-  const session = useSession();
 
   const tone = STATUS_TONE[stage.status];
   const color = TONE_COLOR[tone];
   const soft = TONE_SOFT[tone];
   const title = tOptional(stage.title_key) ?? t(`stage.${stage.key}` as MessageKey);
   const detail = stage.detail;
-  const ngfwRuleUrl = ngfwRuleSectionUrl(session.session?.server, session.session?.ngfw_port, stage.key, detail?.rule_id);
+  const ngfwRuleUrl = ngfwRuleSectionUrl(ngfwServer, ngfwPort, stage.key, detail?.rule_id);
   const reasonText = detail?.reason_key ? tOptional(`reason.${detail.reason_key}`) : null;
 
   const detailRows: { k: string; v: string }[] = [];

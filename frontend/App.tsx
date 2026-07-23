@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useSession } from "@/contexts/SessionContext";
+import { usePublicConfig } from "@/contexts/PublicConfigContext";
 import { useI18n } from "@/i18n";
 import { LoginScreen } from "@/components/auth/LoginScreen";
 import { TwoFactorForm } from "@/components/auth/TwoFactorForm";
@@ -10,6 +11,7 @@ import { SettingsModal } from "@/components/shell/SettingsModal";
 
 export default function App() {
   const { status, twoFactorPending, completeTwoFactor, cancelTwoFactor } = useSession();
+  const { traceAnimationEnabled } = usePublicConfig();
   const { t } = useI18n();
   const [settingsOpen, setSettingsOpen] = useState(false);
   // Iteration 4: demo mode is a separate client-only branch — it never touches
@@ -17,7 +19,7 @@ export default function App() {
   const [demo, setDemo] = useState(false);
 
   if (demo && status !== "authenticated") {
-    return <DemoScreen onExit={() => setDemo(false)} />;
+    return <DemoScreen onExit={() => setDemo(false)} traceAnimationEnabled={traceAnimationEnabled} />;
   }
 
   if (status === "checking") {
