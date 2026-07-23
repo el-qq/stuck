@@ -8,7 +8,7 @@
  * animation and result view are reused unchanged.
  */
 
-import { NgfwUser, RuleHygieneReport, StageKey, StageStatus, TraceResponse, TraceStage, STAGE_ORDER } from "./types";
+import { NgfwUser, RuleHygieneReport, SnapshotDescriptor, SnapshotDiffResponse, StageKey, StageStatus, TraceResponse, TraceStage, STAGE_ORDER } from "./types";
 import { MessageKey } from "@/i18n/en";
 
 /**
@@ -239,4 +239,98 @@ export const DEMO_HYGIENE_REPORT: RuleHygieneReport = {
       related: [{ id: "fw4", name: "Allow DNS to gateway", position: 4 }],
     },
   ],
+};
+
+/**
+ * Offline rule-snapshots showcase (docs/source/snapshots.md, fork f). Mirrors
+ * the shape of GET /api/rules/snapshots: one manual snapshot and one imported
+ * (foreign-server) snapshot, so the panel and its badges render exactly as
+ * the live workspace would — no backend, no /api/* calls.
+ */
+export const DEMO_SNAPSHOTS_LIMIT = 10;
+
+export const DEMO_SNAPSHOTS: SnapshotDescriptor[] = [
+  {
+    id: "demo-snap-yesterday",
+    created_at: "2026-01-01T09:00:00Z",
+    rules_updated_at: "2026-01-01T09:00:00Z",
+    comment: "Before the morning maintenance window",
+    source: "manual",
+    counts: { users: 6, firewall_forward: 9, firewall_input: 3, content_filter_rules: 4, hardware_rules: 5, aliases: 3 },
+  },
+  {
+    id: "demo-snap-imported",
+    created_at: "2025-12-20T08:00:00Z",
+    rules_updated_at: "2025-12-20T07:55:00Z",
+    exported_at: "2025-12-20T07:56:00Z",
+    comment: "Reference export from the staging NGFW",
+    source: "imported",
+    server: "staging-ngfw.example",
+    foreign_server: true,
+    counts: { users: 4, firewall_forward: 6, firewall_input: 2, content_filter_rules: 3, hardware_rules: 4, aliases: 2 },
+  },
+];
+
+/**
+ * Offline diff (fork c/f/h): compares the imported (foreign-server) snapshot
+ * above against "current" — the one static example shows every diff kind
+ * (added/removed/changed/moved), a level-2 state toggle, AND both the
+ * `anonymized` and `foreign_server` banners at once, like the hygiene
+ * fixture packs every finding kind into a single screen.
+ */
+export const DEMO_SNAPSHOT_DIFF: SnapshotDiffResponse = {
+  binding: { admin: "demo", server: "demo.local" },
+  a: {
+    id: "demo-snap-imported",
+    created_at: "2025-12-20T08:00:00Z",
+    rules_updated_at: "2025-12-20T07:55:00Z",
+    comment: "Reference export from the staging NGFW",
+    source: "imported",
+    foreign_server: true,
+  },
+  b: {
+    id: "current",
+    created_at: DEMO_RULES_UPDATED_AT,
+    rules_updated_at: DEMO_RULES_UPDATED_AT,
+    comment: null,
+    source: "current",
+  },
+  generated_at: DEMO_RULES_UPDATED_AT,
+  comparison_mode: "anonymized",
+  summary: { added: 1, removed: 1, changed: 2, moved: 1, states_changed: 1, tables_changed: 3 },
+  tables: [
+    {
+      table: "fw_forward",
+      entries: [
+        { kind: "added", id: "fw12", name: "Allow VPN subnet to internet", position_a: null, position_b: 8 },
+        {
+          kind: "changed",
+          id: "fw7",
+          name: "Deny social networks for Sales",
+          position_a: 7,
+          position_b: 6,
+          changed_fields: [{ field: "destinations", from: ["cat:social"], to: ["cat:social", "cat:streaming"] }],
+        },
+        { kind: "moved", id: "fw2", name: "Allow web for office LAN", position_a: 2, position_b: 1 },
+      ],
+    },
+    {
+      table: "fw_input",
+      entries: [{ kind: "removed", id: "in9", name: "Temporary debug access", position_a: 9, position_b: null }],
+    },
+    {
+      table: "aliases",
+      entries: [
+        {
+          kind: "changed",
+          id: "alias-office-lan",
+          name: "Office LAN",
+          position_a: 1,
+          position_b: 1,
+          changed_fields: [{ field: "value", from: "192.168.10.0/24", to: "192.168.10.0/23" }],
+        },
+      ],
+    },
+  ],
+  states: [{ key: "ips_state", from: true, to: false }],
 };

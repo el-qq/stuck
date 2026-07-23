@@ -4,6 +4,9 @@ import {
   DEMO_GROUPS,
   DEMO_HYGIENE_REPORT,
   DEMO_RULES_UPDATED_AT,
+  DEMO_SNAPSHOT_DIFF,
+  DEMO_SNAPSHOTS,
+  DEMO_SNAPSHOTS_LIMIT,
   DEMO_TARGETS,
   DEMO_USERS,
   runDemoTrace,
@@ -240,6 +243,67 @@ describe("lib/demoData.ts — offline rule-hygiene report", () => {
     for (const f of DEMO_HYGIENE_REPORT.findings.filter((x) => x.kind === "shadowed" || x.kind === "redundant")) {
       expect(f.related).toHaveLength(1);
       expect(f.related[0]!.position).toBeLessThan(f.rule.position);
+    }
+  });
+});
+
+describe("lib/demoData.ts — offline rule snapshots showcase (docs/source/snapshots.md fork f)", () => {
+  it("exposes one manual and one imported (foreign-server) snapshot, within the demo limit", () => {
+    expect(DEMO_SNAPSHOTS).toHaveLength(2);
+    expect(DEMO_SNAPSHOTS.length).toBeLessThanOrEqual(DEMO_SNAPSHOTS_LIMIT);
+    const manual = DEMO_SNAPSHOTS.find((s) => s.source === "manual")!;
+    const imported = DEMO_SNAPSHOTS.find((s) => s.source === "imported")!;
+    expect(manual).toBeDefined();
+    expect(imported).toBeDefined();
+    expect(imported.foreign_server).toBe(true);
+    expect(imported.server).toBeDefined();
+    expect(imported.exported_at).toBeDefined();
+  });
+
+  it("every counts record is a plain map of non-negative numbers", () => {
+    for (const s of DEMO_SNAPSHOTS) {
+      for (const value of Object.values(s.counts)) {
+        expect(typeof value).toBe("number");
+        expect(value).toBeGreaterThanOrEqual(0);
+      }
+    }
+  });
+
+  it("the demo diff showcases every DiffKind plus a state change, and both banners", () => {
+    const kinds = new Set(DEMO_SNAPSHOT_DIFF.tables.flatMap((g) => g.entries.map((e) => e.kind)));
+    expect(kinds).toEqual(new Set(["added", "removed", "changed", "moved"]));
+    expect(DEMO_SNAPSHOT_DIFF.states.length).toBeGreaterThan(0);
+    // "anonymized" because side A is imported; foreign_server is set on that
+    // same side — together they exercise both UI banners at once.
+    expect(DEMO_SNAPSHOT_DIFF.comparison_mode).toBe("anonymized");
+    expect(DEMO_SNAPSHOT_DIFF.a.source).toBe("imported");
+    expect(DEMO_SNAPSHOT_DIFF.a.foreign_server).toBe(true);
+    expect(DEMO_SNAPSHOT_DIFF.b.source).toBe("current");
+  });
+
+  it("summary counts match the entries actually present", () => {
+    const flat = DEMO_SNAPSHOT_DIFF.tables.flatMap((g) => g.entries);
+    expect(DEMO_SNAPSHOT_DIFF.summary.added).toBe(flat.filter((e) => e.kind === "added").length);
+    expect(DEMO_SNAPSHOT_DIFF.summary.removed).toBe(flat.filter((e) => e.kind === "removed").length);
+    expect(DEMO_SNAPSHOT_DIFF.summary.changed).toBe(flat.filter((e) => e.kind === "changed").length);
+    expect(DEMO_SNAPSHOT_DIFF.summary.moved).toBe(flat.filter((e) => e.kind === "moved").length);
+    expect(DEMO_SNAPSHOT_DIFF.summary.states_changed).toBe(DEMO_SNAPSHOT_DIFF.states.length);
+    expect(DEMO_SNAPSHOT_DIFF.summary.tables_changed).toBe(DEMO_SNAPSHOT_DIFF.tables.length);
+  });
+
+  it("added/removed entries have a null counterpart position, changed/moved have both", () => {
+    const flat = DEMO_SNAPSHOT_DIFF.tables.flatMap((g) => g.entries);
+    for (const e of flat) {
+      if (e.kind === "added") {
+        expect(e.position_a).toBeNull();
+        expect(e.position_b).not.toBeNull();
+      } else if (e.kind === "removed") {
+        expect(e.position_a).not.toBeNull();
+        expect(e.position_b).toBeNull();
+      } else {
+        expect(e.position_a).not.toBeNull();
+        expect(e.position_b).not.toBeNull();
+      }
     }
   });
 });

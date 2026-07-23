@@ -19,7 +19,12 @@ export type ErrorCode =
   | "api_changed"
   | "ngfw_error"
   | "not_found"
-  | "internal_error";
+  | "internal_error"
+  // ---- rule snapshots (docs/source/snapshots.md, fork f) ----
+  | "snapshot_limit_reached"
+  | "snapshot_import_invalid"
+  | "snapshot_import_unsupported_format"
+  | "snapshot_import_too_large";
 
 /** Closed list per contract §2.1 — used to validate/fallback unknown codes from the backend. */
 export const KNOWN_ERROR_CODES: readonly ErrorCode[] = [
@@ -39,6 +44,10 @@ export const KNOWN_ERROR_CODES: readonly ErrorCode[] = [
   "ngfw_error",
   "not_found",
   "internal_error",
+  "snapshot_limit_reached",
+  "snapshot_import_invalid",
+  "snapshot_import_unsupported_format",
+  "snapshot_import_too_large",
 ];
 
 export interface ErrorEnvelope {
@@ -118,6 +127,10 @@ export interface SessionStatus {
   /** Whether the rule-hygiene panel is enabled on the backend.
    *  Optional — older backends omit it; treat absence as false. */
   rule_hygiene_enabled?: boolean;
+  /** Whether the rule-snapshots/diff panel is enabled on the backend
+   *  (`STUCK_ENABLE_RULE_SNAPSHOTS`, docs/source/snapshots.md fork f).
+   *  Optional — older backends omit it; treat absence as false. */
+  rule_snapshots_enabled?: boolean;
   /** HTTPS port of the authenticated NGFW, used only for safe admin links.
    *  Optional for compatibility with older backends. */
   ngfw_port?: number;
@@ -300,6 +313,8 @@ export interface HealthResponse {
   ngfw_port?: number;
   ngfw_access_mode?: "allowlist" | "unrestricted";
   rules_export_enabled?: boolean;
+  /** Mirrors `SessionStatus.rule_snapshots_enabled` for the pre-login/public probe. */
+  rule_snapshots_enabled?: boolean;
 }
 
 /** Non-sensitive values needed before the administrator has a session. */
@@ -351,4 +366,159 @@ export interface RuleHygieneReport {
   generated_at: string;
   summary: HygieneSummary;
   findings: HygieneFinding[];
+}
+
+// --- Rule snapshots and diff (docs/source/snapshots.md, fork f) -------------
+//
+// Analyst draft, not yet an implemented backend contract — kept in sync with
+// `docs/API_CONTRACT.md` once the backend phases land. Owner decisions В1–В11
+// are final (see the doc); this mirrors the API sketch of §3.f exactly.
+
+/** "auto" is deliberately excluded — decision В3: only manual/imported snapshots exist. */
+export type SnapshotSource = "manual" | "imported";
+
+/** One row of `GET /api/rules/snapshots` / the result of create or import. */
+export interface SnapshotDescriptor {
+  /** Opaque, unique within the pair. */
+  id: string;
+  /** UTC ISO-8601. */
+  created_at: string;
+  /** When the underlying rules snapshot was actually read from NGFW. */
+  rules_updated_at: string;
+  comment: string | null;
+  source: SnapshotSource;
+  /** `RulesSnapshot.counts()` — same shape used by the rules-loading popup. */
+  counts: Record<string, number>;
+  // ---- only present for source === "imported" ----
+  /** `exported_at` from the imported `stuck.rules/v2` document. */
+  exported_at?: string;
+  /** `binding.server` recorded in the imported document. */
+  server?: string;
+  /** True when the imported document's server differs from the current pair's. */
+  foreign_server?: boolean;
+}
+
+export interface SnapshotsListResponse {
+  binding: { admin: string; server: string };
+  /** Effective per-binding limit (`STUCK_SNAPSHOT_LIMIT_PER_BINDING`). */
+  limit: number;
+  /** Sorted by `created_at` descending. */
+  snapshots: SnapshotDescriptor[];
+}
+
+export interface CreateSnapshotRequest {
+  /** Trimmed, <= 200 chars server-side. */
+  comment?: string;
+  /** Re-pull the rules snapshot from NGFW before capturing it (like export/hygiene `?refresh=true`). */
+  refresh?: boolean;
+}
+
+export interface CreateSnapshotResponse {
+  ok: true;
+  snapshot: SnapshotDescriptor;
+}
+
+export interface ImportSnapshotRequest {
+  comment?: string;
+  /** The parsed JSON document produced by `GET /api/rules/export` (`stuck.rules/v2`). */
+  export: unknown;
+}
+
+export interface ImportSnapshotResponse {
+  ok: true;
+  snapshot: SnapshotDescriptor;
+}
+
+export interface DeleteSnapshotResponse {
+  ok: true;
+}
+
+/** Pseudo-id selecting the pair's live snapshot instead of a saved one (fork d, В2). */
+export const CURRENT_SNAPSHOT_ID = "current" as const;
+export type SnapshotOrCurrentId = string | typeof CURRENT_SNAPSHOT_ID;
+
+/** Ordered rule tables (level 1) plus the object-level tables diffed (level 3, В5). */
+export type DiffTable =
+  | "fw_pre_filter"
+  | "fw_forward"
+  | "fw_input"
+  | "fw_dnat"
+  | "fw_snat"
+  | "hw_mac"
+  | "hw_src_ip"
+  | "hw_dst_ip"
+  | "hw_src_dst_ip"
+  | "cf_rules"
+  | "shaper_rules"
+  | "ips_bypass"
+  | "aliases"
+  | "users";
+
+export type DiffKind = "added" | "removed" | "changed" | "moved";
+
+export interface DiffChangedField {
+  field: string;
+  from: unknown;
+  to: unknown;
+}
+
+export interface DiffEntry {
+  kind: DiffKind;
+  id: string;
+  /** Display name for the UI only — never used for export/identity (fork c). */
+  name: string | null;
+  /** 1-based; null for `added`. */
+  position_a: number | null;
+  /** 1-based; null for `removed`. */
+  position_b: number | null;
+  /** Only present for `kind === "changed"`. */
+  changed_fields?: DiffChangedField[];
+}
+
+export interface DiffTableGroup {
+  table: DiffTable;
+  entries: DiffEntry[];
+}
+
+/** Module/setting toggles (level 2) — keys are an open vocabulary (like `reason_key`);
+ *  unknown keys must render tolerantly instead of being dropped. */
+export interface DiffStateChange {
+  key: string;
+  from: unknown;
+  to: unknown;
+}
+
+export interface DiffSummary {
+  added: number;
+  removed: number;
+  changed: number;
+  moved: number;
+  states_changed: number;
+  tables_changed: number;
+}
+
+export type ComparisonMode = "full" | "anonymized";
+
+/** One side ("a" or "b") of a diff response. */
+export interface DiffSide {
+  id: SnapshotOrCurrentId;
+  created_at: string;
+  rules_updated_at: string;
+  comment: string | null;
+  source: SnapshotSource | "current";
+  foreign_server?: boolean;
+}
+
+export interface SnapshotDiffResponse {
+  binding: { admin: string; server: string };
+  a: DiffSide;
+  b: DiffSide;
+  generated_at: string;
+  /** "anonymized" when either side is an imported snapshot — both sides are then
+   *  normalized to the anonymized form and display fields/users are limited (fork h). */
+  comparison_mode: ComparisonMode;
+  summary: DiffSummary;
+  /** Only tables with at least one entry — an empty array means "no changes". */
+  tables: DiffTableGroup[];
+  states: DiffStateChange[];
 }

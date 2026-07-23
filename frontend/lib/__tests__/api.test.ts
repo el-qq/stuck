@@ -1,5 +1,20 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { exportRules, getPublicConfig, getRuleHygiene, getSession, getUsers, health, login, refreshAccessProfile, trace } from "../api";
+import {
+  createRuleSnapshot,
+  deleteRuleSnapshot,
+  exportRules,
+  getPublicConfig,
+  getRuleHygiene,
+  getRuleSnapshotDiff,
+  getSession,
+  getUsers,
+  health,
+  importRuleSnapshot,
+  listRuleSnapshots,
+  login,
+  refreshAccessProfile,
+  trace,
+} from "../api";
 import { ApiError } from "../errors";
 
 /**
@@ -515,6 +530,180 @@ describe("lib/api.ts", () => {
     it("maps a disabled-feature 404 to ApiError(not_found)", async () => {
       vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse({ error: { code: "not_found" } }, 404)));
       await expectApiError(getRuleHygiene(), "not_found");
+    });
+  });
+
+  describe("rule snapshots and diff (docs/source/snapshots.md, fork f)", () => {
+    describe("listRuleSnapshots", () => {
+      it("returns the parsed list on success", async () => {
+        const body = {
+          binding: { admin: "admin", server: "10.0.0.1" },
+          limit: 10,
+          snapshots: [
+            {
+              id: "s1",
+              created_at: "2026-07-22T00:00:00Z",
+              rules_updated_at: "2026-07-22T00:00:00Z",
+              comment: "before maintenance",
+              source: "manual",
+              counts: { users: 3 },
+            },
+          ],
+        };
+        const fetchMock = vi.fn().mockResolvedValue(jsonResponse(body));
+        vi.stubGlobal("fetch", fetchMock);
+
+        const res = await listRuleSnapshots();
+        expect(res.limit).toBe(10);
+        expect(res.snapshots).toHaveLength(1);
+        expect(fetchMock.mock.calls[0]![0]).toBe("/api/rules/snapshots");
+      });
+
+      it("maps a disabled-feature 404 to ApiError(not_found)", async () => {
+        vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse({ error: { code: "not_found" } }, 404)));
+        await expectApiError(listRuleSnapshots(), "not_found");
+      });
+
+      it("rejects a malformed list response", async () => {
+        vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse({ binding: { admin: "a", server: "s" } })));
+        await expectApiError(listRuleSnapshots(), "api_changed");
+      });
+    });
+
+    describe("createRuleSnapshot", () => {
+      it("posts the optional comment and returns the created descriptor", async () => {
+        const fetchMock = vi.fn().mockResolvedValue(
+          jsonResponse({
+            ok: true,
+            snapshot: {
+              id: "s2",
+              created_at: "2026-07-23T00:00:00Z",
+              rules_updated_at: "2026-07-23T00:00:00Z",
+              comment: "manual save",
+              source: "manual",
+              counts: {},
+            },
+          }),
+        );
+        vi.stubGlobal("fetch", fetchMock);
+
+        const res = await createRuleSnapshot({ comment: "manual save" });
+        expect(res.snapshot.id).toBe("s2");
+        const [path, init] = fetchMock.mock.calls[0]!;
+        expect(path).toBe("/api/rules/snapshots");
+        expect(init.method).toBe("POST");
+        expect(JSON.parse(init.body)).toEqual({ comment: "manual save" });
+      });
+
+      it("maps the limit-reached error", async () => {
+        vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse({ error: { code: "snapshot_limit_reached", details: { limit: 10 } } }, 409)));
+        const err = await expectApiError(createRuleSnapshot(), "snapshot_limit_reached");
+        expect(err.httpStatus).toBe(409);
+      });
+    });
+
+    describe("deleteRuleSnapshot", () => {
+      it("sends a DELETE to the snapshot id", async () => {
+        const fetchMock = vi.fn().mockResolvedValue(jsonResponse({ ok: true }));
+        vi.stubGlobal("fetch", fetchMock);
+
+        const res = await deleteRuleSnapshot("s1");
+        expect(res.ok).toBe(true);
+        const [path, init] = fetchMock.mock.calls[0]!;
+        expect(path).toBe("/api/rules/snapshots/s1");
+        expect(init.method).toBe("DELETE");
+      });
+
+      it("encodes the id in the path", async () => {
+        const fetchMock = vi.fn().mockResolvedValue(jsonResponse({ ok: true }));
+        vi.stubGlobal("fetch", fetchMock);
+
+        await deleteRuleSnapshot("weird id/with?chars");
+        expect(fetchMock.mock.calls[0]![0]).toBe(`/api/rules/snapshots/${encodeURIComponent("weird id/with?chars")}`);
+      });
+
+      it("maps an unknown/already-deleted id to not_found", async () => {
+        vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse({ error: { code: "not_found" } }, 404)));
+        await expectApiError(deleteRuleSnapshot("missing"), "not_found");
+      });
+    });
+
+    describe("importRuleSnapshot", () => {
+      it("posts the parsed export document as JSON", async () => {
+        const fetchMock = vi.fn().mockResolvedValue(
+          jsonResponse({
+            ok: true,
+            snapshot: {
+              id: "s3",
+              created_at: "2026-07-23T00:00:00Z",
+              rules_updated_at: "2025-12-20T00:00:00Z",
+              exported_at: "2025-12-20T00:05:00Z",
+              comment: null,
+              source: "imported",
+              counts: {},
+              server: "other-ngfw",
+              foreign_server: true,
+            },
+          }),
+        );
+        vi.stubGlobal("fetch", fetchMock);
+
+        const exportDoc = { format: "stuck.rules/v2", snapshot: {} };
+        const res = await importRuleSnapshot({ export: exportDoc });
+        expect(res.snapshot.source).toBe("imported");
+        expect(res.snapshot.foreign_server).toBe(true);
+        const [path, init] = fetchMock.mock.calls[0]!;
+        expect(path).toBe("/api/rules/snapshots/import");
+        expect(JSON.parse(init.body)).toEqual({ export: exportDoc });
+      });
+
+      it.each(["snapshot_import_invalid", "snapshot_import_unsupported_format", "snapshot_import_too_large"])("maps the %s error", async (code) => {
+        vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse({ error: { code } }, code === "snapshot_import_too_large" ? 413 : 400)));
+        await expectApiError(importRuleSnapshot({ export: {} }), code);
+      });
+    });
+
+    describe("getRuleSnapshotDiff", () => {
+      function diffResponse() {
+        return {
+          binding: { admin: "a", server: "s" },
+          a: { id: "s1", created_at: "2026-07-22T00:00:00Z", rules_updated_at: "2026-07-22T00:00:00Z", comment: null, source: "manual" },
+          b: { id: "current", created_at: "2026-07-23T00:00:00Z", rules_updated_at: "2026-07-23T00:00:00Z", comment: null, source: "current" },
+          generated_at: "2026-07-23T00:00:01Z",
+          comparison_mode: "full",
+          summary: { added: 1, removed: 0, changed: 0, moved: 0, states_changed: 0, tables_changed: 1 },
+          tables: [{ table: "fw_forward", entries: [{ kind: "added", id: "fw1", name: "New rule", position_a: null, position_b: 1 }] }],
+          states: [],
+        };
+      }
+
+      it("requests both sides as query params and returns the parsed diff", async () => {
+        const fetchMock = vi.fn().mockResolvedValue(jsonResponse(diffResponse()));
+        vi.stubGlobal("fetch", fetchMock);
+
+        const res = await getRuleSnapshotDiff("s1", "current");
+        expect(res.summary.added).toBe(1);
+        expect(res.tables[0]!.entries[0]!.id).toBe("fw1");
+        expect(fetchMock.mock.calls[0]![0]).toBe("/api/rules/snapshots/diff?a=s1&b=current");
+      });
+
+      it("a === b is a valid request (empty diff)", async () => {
+        const empty = { ...diffResponse(), tables: [], summary: { added: 0, removed: 0, changed: 0, moved: 0, states_changed: 0, tables_changed: 0 } };
+        vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse(empty)));
+
+        const res = await getRuleSnapshotDiff("current", "current");
+        expect(res.tables).toHaveLength(0);
+      });
+
+      it("maps an unknown snapshot id to not_found", async () => {
+        vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse({ error: { code: "not_found" } }, 404)));
+        await expectApiError(getRuleSnapshotDiff("missing", "current"), "not_found");
+      });
+
+      it("rejects a malformed diff response", async () => {
+        vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse({ binding: { admin: "a", server: "s" } })));
+        await expectApiError(getRuleSnapshotDiff("s1", "current"), "api_changed");
+      });
     });
   });
 });

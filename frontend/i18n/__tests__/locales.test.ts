@@ -92,6 +92,11 @@ describe("i18n locales (FR-6: Localization)", () => {
       "ngfw_error",
       "not_found",
       "internal_error",
+      // Rule snapshots and diff (docs/source/snapshots.md, fork f).
+      "snapshot_limit_reached",
+      "snapshot_import_invalid",
+      "snapshot_import_unsupported_format",
+      "snapshot_import_too_large",
     ];
 
     it("all error codes are present in en locale", () => {
@@ -222,6 +227,79 @@ describe("i18n locales (FR-6: Localization)", () => {
     it("export keys present and non-empty in every locale", () => {
       for (const locale of localeNames) {
         for (const key of exportKeys) {
+          const value = locales[locale][key as keyof typeof en];
+          expect(value, `Locale ${locale} is missing: ${key}`).toBeDefined();
+          expect(typeof value === "string" && value.trim().length > 0, `Locale ${locale} has an empty value for: ${key}`).toBe(true);
+        }
+      }
+    });
+  });
+
+  describe("Rule snapshots and diff keys (docs/source/snapshots.md, fork f)", () => {
+    const snapshotKeys = [
+      "snapshots.title",
+      "snapshots.subtitle",
+      "snapshots.compareTitle",
+      "snapshots.compareA",
+      "snapshots.compareB",
+      "snapshots.current",
+      "snapshots.listTitle",
+      "snapshots.limitCounter",
+      "snapshots.commentPlaceholder",
+      "snapshots.create",
+      "snapshots.creating",
+      "snapshots.import",
+      "snapshots.importing",
+      "snapshots.empty",
+      "snapshots.sourceImported",
+      "snapshots.sourceManual",
+      "snapshots.foreignBadge",
+      "snapshots.rowCounts",
+      "snapshots.delete",
+      "snapshots.deleteConfirmTitle",
+      "snapshots.deleteConfirmMessage",
+      "snapshots.diffLoading",
+      "snapshots.diffClean",
+      "snapshots.anonymizedBanner",
+      "snapshots.foreignServerBanner",
+      "snapshots.statesTitle",
+      "snapshots.countAdded",
+      "snapshots.countRemoved",
+      "snapshots.countChanged",
+      "snapshots.countMoved",
+      "snapshots.kindAdded",
+      "snapshots.kindRemoved",
+      "snapshots.kindChanged",
+      "snapshots.kindMoved",
+      "snapshots.positionAdded",
+      "snapshots.positionRemoved",
+      "snapshots.positionBoth",
+      "snapshots.tableFwPreFilter",
+      "snapshots.tableFwForward",
+      "snapshots.tableFwInput",
+      "snapshots.tableFwDnat",
+      "snapshots.tableFwSnat",
+      "snapshots.tableHwMac",
+      "snapshots.tableHwSrcIp",
+      "snapshots.tableHwDstIp",
+      "snapshots.tableHwSrcDstIp",
+      "snapshots.tableCfRules",
+      "snapshots.tableShaperRules",
+      "snapshots.tableIpsBypass",
+      "snapshots.tableAliases",
+      "snapshots.tableUsers",
+      "snapshots.state.fw_state",
+      "snapshots.state.cf_state",
+      "snapshots.state.ips_state",
+      "snapshots.state.av_enabled",
+      "snapshots.state.shaper_state",
+      "snapshots.state.hw_settings_mode",
+      "snapshots.state.fw_settings_automatic_snat_enabled",
+    ];
+
+    it("all snapshot/diff keys are present and non-empty in every locale", () => {
+      for (const locale of localeNames) {
+        for (const key of snapshotKeys) {
           const value = locales[locale][key as keyof typeof en];
           expect(value, `Locale ${locale} is missing: ${key}`).toBeDefined();
           expect(typeof value === "string" && value.trim().length > 0, `Locale ${locale} has an empty value for: ${key}`).toBe(true);

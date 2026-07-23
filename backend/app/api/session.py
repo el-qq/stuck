@@ -80,6 +80,8 @@ async def session_status(
         "rules_export_enabled": settings.STUCK_ENABLE_RULES_EXPORT,
         # frontend shows the "Rule hygiene" panel only when true.
         "rule_hygiene_enabled": settings.STUCK_ENABLE_RULE_HYGIENE,
+        # frontend shows the "Snapshots" panel only when true.
+        "rule_snapshots_enabled": settings.STUCK_ENABLE_RULE_SNAPSHOTS,
     }
 
 

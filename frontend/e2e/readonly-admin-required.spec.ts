@@ -150,7 +150,9 @@ test("2FA path: readonly_admin_required after 2FA code is accepted", async ({ pa
         body: JSON.stringify({
           ok: true,
           two_factor_required: true,
-          expires_at: "2026-07-23T10:30:00Z",
+          // Relative to the wall clock: a fixed instant silently expires the
+          // challenge as soon as real time passes it and the form disables.
+          expires_at: new Date(Date.now() + 180_000).toISOString(),
           message: "Enter the code from your authenticator",
         }),
       });

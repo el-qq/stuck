@@ -2,7 +2,12 @@ import { ApiError, logApiError, normalizeErrorCode } from "./errors";
 import {
   ErrorEnvelope,
   AccessProfileRefreshResponse,
+  CreateSnapshotRequest,
+  CreateSnapshotResponse,
+  DeleteSnapshotResponse,
   HealthResponse,
+  ImportSnapshotRequest,
+  ImportSnapshotResponse,
   LoginRequest,
   LoginOutcome,
   LoginResponse,
@@ -11,6 +16,9 @@ import {
   RulesRefreshResponse,
   SessionStatus,
   SessionBootstrap,
+  SnapshotOrCurrentId,
+  SnapshotDiffResponse,
+  SnapshotsListResponse,
   STAGE_ORDER,
   TraceRequest,
   TraceResponse,
@@ -267,6 +275,63 @@ export async function health(): Promise<HealthResponse> {
 export async function getRuleHygiene(refresh = false): Promise<RuleHygieneReport> {
   const query = refresh ? "?refresh=true" : "";
   return request<RuleHygieneReport>(`/api/rules/hygiene${query}`, { method: "GET" });
+}
+
+// --- Rule snapshots and diff (docs/source/snapshots.md, fork f) -------------
+// Draft contract — the backend phases (1-4 of the same doc) land in parallel;
+// keep this thin plumbing in sync with docs/API_CONTRACT.md once published.
+
+/** Documented body-size limit for `POST /api/rules/snapshots/import` (fork h.3). */
+export const SNAPSHOT_IMPORT_MAX_BYTES = 20 * 1024 * 1024;
+
+/** Saved snapshots of the current pair, newest first, plus the effective limit. */
+export async function listRuleSnapshots(): Promise<SnapshotsListResponse> {
+  const data = await request<SnapshotsListResponse>("/api/rules/snapshots", { method: "GET" });
+  assertShape(Array.isArray(data?.snapshots) && typeof data?.limit === "number", "/api/rules/snapshots");
+  return data;
+}
+
+/** Captures the pair's current rules snapshot as a named/dated point in time. */
+export async function createRuleSnapshot(payload: CreateSnapshotRequest = {}): Promise<CreateSnapshotResponse> {
+  const data = await request<CreateSnapshotResponse>("/api/rules/snapshots", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+  assertShape(data?.ok === true && typeof data?.snapshot?.id === "string", "/api/rules/snapshots");
+  return data;
+}
+
+/** Idempotent-on-success delete; an unknown/already-deleted id surfaces as `not_found`. */
+export async function deleteRuleSnapshot(id: string): Promise<DeleteSnapshotResponse> {
+  return request<DeleteSnapshotResponse>(`/api/rules/snapshots/${encodeURIComponent(id)}`, { method: "DELETE" });
+}
+
+/**
+ * Stores a `stuck.rules/v2` export document (read client-side with
+ * `FileReader`, decision №10 — no textarea, no separate multipart endpoint) as
+ * an "imported" snapshot of the current pair. NGFW is never contacted for this
+ * call (fork h.3).
+ */
+export async function importRuleSnapshot(payload: ImportSnapshotRequest): Promise<ImportSnapshotResponse> {
+  const data = await request<ImportSnapshotResponse>("/api/rules/snapshots/import", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+  assertShape(data?.ok === true && typeof data?.snapshot?.id === "string", "/api/rules/snapshots/import");
+  return data;
+}
+
+/**
+ * Structured diff between two sides, each either a saved snapshot id or the
+ * literal `"current"` (the pair's live snapshot, lazily loaded like export/
+ * hygiene). `a === b` is a valid request (empty diff).
+ */
+export async function getRuleSnapshotDiff(a: SnapshotOrCurrentId, b: SnapshotOrCurrentId): Promise<SnapshotDiffResponse> {
+  const query = `?a=${encodeURIComponent(a)}&b=${encodeURIComponent(b)}`;
+  const path = `/api/rules/snapshots/diff${query}`;
+  const data = await request<SnapshotDiffResponse>(path, { method: "GET" });
+  assertShape(Array.isArray(data?.tables) && Array.isArray(data?.states) && !!data?.summary && !!data?.a && !!data?.b, path);
+  return data;
 }
 
 export interface RulesExport {

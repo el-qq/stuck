@@ -1353,9 +1353,11 @@ class TestBindingPool:
         binding = binding_pool.get(valid_login_data["login"], NGFW_SERVER)
         assert binding is not None
 
-        # No cookie/secret-like attribute on the binding.
+        # No cookie/secret-like attribute on the binding. ``saved_snapshots``
+        # holds named rule snapshots (docs/source/snapshots.md) — non-secret
+        # copies of the same snapshot data, checked below with the deep scan.
         attrs = vars(binding)
-        assert set(attrs.keys()) == {"admin_login", "server", "snapshot"}
+        assert set(attrs.keys()) == {"admin_login", "server", "snapshot", "saved_snapshots"}
         for name in attrs:
             assert "cookie" not in name.lower()
             assert "password" not in name.lower()

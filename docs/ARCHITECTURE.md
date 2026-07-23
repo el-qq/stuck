@@ -77,12 +77,24 @@ be imported or called by the STUCK application.
 
 ## State and isolation
 
-Two in-memory stores have intentionally different lifetimes:
+The in-memory stores have intentionally different lifetimes (saved snapshots
+are part of the binding pool, listed separately for their addressing):
 
-| Store         | Key                              | Contains                                                                   | Removed by                                   |
-| ------------- | -------------------------------- | -------------------------------------------------------------------------- | -------------------------------------------- |
-| Session store | opaque `stuck_session`           | canonical admin login, normalized host, NGFW cookies, role profile, expiry | logout, expiry, restart                      |
-| Binding pool  | `(admin login, normalized host)` | rule snapshot and load time                                                | restart; snapshot replaced by manual refresh |
+| Store           | Key                              | Contains                                                                         | Removed by                                   |
+| --------------- | -------------------------------- | -------------------------------------------------------------------------------- | -------------------------------------------- |
+| Session store   | opaque `stuck_session`           | canonical admin login, normalized host, NGFW cookies, role profile, expiry       | logout, expiry, restart                      |
+| Binding pool    | `(admin login, normalized host)` | rule snapshot and load time                                                      | restart; snapshot replaced by manual refresh |
+| Saved snapshots | entry id within its binding      | named point-in-time rule snapshots (manual or imported) with non-secret metadata | explicit delete, binding discard, restart    |
+
+Saved rule snapshots live on the binding itself, so they share the pair's
+lifecycle exactly: logout keeps them, a role degradation that discards the
+binding removes them, and a restart clears them (no persistence in v1).
+Creating a snapshot copies already-loaded in-memory data and performs no NGFW
+call. Manual and imported snapshots count against one configurable per-pair
+limit; reaching it is an explicit error, never a silent eviction. Imported
+snapshots come from the anonymized rules export, are marked as anonymized and
+never contain secrets or user display data. A snapshot diff is a pure,
+on-demand function of two snapshots and is never stored.
 
 Consequences:
 
