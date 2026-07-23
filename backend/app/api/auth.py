@@ -20,7 +20,7 @@ from ..deps import (
     get_session_store,
 )
 from ..domain.binding_pool import BindingPool
-from ..domain.admin_access import AdminAccessProfile, TwoFactorPending
+from ..domain.admin_access import AdminAccessProfile, TwoFactorPending, require_readonly_admin
 from ..domain.ngfw_access import normalize_server
 from ..domain.pending_2fa import PendingTwoFactorStore
 from ..domain.session_store import Session, SessionStore
@@ -251,6 +251,20 @@ async def login(
         return await _begin_two_factor(role, server, ngfw_cookies, response, settings, pending_store)
 
     admin_access: AdminAccessProfile = role
+    if settings.STUCK_REQUIRE_READONLY_ADMIN:
+        try:
+            require_readonly_admin(admin_access)
+        except StuckError:
+            # Do not leave the provisional NGFW session behind. No STUCK
+            # session is created and no cookie is set.
+            await ngfw_logout(server, ngfw_cookies)
+            log_event(
+                _auth_log,
+                "login_rejected_readonly_required",
+                login=admin_access.login,
+                server=server,
+            )
+            raise
     return _finalize_login(response, settings, store, pool, server, ngfw_cookies, admin_access)
 
 
@@ -380,6 +394,22 @@ async def submit_two_factor(
         # the frontend closes the challenge after its retry limit.
         message = verdict.message if (verdict.is_error and verdict.message) else ""
         raise second_factor_invalid(can_retry=True, message=message)
+
+    if settings.STUCK_REQUIRE_READONLY_ADMIN:
+        try:
+            require_readonly_admin(role)
+        except StuckError:
+            # The code was accepted but the role is not read-only: drop the
+            # pending entry, close the socket and the provisional NGFW session,
+            # clear stuck_2fa. No STUCK session is created.
+            await _reset_to_login()
+            log_event(
+                _auth_log,
+                "login_rejected_readonly_required",
+                login=role.login,
+                server=entry.server,
+            )
+            raise
 
     # Accepted: the provisional cookies become the real session's; close the WS.
     pending_store.pop(pid)

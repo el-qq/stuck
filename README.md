@@ -156,6 +156,7 @@ with the same name; environment variables take precedence.
 | `STUCK_ENABLE_RULES_EXPORT`    | `true`              | Make the authenticated rules-snapshot export available.                                                                                                       |
 | `STUCK_ENABLE_TRACE_ANIMATION` | `true`              | Reveal desktop trace stages one at a time and show **Skip animation**; set `false` to show the complete result immediately. Also applies to the offline demo. |
 | `STUCK_ENABLE_RULE_HYGIENE`    | `true`              | Enable the read-only rule-hygiene panel (shadowed / redundant / unreachable / overly-broad firewall rules); set `false` to answer 404 and hide it.            |
+| `STUCK_REQUIRE_READONLY_ADMIN` | `false`             | Accept sign-in only from NGFW administrators with the read-only role; any other role is rejected after authentication (including 2FA) with `readonly_admin_required`. |
 
 To lock STUCK to one NGFW host for a local development run:
 

@@ -180,6 +180,11 @@ control; when false, every stage and the verdict appear immediately. The
 non-sensitive value is exposed through `GET /api/config`, so it also applies to
 the offline demo.
 
+`STUCK_REQUIRE_READONLY_ADMIN` is an optional login policy: when enabled, only
+NGFW administrators with the built-in read-only role may enter STUCK. Any other
+verified role is rejected with `readonly_admin_required` after the provisional
+NGFW session is closed; no STUCK session is created.
+
 `STUCK_DEFAULT_SERVER` is an optional host-only login lock. A non-empty value
 is delivered in the public bootstrap configuration and fixes the server field
 in the browser; the login API independently rejects any other host. An empty

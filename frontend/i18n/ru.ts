@@ -321,6 +321,7 @@ export const ru: Record<keyof typeof en, string> = {
   "twoFactor.cancel": "Отмена",
   "twoFactor.validation.codeRequired": "Введите код подтверждения.",
   "errors.insufficient_ngfw_permissions": "Текущая роль администратора NGFW не может выполнять диагностику трафика.",
+  "errors.readonly_admin_required": "Вход разрешён только администраторам с правом «Только чтение» (read-only).",
   "errors.not_authenticated": "Для продолжения нужно войти в систему.",
   "errors.session_expired": "Сессия истекла. Пожалуйста, войдите снова.",
   "errors.server_unreachable": "Сервер недоступен. Проверьте адрес и порт и попробуйте снова.",

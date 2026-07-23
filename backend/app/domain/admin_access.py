@@ -18,6 +18,10 @@ from ..errors import StuckError
 # infer permission from a partial competence list.
 TRACE_ROLE_IDS = frozenset({"predefined_admin_write", "predefined_admin_readonly"})
 
+# The built-in read-only administrator role; the only role accepted when the
+# optional STUCK_REQUIRE_READONLY_ADMIN mode is enabled.
+READONLY_ROLE_ID = "predefined_admin_readonly"
+
 # whoami ``blocked_flags`` is a bitfield; bit 0 (value 1) means the profile is
 # authenticated but blocked awaiting a second factor (mfa2-plan.md §2).
 BLOCKED_FLAG_TWO_FACTOR = 0b1
@@ -147,6 +151,23 @@ def detect_two_factor_pending(payload: Any, *, submitted_login: str) -> TwoFacto
     message = message.strip() if isinstance(message, str) and message.strip() else None
 
     return TwoFactorPending(submitted_login=submitted_login, admin_id=admin_id, message=message)
+
+
+def require_readonly_admin(profile: AdminAccessProfile) -> None:
+    """Reject login for any role but built-in read-only (opt-in mode).
+
+    Called only when ``STUCK_REQUIRE_READONLY_ADMIN`` is enabled; every other
+    role — including the full administrator — is rejected.
+    """
+
+    if profile.role_id != READONLY_ROLE_ID:
+        # The role id is safe diagnostic metadata (same policy as
+        # require_trace_access): never a cookie, path or raw vendor response.
+        raise StuckError(
+            "readonly_admin_required",
+            "This STUCK server accepts only read-only NGFW administrators",
+            details={"role_id": profile.role_id},
+        )
 
 
 def require_trace_access(profile: AdminAccessProfile) -> None:

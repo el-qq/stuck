@@ -342,6 +342,7 @@ export const en = {
   "errors.second_factor_invalid": "Invalid confirmation code. Try again.",
   "errors.second_factor_expired": "The confirmation window has expired. Sign in again.",
   "errors.insufficient_ngfw_permissions": "The current NGFW administrator role cannot run traffic diagnostics.",
+  "errors.readonly_admin_required": "Sign-in is allowed only for administrators with the read-only role.",
   "errors.not_authenticated": "You need to sign in to continue.",
   "errors.session_expired": "Your session has expired. Please sign in again.",
   "errors.server_unreachable": "The server is unreachable. Check the address and port and try again.",

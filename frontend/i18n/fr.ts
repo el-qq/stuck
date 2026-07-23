@@ -315,6 +315,7 @@ export const fr: Record<keyof typeof en, string> = {
   "twoFactor.cancel": "Annuler",
   "twoFactor.validation.codeRequired": "Saisissez le code de confirmation.",
   "errors.insufficient_ngfw_permissions": "Le rôle administrateur NGFW actuel ne peut pas exécuter le diagnostic du trafic.",
+  "errors.readonly_admin_required": "La connexion n'est autorisée que pour les administrateurs ayant le rôle lecture seule (read-only).",
   "errors.not_authenticated": "Vous devez vous connecter pour continuer.",
   "errors.session_expired": "Votre session a expiré. Connectez-vous à nouveau.",
   "errors.server_unreachable": "Le serveur est inaccessible. Vérifiez l’adresse et le port, puis réessayez.",

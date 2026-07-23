@@ -325,6 +325,7 @@ export const ms: Record<keyof typeof en, string> = {
   "twoFactor.cancel": "Batal",
   "twoFactor.validation.codeRequired": "Masukkan kod pengesahan.",
   "errors.insufficient_ngfw_permissions": "Peranan pentadbir NGFW semasa tidak boleh menjalankan diagnostik trafik.",
+  "errors.readonly_admin_required": "Log masuk hanya dibenarkan untuk pentadbir dengan peranan baca sahaja (read-only).",
   "errors.not_authenticated": "Anda perlu log masuk untuk meneruskan.",
   "errors.session_expired": "Sesi anda telah tamat tempoh. Sila log masuk semula.",
   "errors.server_unreachable": "Pelayan tidak dapat dihubungi. Semak alamat dan port, kemudian cuba lagi.",

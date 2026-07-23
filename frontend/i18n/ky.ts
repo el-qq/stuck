@@ -251,6 +251,7 @@ export const ky: Record<keyof typeof en, string> = {
   "twoFactor.cancel": "Жокко чыгаруу",
   "twoFactor.validation.codeRequired": "Ырастоо кодун киргизиңиз.",
   "errors.insufficient_ngfw_permissions": "Учурдагы NGFW администраторунун ролу трафик диагностикасын иштете албайт.",
+  "errors.readonly_admin_required": "Кирүүгө «Окууга гана» (read-only) ролу бар администраторлорго гана уруксат берилет.",
   "errors.not_authenticated": "Улантуу үчүн кириңиз.",
   "errors.session_expired": "Сеансыңыздын мөөнөтү бүттү. Кайра кириңиз.",
   "errors.server_unreachable": "Сервер жеткиликсиз. Даректи жана портту текшерип, кайра аракет кылыңыз.",

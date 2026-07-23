@@ -250,6 +250,7 @@ export const be: Record<keyof typeof en, string> = {
   "twoFactor.cancel": "Адмена",
   "twoFactor.validation.codeRequired": "Увядзіце код пацвярджэння.",
   "errors.insufficient_ngfw_permissions": "Бягучая роля адміністратара NGFW не можа запускаць дыягностыку трафіку.",
+  "errors.readonly_admin_required": "Уваход дазволены толькі адміністратарам з роляй «Толькі для чытання» (read-only).",
   "errors.not_authenticated": "Каб працягнуць, увайдзіце ў сістэму.",
   "errors.session_expired": "Ваш сеанс скончыўся. Увайдзіце зноў.",
   "errors.server_unreachable": "Сервер недаступны. Праверце адрас і порт, затым паўтарыце спробу.",

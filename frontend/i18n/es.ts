@@ -328,6 +328,7 @@ export const es: Record<keyof typeof en, string> = {
   "twoFactor.cancel": "Cancelar",
   "twoFactor.validation.codeRequired": "Introduce el código de confirmación.",
   "errors.insufficient_ngfw_permissions": "El rol de administrador NGFW actual no puede ejecutar diagnósticos de tráfico.",
+  "errors.readonly_admin_required": "El inicio de sesión solo está permitido para administradores con el rol de solo lectura.",
   "errors.not_authenticated": "Debe iniciar sesión para continuar.",
   "errors.session_expired": "Su sesión ha caducado. Inicie sesión de nuevo.",
   "errors.server_unreachable": "El servidor no está disponible. Compruebe la dirección y el puerto e inténtelo de nuevo.",

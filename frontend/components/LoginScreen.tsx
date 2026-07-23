@@ -170,27 +170,6 @@ export function LoginScreen({ onEnterDemo }: { onEnterDemo: () => void }) {
             </div>
           )}
 
-          {/* FR-1.7 (v2): recommend a read-only administrator account. */}
-          <div
-            style={{
-              display: "flex",
-              alignItems: "flex-start",
-              gap: 8,
-              fontSize: 12.5,
-              color: "var(--accent)",
-              background: "var(--accent-soft)",
-              borderRadius: "var(--radius-sm)",
-              padding: "10px 12px",
-              marginBottom: 16,
-              lineHeight: 1.45,
-            }}
-          >
-            <span aria-hidden="true" style={{ fontWeight: 700 }}>
-              ⓘ
-            </span>
-            <span>{t("login.readonlyHint")}</span>
-          </div>
-
           {unrestrictedNgfw && (
             <div role="alert" style={warnBlockStyle}>
               {t("login.unrestrictedNgfwWarning")}
@@ -313,6 +292,15 @@ export function LoginScreen({ onEnterDemo }: { onEnterDemo: () => void }) {
               </div>
             )}
 
+            {/* Optional STUCK_REQUIRE_READONLY_ADMIN policy rejected a
+                verified non-read-only role (from a plain login or after a
+                2FA code was accepted). No session/cookie was created. */}
+            {session.readonlyAdminRequiredNotice && (
+              <div role="alert" style={warnBlockStyle}>
+                {t("errors.readonly_admin_required")}
+              </div>
+            )}
+
             <button type="submit" disabled={submitting} className="btn-primary" style={submitBtnStyle}>
               {submitting ? t("login.submitting") : t("login.submit")}
             </button>
@@ -328,6 +316,26 @@ export function LoginScreen({ onEnterDemo }: { onEnterDemo: () => void }) {
             </button>
 
             <div style={{ fontSize: 12, color: "var(--muted)", textAlign: "center" }}>{t("login.footnote")}</div>
+
+            {/* FR-1.7 (v2): recommend a read-only administrator account. */}
+            <div
+              style={{
+                display: "flex",
+                alignItems: "flex-start",
+                gap: 8,
+                fontSize: 12.5,
+                color: "var(--accent)",
+                background: "var(--accent-soft)",
+                borderRadius: "var(--radius-sm)",
+                padding: "10px 12px",
+                lineHeight: 1.45,
+              }}
+            >
+              <span aria-hidden="true" style={{ fontWeight: 700 }}>
+                ⓘ
+              </span>
+              <span>{t("login.readonlyHint")}</span>
+            </div>
           </div>
         </form>
       </div>

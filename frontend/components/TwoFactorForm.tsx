@@ -20,6 +20,10 @@ import * as api from "@/lib/api";
  *     `second_factor_expired` → the challenge is dead; call `onExpired()`.
  *   - the countdown reaching `expiresAt` auto-cancels (`cancel2fa()` then
  *     `onExpired()`), matching the backend TTL (STUCK_2FA_TTL_SECONDS).
+ *   - throws `readonly_admin_required` (optional STUCK_REQUIRE_READONLY_ADMIN
+ *     policy; the code was accepted but the role is not read-only) → the
+ *     backend already dropped the challenge, so this is treated the same as
+ *     an expired challenge: call `onReadonlyRequired()` to return to login.
  */
 export interface TwoFactorFormProps {
   /** ISO-8601 UTC instant the challenge expires; drives the countdown. */
@@ -31,6 +35,10 @@ export interface TwoFactorFormProps {
   /** Involuntary end (countdown reached zero, or the backend reset the
    *  challenge after too many attempts) — parent → login with an explanation. */
   onExpired: () => void;
+  /** The accepted code's role was rejected by the optional read-only-admin
+   *  login policy (`readonly_admin_required`) — parent → login with that
+   *  explanation. */
+  onReadonlyRequired: () => void;
   /** The admin pressed Cancel — parent → login without a notice. */
   onCancel: () => void;
 }
@@ -41,7 +49,7 @@ function secondsUntil(expiresAt: string): number {
   return Number.isFinite(ms) ? Math.max(0, Math.round(ms / 1000)) : 0;
 }
 
-export function TwoFactorForm({ expiresAt, message, onSuccess, onExpired, onCancel }: TwoFactorFormProps) {
+export function TwoFactorForm({ expiresAt, message, onSuccess, onExpired, onReadonlyRequired, onCancel }: TwoFactorFormProps) {
   const { t } = useI18n();
   const errorMessage = useApiErrorMessage();
 
@@ -84,6 +92,11 @@ export function TwoFactorForm({ expiresAt, message, onSuccess, onExpired, onCanc
         // The challenge is over — NGFW stopped accepting codes or the window
         // expired. Reset to the login screen.
         onExpired();
+      } else if (apiErr.code === "readonly_admin_required") {
+        // The code was correct, but the optional read-only-admin-only login
+        // policy rejected the verified role. The backend already closed the
+        // challenge and the provisional NGFW session — reset to login.
+        onReadonlyRequired();
       } else {
         // Wrong code (second_factor_invalid): stay and let the admin retry.
         setApiErrorText(errorMessage(apiErr));

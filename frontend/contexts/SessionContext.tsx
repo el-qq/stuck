@@ -38,11 +38,19 @@ interface SessionContextValue {
   completeTwoFactor: () => Promise<void>;
   /** Abandon the in-flight 2FA challenge and return to the login screen. Pass
    *  `{ notice: true }` for an involuntary reset (too many attempts / expired)
-   *  so the login screen explains it; the identity is always preserved. */
-  cancelTwoFactor: (opts?: { notice?: boolean }) => Promise<void>;
+   *  so the login screen explains it; `{ readonlyRequired: true }` for the
+   *  optional read-only-admin-only login policy rejecting the verified role
+   *  (contract `readonly_admin_required`, same treatment as an expired
+   *  challenge). The identity is always preserved. */
+  cancelTwoFactor: (opts?: { notice?: boolean; readonlyRequired?: boolean }) => Promise<void>;
   /** True after an involuntary 2FA reset; the login screen shows a hint. */
   twoFactorResetNotice: boolean;
   clearTwoFactorResetNotice: () => void;
+  /** True after login/2FA was rejected because the optional
+   *  STUCK_REQUIRE_READONLY_ADMIN policy only accepts the read-only role; the
+   *  login screen shows the `errors.readonly_admin_required` message. */
+  readonlyAdminRequiredNotice: boolean;
+  clearReadonlyAdminRequiredNotice: () => void;
   logout: () => Promise<void>;
   /** v2 (FR-2.5): record that the pair's rules snapshot is loaded and when. */
   markRulesUpdated: (rulesUpdatedAt: string) => void;
@@ -104,6 +112,10 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   // codes / locked / expired) — the login screen explains why. Cleared on the
   // next successful auth or when the notice is dismissed.
   const [twoFactorResetNotice, setTwoFactorResetNotice] = useState(false);
+  // True after login (or 2FA) was rejected under the optional
+  // STUCK_REQUIRE_READONLY_ADMIN policy — the login screen explains why.
+  // Cleared on the next successful auth or when the notice is dismissed.
+  const [readonlyAdminRequiredNotice, setReadonlyAdminRequiredNotice] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -170,6 +182,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     setPrefill(null);
     setTwoFactorPending(null);
     setTwoFactorResetNotice(false);
+    setReadonlyAdminRequiredNotice(false);
   }, []);
 
   const login = useCallback(
@@ -182,6 +195,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         // the password (and a page reload can still prefill it).
         rememberIdentity({ login: loginName, server });
         setTwoFactorResetNotice(false);
+        setReadonlyAdminRequiredNotice(false);
         setTwoFactorPending({ expiresAt: outcome.expiresAt, message: outcome.message ?? null });
         setStatus("anonymous");
         return;
@@ -195,14 +209,16 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     // The code was accepted; the backend swapped stuck_2fa for stuck_session.
     setTwoFactorPending(null);
     setTwoFactorResetNotice(false);
+    setReadonlyAdminRequiredNotice(false);
     await finalizeSession();
   }, [finalizeSession]);
 
-  const cancelTwoFactor = useCallback(async (opts?: { notice?: boolean }) => {
+  const cancelTwoFactor = useCallback(async (opts?: { notice?: boolean; readonlyRequired?: boolean }) => {
     try {
       await api.cancel2fa();
     } catch {
-      // Idempotent on the backend; drop the form regardless.
+      // Idempotent on the backend; drop the form regardless (the backend
+      // already dropped the pending challenge itself on readonly_admin_required).
     }
     setTwoFactorPending(null);
     setStatus("anonymous");
@@ -210,6 +226,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     const identity = readLastIdentity();
     if (identity) setPrefill(identity);
     setTwoFactorResetNotice(opts?.notice === true);
+    setReadonlyAdminRequiredNotice(opts?.readonlyRequired === true);
   }, []);
 
   const logout = useCallback(async () => {
@@ -257,6 +274,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
 
   const clearExpiredNotice = useCallback(() => setExpiredNotice(false), []);
   const clearTwoFactorResetNotice = useCallback(() => setTwoFactorResetNotice(false), []);
+  const clearReadonlyAdminRequiredNotice = useCallback(() => setReadonlyAdminRequiredNotice(false), []);
 
   const value = useMemo(
     () => ({
@@ -265,6 +283,8 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       twoFactorPending,
       twoFactorResetNotice,
       clearTwoFactorResetNotice,
+      readonlyAdminRequiredNotice,
+      clearReadonlyAdminRequiredNotice,
       bootstrapError,
       expiredNotice,
       clearExpiredNotice,
@@ -282,6 +302,8 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       session,
       twoFactorPending,
       twoFactorResetNotice,
+      readonlyAdminRequiredNotice,
+      clearReadonlyAdminRequiredNotice,
       clearTwoFactorResetNotice,
       bootstrapError,
       expiredNotice,

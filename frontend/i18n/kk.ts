@@ -320,6 +320,7 @@ export const kk: Record<keyof typeof en, string> = {
   "twoFactor.cancel": "Бас тарту",
   "twoFactor.validation.codeRequired": "Растау кодын енгізіңіз.",
   "errors.insufficient_ngfw_permissions": "Ағымдағы NGFW әкімші рөлі трафик диагностикасын іске қоса алмайды.",
+  "errors.readonly_admin_required": "Кіруге тек «Тек оқу» (read-only) рөлі бар әкімшілерге ғана рұқсат етілген.",
   "errors.not_authenticated": "Жалғастыру үшін жүйеге кіру қажет.",
   "errors.session_expired": "Сессия мерзімі аяқталды. Қайта кіріңіз.",
   "errors.server_unreachable": "Сервер қолжетімсіз. Мекенжай мен портты тексеріп, қайта көріңіз.",

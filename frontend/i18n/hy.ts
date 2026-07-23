@@ -252,6 +252,7 @@ export const hy: Record<keyof typeof en, string> = {
   "twoFactor.cancel": "Չեղարկել",
   "twoFactor.validation.codeRequired": "Մուտքագրեք հաստատման կոդը։",
   "errors.insufficient_ngfw_permissions": "Ընթացիկ NGFW ադմինիստրատորի դերը չի կարող գործարկել տրաֆիկի ախտորոշումը։",
+  "errors.readonly_admin_required": "Մուտքը թույլատրված է միայն կարդալու (read-only) դերով ադմինիստրատորներին։",
   "errors.not_authenticated": "Շարունակելու համար մուտք գործեք։",
   "errors.session_expired": "Ձեր աշխատաշրջանն ավարտվել է։ Նորից մուտք գործեք։",
   "errors.server_unreachable": "Սերվերն անհասանելի է։ Ստուգեք հասցեն և պորտը, ապա փորձեք նորից։",
