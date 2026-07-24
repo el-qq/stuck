@@ -8,8 +8,8 @@ readonly_admin_required error (403) after successful NGFW authentication.
 
 import json
 
-from conftest import NGFW_SERVER, NGFW_SESSION_VALUE
 from fastapi.testclient import TestClient
+from support import NGFW_SERVER, NGFW_SESSION_VALUE
 
 
 def _stuck_session_cookie_set(resp) -> bool:

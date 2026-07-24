@@ -11,8 +11,8 @@ from __future__ import annotations
 from contextlib import contextmanager
 
 import pytest
-from conftest import NGFW_SERVER, LiveTestClient
 from fastapi.testclient import TestClient
+from support import NGFW_SERVER, LiveTestClient
 
 from app.config import get_settings
 from app.domain import rule_hygiene

@@ -1,0 +1,299 @@
+/* trace.css — Check tab: check workspace shell, check panel, user picker
+   and the trace result / pipeline stage presentation.
+   Extracted verbatim from globals.css; no rule, value or selector changed. */
+
+.check-workspace {
+  display: grid;
+  grid-template-columns: minmax(320px, 400px) minmax(0, 1fr);
+  gap: 24px;
+  padding: 24px;
+  max-width: 1440px;
+  width: 100%;
+  margin: 0 auto;
+  align-items: start;
+  min-width: 0;
+}
+
+.check-workspace__controls {
+  position: sticky;
+  /* The header height is measured live (it wraps on mobile and grows with the
+     tab bar) and published as --stuck-header-h by Header.tsx. */
+  top: calc(var(--stuck-header-h, 64px) + var(--stuck-tabs-h, 0px) + 12px);
+  min-width: 0;
+}
+
+.check-workspace__result {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-height: 400px;
+  min-width: 0;
+  scroll-margin-top: calc(var(--stuck-header-h, 64px) + var(--stuck-tabs-h, 0px) + 8px);
+}
+
+.check-panel {
+  min-width: 0;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
+  padding: 22px;
+}
+
+.empty-trace-result {
+  border: 1.5px dashed var(--line);
+  border-radius: var(--radius-lg);
+  padding: 64px 32px;
+  text-align: center;
+  color: var(--muted);
+}
+
+.empty-trace-result__icon {
+  font-size: 40px;
+  margin-bottom: 12px;
+  opacity: 0.5;
+}
+
+.empty-trace-result__title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 6px;
+}
+
+.empty-trace-result__subtitle {
+  font-size: 13px;
+}
+
+.example-chip-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 18px;
+  min-width: 0;
+}
+
+.segmented-control {
+  min-width: 0;
+}
+
+.form-control {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.check-submit {
+  min-height: 44px;
+}
+
+.trace-check-panel__notice,
+.demo-unavailable-hint {
+  margin: 10px 0 0;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  color: var(--warn);
+  background: var(--warn-soft);
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+
+.demo-unavailable-hint {
+  color: var(--muted);
+  background: var(--panel2);
+}
+
+.trace-check-panel__pipeline {
+  margin-top: 16px;
+  padding: 16px 18px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  color: var(--muted);
+  background: var(--panel2);
+  font-size: 12.5px;
+  line-height: 1.55;
+}
+
+.workspace-loading {
+  padding: 22px 0;
+  color: var(--muted);
+  font-size: 13.5px;
+}
+
+.workspace-error {
+  padding: 12px 14px;
+  border-radius: var(--radius-sm);
+  color: var(--bad);
+  background: var(--bad-soft);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+/* ---- user picker ---- */
+
+.user-picker {
+  min-width: 0;
+}
+
+.user-picker__filters {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(110px, 130px);
+  gap: 8px;
+  min-width: 0;
+}
+
+.user-picker__filters > * {
+  width: 100%;
+  min-width: 0;
+}
+
+.user-picker__row {
+  min-width: 0;
+}
+
+.user-picker__identity {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+}
+
+.source-address-picker {
+  min-width: 0;
+  margin: -4px 0 14px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--panel2);
+}
+
+.source-address-picker__label {
+  margin-bottom: 8px;
+  color: var(--text);
+  font-size: 12.5px;
+  font-weight: 700;
+}
+
+.source-address-picker__options {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.source-address-picker__option {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  min-width: 0;
+  min-height: 40px;
+  padding: 8px 11px;
+  overflow-wrap: anywhere;
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--panel);
+}
+
+.source-address-picker__origin {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 600;
+  opacity: 0.72;
+}
+
+.source-address-picker__option[data-selected="true"] {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.source-address-picker__message,
+.source-address-picker__hint {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.source-address-picker__message--error {
+  color: var(--bad);
+}
+
+.source-address-picker__message--warning {
+  color: var(--warn);
+}
+
+.source-address-picker__hint {
+  margin-top: 8px;
+}
+
+/* ---- trace result ---- */
+
+.trace-result {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+  animation: fadeUp 0.25s ease both;
+}
+
+.trace-result__header {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding: 0 4px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.trace-result__host {
+  max-width: 100%;
+}
+
+.trace-result__exports {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.trace-result__categories {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 0 4px;
+  min-width: 0;
+}
+
+.trace-verdict,
+.stage-node {
+  min-width: 0;
+}
+
+.trace-pipeline__rail {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 56px;
+  flex-shrink: 0;
+}
+
+.trace-verdict__card,
+.stage-node__card {
+  min-width: 0;
+}
+
+.trace-result__target {
+  max-width: 100%;
+}
+
+.stage-node__rule {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  min-width: 0;
+}

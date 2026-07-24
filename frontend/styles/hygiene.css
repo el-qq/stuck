@@ -1,0 +1,169 @@
+/* hygiene.css — Rule Hygiene tab: two-column workspace shell, section
+   navigation tree, processing-order reference and findings groups.
+   Extracted verbatim from globals.css; no rule, value or selector changed. */
+
+/* Hygiene tab: same two-column shell as the check workspace — a sticky left
+   panel (summary + section navigation) and the findings tree on the right. */
+.hygiene-workspace {
+  display: grid;
+  grid-template-columns: minmax(320px, 400px) minmax(0, 1fr);
+  gap: 24px;
+  padding: 24px;
+  max-width: 1440px;
+  width: 100%;
+  margin: 0 auto;
+  align-items: start;
+  min-width: 0;
+}
+
+.hygiene-workspace__controls {
+  position: sticky;
+  top: calc(var(--stuck-header-h, 64px) + var(--stuck-tabs-h, 0px) + 12px);
+  min-width: 0;
+}
+
+.hygiene-workspace__result {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+/* Section navigation (tree) in the hygiene left panel. */
+.hygiene-nav__item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  text-align: left;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text);
+  border-radius: var(--radius-sm);
+  padding: 9px 10px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.hygiene-nav__item:hover {
+  background: var(--panel2);
+}
+
+.hygiene-nav__item[aria-pressed="true"] {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.hygiene-nav__item--child {
+  margin-left: 14px;
+  width: calc(100% - 14px);
+  border-left: 2px solid var(--line);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+
+.hygiene-nav__item--child[aria-pressed="true"] {
+  border-left-color: var(--accent);
+}
+
+.hygiene-nav__count {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--muted);
+  background: var(--panel2);
+  border-radius: 999px;
+  padding: 2px 8px;
+}
+
+.hygiene-nav__item[aria-pressed="true"] .hygiene-nav__count {
+  color: var(--accent);
+  background: var(--panel);
+}
+
+/* Collapsible "processing order" reference block (collapsed by default). */
+.pipeline-order > summary {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--text);
+}
+
+.pipeline-order > summary::-webkit-details-marker {
+  display: none;
+}
+
+.pipeline-order > summary::before {
+  content: "▸";
+  color: var(--muted);
+  transition: transform 0.15s ease;
+}
+
+.pipeline-order[open] > summary::before {
+  transform: rotate(90deg);
+}
+
+.pipeline-order__body {
+  margin-top: 8px;
+}
+
+/* Collapsible findings group (one firewall chain). */
+.hygiene-group {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow);
+  min-width: 0;
+}
+
+.hygiene-group > summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 13px 16px;
+  font-size: 13.5px;
+  font-weight: 700;
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+}
+
+.hygiene-group > summary::-webkit-details-marker {
+  display: none;
+}
+
+.hygiene-group > summary::before {
+  content: "▸";
+  color: var(--muted);
+  transition: transform 0.15s ease;
+}
+
+.hygiene-group[open] > summary::before {
+  transform: rotate(90deg);
+}
+
+.hygiene-group__count {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--muted);
+  background: var(--panel2);
+  border-radius: 999px;
+  padding: 2px 8px;
+}
+
+.hygiene-group__body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 0 16px 16px;
+}
