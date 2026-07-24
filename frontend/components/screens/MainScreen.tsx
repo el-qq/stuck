@@ -10,6 +10,7 @@ import * as api from "@/lib/api";
 import { ApiError, toApiError } from "@/lib/errors";
 import { RuleHygieneReport, RulesRefreshResponse, TraceResponse } from "@/lib/types";
 import { downloadBlob, defaultRulesExportFilename } from "@/lib/download";
+import { getActiveWorkspaceTab, setActiveWorkspaceTab, WorkspaceTab } from "@/lib/storage";
 import { useRuleSnapshots } from "@/hooks/useRuleSnapshots";
 import { useAccessCompare } from "@/hooks/useAccessCompare";
 import { AccessDiagnosticModal } from "../auth/AccessDiagnosticModal";
@@ -51,7 +52,12 @@ export function MainScreen() {
 
   // ---- rule hygiene (top-level workspace tab) ----
   const hygieneEnabled = (session.session?.rule_hygiene_enabled ?? false) && traceAllowed;
-  const [tab, setTab] = useState<"check" | "hygiene" | "snapshots" | "compare">("check");
+  // Restore the section chosen before a reload (F5) from sessionStorage; a
+  // missing/unavailable value falls back to "check" via `activeTab` below.
+  const [tab, setTab] = useState<WorkspaceTab>(() => getActiveWorkspaceTab() ?? "check");
+  useEffect(() => {
+    setActiveWorkspaceTab(tab);
+  }, [tab]);
   const [hygieneSection, setHygieneSection] = useState<"all" | HygieneTable>("all");
   // The report is cached until the rules snapshot is refreshed (it is a pure
   // function of the snapshot); null = not loaded yet / invalidated.
@@ -223,12 +229,23 @@ export function MainScreen() {
   // panel is enabled. The bar sticks under the header (WorkspaceTabs),
   // surviving result scrolling.
   const showTabs = hygieneEnabled || snapshotsEnabled || compareEnabled;
+  // A restored (or previously selected) tab may not be available now — the
+  // feature flag is off, or the role lost trace access. Fall back to "check"
+  // for rendering while keeping the stored intent, so it re-appears if the tab
+  // becomes available again.
+  const tabAvailable: Record<WorkspaceTab, boolean> = {
+    check: true,
+    hygiene: hygieneEnabled,
+    snapshots: snapshotsEnabled,
+    compare: compareEnabled,
+  };
+  const activeTab: WorkspaceTab = tabAvailable[tab] ? tab : "check";
   const workspaceTabs = showTabs ? (
     <WorkspaceTabs ariaLabel={t("tabs.aria")}>
       <button
         role="tab"
         id="tab-check"
-        aria-selected={tab === "check"}
+        aria-selected={activeTab === "check"}
         aria-controls="tabpanel-check"
         className="workspace-tabs__tab"
         onClick={() => setTab("check")}
@@ -239,7 +256,7 @@ export function MainScreen() {
         <button
           role="tab"
           id="tab-compare"
-          aria-selected={tab === "compare"}
+          aria-selected={activeTab === "compare"}
           aria-controls="tabpanel-compare"
           className="workspace-tabs__tab"
           onClick={() => setTab("compare")}
@@ -259,7 +276,7 @@ export function MainScreen() {
         <button
           role="tab"
           id="tab-hygiene"
-          aria-selected={tab === "hygiene"}
+          aria-selected={activeTab === "hygiene"}
           aria-controls="tabpanel-hygiene"
           className="workspace-tabs__tab"
           onClick={() => setTab("hygiene")}
@@ -276,7 +293,7 @@ export function MainScreen() {
         <button
           role="tab"
           id="tab-snapshots"
-          aria-selected={tab === "snapshots"}
+          aria-selected={activeTab === "snapshots"}
           aria-controls="tabpanel-snapshots"
           className="workspace-tabs__tab"
           onClick={() => setTab("snapshots")}
@@ -315,7 +332,7 @@ export function MainScreen() {
           a remount, and keeping both mounted at once duplicates group labels
           they share (e.g. "Firewall · Forward"), breaking strict-mode text
           queries. Only the active one of the two is ever in the DOM. */}
-      {hygieneEnabled && tab === "hygiene" && (
+      {hygieneEnabled && activeTab === "hygiene" && (
         <RuleHygieneWorkspace
           report={hygieneReport}
           loading={hygieneLoading}
@@ -327,11 +344,11 @@ export function MainScreen() {
         />
       )}
 
-      {snapshotsEnabled && tab === "snapshots" && (
+      {snapshotsEnabled && activeTab === "snapshots" && (
         <SnapshotComparisonWorkspace state={snapshotState} rulesUpdatedAt={rulesUpdatedAt} port={session.session?.ngfw_port} />
       )}
 
-      {compareEnabled && tab === "compare" && (
+      {compareEnabled && activeTab === "compare" && (
         <AccessCompareWorkspace state={compareState} server={session.session?.server} port={session.session?.ngfw_port} />
       )}
 
@@ -342,7 +359,7 @@ export function MainScreen() {
         role={showTabs ? "tabpanel" : undefined}
         id="tabpanel-check"
         aria-labelledby={showTabs ? "tab-check" : undefined}
-        style={{ display: tab === "check" ? "contents" : "none" }}
+        style={{ display: activeTab === "check" ? "contents" : "none" }}
       >
         <CheckWorkspace
           resultRef={resultRef}

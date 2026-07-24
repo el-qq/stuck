@@ -9,6 +9,32 @@ const LAST_SERVER_KEY = "stuck.lastServer";
 const RECENT_URLS_KEY = "stuck.recentUrls";
 const RECENT_URLS_MAX = 10;
 
+// The active workspace tab is kept in sessionStorage (not localStorage): it
+// should survive a page reload (F5) within the same browser tab, but not
+// persist into a fresh tab or a browser restart — where landing on the
+// default "check" section is the least surprising.
+const ACTIVE_TAB_KEY = "stuck.activeTab";
+export type WorkspaceTab = "check" | "hygiene" | "snapshots" | "compare";
+const WORKSPACE_TABS: readonly WorkspaceTab[] = ["check", "hygiene", "snapshots", "compare"];
+
+export function getActiveWorkspaceTab(): WorkspaceTab | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const value = window.sessionStorage.getItem(ACTIVE_TAB_KEY);
+    return value && (WORKSPACE_TABS as readonly string[]).includes(value) ? (value as WorkspaceTab) : null;
+  } catch {
+    return null;
+  }
+}
+
+export function setActiveWorkspaceTab(tab: WorkspaceTab): void {
+  try {
+    window.sessionStorage.setItem(ACTIVE_TAB_KEY, tab);
+  } catch {
+    // ignore
+  }
+}
+
 export function getLastServer(): string | null {
   if (typeof window === "undefined") return null;
   try {

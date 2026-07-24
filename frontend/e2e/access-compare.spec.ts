@@ -122,6 +122,22 @@ test("live: access-compare tab is available when enabled and trace is allowed", 
   await expect(page.getByRole("tab", { name: "Traffic compare" })).toBeVisible();
 });
 
+test("live: the selected tab survives a page reload (sessionStorage)", async ({ page }) => {
+  await mockAuthenticatedSession(page, true);
+  await page.goto("/");
+
+  const compareTab = page.getByRole("tab", { name: "Traffic compare" });
+  await compareTab.click();
+  await expect(compareTab).toHaveAttribute("aria-selected", "true");
+
+  await page.reload();
+
+  // Before the fix, a reload reset the workspace to the default "Traffic check"
+  // tab; the selection must now persist.
+  await expect(page.getByRole("tab", { name: "Traffic compare" })).toHaveAttribute("aria-selected", "true");
+  await expect(page.getByRole("tab", { name: "Traffic check" })).toHaveAttribute("aria-selected", "false");
+});
+
 test("live: submitting a UDP comparison sends protocol=udp and renders the result", async ({ page }) => {
   let comparePayload: Record<string, unknown> | null = null;
 
