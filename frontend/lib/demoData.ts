@@ -146,24 +146,17 @@ const BLOCKED_SCENARIO: Scenario = {
 };
 
 /**
- * Local demo engine (iteration 5): the OUTCOME is decided by the selected
- * target — success.com:443 → allowed, failure.com:8080 → blocked. The chosen
- * user is reflected in the result but does not change the ok/error verdict.
- * `t` localizes the free-text category label; stage titles/reasons stay as
- * i18n keys the UI already knows how to render.
+ * Builds the fixed 12-stage pipeline for one scenario, optionally overlaying
+ * a few stage results on top (used by the access-compare engine below to
+ * honestly mark IP-dependent stages `unknown` for a subject with no resolved
+ * source IP — invariant №7 — without duplicating this block-cascade logic).
  */
-export function runDemoTrace(
-  target: DemoTarget,
-  user: NgfwUser | null,
-  t: (key: MessageKey) => string,
-  sourceIp?: string,
-  protocol: Protocol = "any",
-): TraceResponse {
-  const scenario = target.outcome === "blocked" ? BLOCKED_SCENARIO : ALLOWED_SCENARIO;
+function buildScenarioStages(scenario: Scenario, overrides?: StageSpec): TraceStage[] {
+  const merged: StageSpec = overrides ? { ...scenario.stages, ...overrides } : scenario.stages;
   const blockIndex = scenario.blockedAt ? STAGE_ORDER.indexOf(scenario.blockedAt) : -1;
 
-  const stages: TraceStage[] = STAGE_ORDER.map((key, i) => {
-    const spec = scenario.stages[key];
+  return STAGE_ORDER.map((key, i) => {
+    const spec = merged[key];
     let status: StageStatus;
     let detail = spec?.detail;
     if (spec) {
@@ -179,7 +172,24 @@ export function runDemoTrace(
     }
     return { key, order: i + 1, title_key: `stage.${key}`, status, ...(detail ? { detail } : {}) };
   });
+}
 
+/**
+ * Local demo engine (iteration 5): the OUTCOME is decided by the selected
+ * target — success.com:443 → allowed, failure.com:8080 → blocked. The chosen
+ * user is reflected in the result but does not change the ok/error verdict.
+ * `t` localizes the free-text category label; stage titles/reasons stay as
+ * i18n keys the UI already knows how to render.
+ */
+export function runDemoTrace(
+  target: DemoTarget,
+  user: NgfwUser | null,
+  t: (key: MessageKey) => string,
+  sourceIp?: string,
+  protocol: Protocol = "any",
+): TraceResponse {
+  const scenario = target.outcome === "blocked" ? BLOCKED_SCENARIO : ALLOWED_SCENARIO;
+  const stages = buildScenarioStages(scenario);
   const blocked = scenario.blockedAt !== null;
 
   return {
@@ -503,3 +513,83 @@ export const DEMO_ACCESS_COMPARE: CompareResponse = {
   rules_updated_at: DEMO_RULES_UPDATED_AT,
   generated_at: DEMO_RULES_UPDATED_AT,
 };
+
+/**
+ * Interactive local access-compare engine (`useDemoAccessCompare`), used once
+ * the administrator edits the compare form and runs it — as opposed to
+ * `DEMO_ACCESS_COMPARE` above, the hand-built showcase pre-loaded as that
+ * tab's initial result. It follows the exact same philosophy `runDemoTrace`
+ * already established for the check tab: the shared TARGET decides the
+ * pass/block outcome, identically for both sides (comparing two different
+ * targets is out of scope per the contract). The only thing that genuinely
+ * varies per side here is CONTEXT completeness: a side with no resolved
+ * source IP honestly reports the IP-dependent early stages as `unknown`
+ * (invariant №7), same as the static showcase's Side B.
+ *
+ * What this does NOT attempt to model: a subject changing which content-filter
+ * or firewall RULE matches (the `same_status_different_rule`/`divergent`
+ * outcomes the showcase above demonstrates). That depends on NGFW rule
+ * matching, which is backend domain logic — duplicating it here would drift
+ * from the real engine over time, not stay a small offline fixture.
+ */
+const IP_UNKNOWN_OVERRIDE: StageSpec = {
+  hw_filter: { status: "unknown", detail: { reason_key: "hw_source_ip_unknown" } },
+  pre_filter: { status: "unknown", detail: { reason_key: "pre_filter_source_unknown" } },
+  rate_limit: { status: "unknown", detail: { reason_key: "source_ip_unknown" } },
+};
+
+export interface DemoCompareSubject {
+  user: NgfwUser | null;
+  sourceIp: string | null;
+}
+
+function demoCompareSideFromSubject(subject: DemoCompareSubject, target: DemoTarget, protocol: Protocol, stages: TraceStage[]): CompareSide {
+  const blockedStage = stages.find((stage) => stage.status === "block") ?? null;
+  return {
+    subject: { user: subject.user ? { id: subject.user.id, name: subject.user.name, login: subject.user.login } : null, source_ip: subject.sourceIp },
+    context: { has_user: subject.user !== null, has_source_ip: subject.sourceIp !== null },
+    target: {
+      input: target.address,
+      normalized_url: target.host,
+      host: target.host,
+      resolved_ip: target.resolved_ip,
+      source_ip: subject.sourceIp,
+      dst_port: target.dst_port,
+      protocol,
+      effective_destination_ip: target.resolved_ip,
+      effective_destination_port: target.dst_port,
+    },
+    summary: {
+      reached_destination: blockedStage === null,
+      blocked_at: blockedStage?.key ?? null,
+      verdict: blockedStage === null ? "allowed" : "blocked",
+    },
+  };
+}
+
+export function runDemoCompare(urlInput: string, protocol: Protocol, subjectA: DemoCompareSubject, subjectB: DemoCompareSubject): CompareResponse {
+  const target = demoTargetForInput(urlInput);
+  const scenario = target.outcome === "blocked" ? BLOCKED_SCENARIO : ALLOWED_SCENARIO;
+  const stagesA = buildScenarioStages(scenario, subjectA.sourceIp !== null ? undefined : IP_UNKNOWN_OVERRIDE);
+  const stagesB = buildScenarioStages(scenario, subjectB.sourceIp !== null ? undefined : IP_UNKNOWN_OVERRIDE);
+  const { stages, primary_divergence, divergence_reason } = classifyCompareStages(stagesA, stagesB);
+  // Response-level precedence (docs/source/comparison.md §3.e): identical
+  // subjects override the stage-level reason with "identical", mirroring the
+  // backend's `_divergence_reason` — stage classification alone cannot tell
+  // "nothing differs" apart from "both sides are literally the same ask".
+  const identicalSubjects = (subjectA.user?.id ?? null) === (subjectB.user?.id ?? null) && subjectA.sourceIp === subjectB.sourceIp;
+
+  return {
+    binding: { admin: "demo", server: "demo.local" },
+    target_input: { url: urlInput, protocol, dst_port: target.dst_port },
+    a: demoCompareSideFromSubject(subjectA, target, protocol, stagesA),
+    b: demoCompareSideFromSubject(subjectB, target, protocol, stagesB),
+    categories: [],
+    stages,
+    primary_divergence,
+    divergence_reason: identicalSubjects ? "identical" : divergence_reason,
+    identical_subjects: identicalSubjects,
+    rules_updated_at: DEMO_RULES_UPDATED_AT,
+    generated_at: DEMO_RULES_UPDATED_AT,
+  };
+}

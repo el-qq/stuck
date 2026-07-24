@@ -5,35 +5,26 @@ import { useSession } from "@/contexts/SessionContext";
 import { useToast } from "@/contexts/ToastContext";
 import { usePublicConfig } from "@/contexts/PublicConfigContext";
 import { useApiErrorMessage } from "@/hooks/useApiErrorMessage";
-import { useI18n } from "@/i18n";
 import * as api from "@/lib/api";
 import { ApiError, toApiError } from "@/lib/errors";
-import { RuleHygieneReport, RulesRefreshResponse, TraceResponse } from "@/lib/types";
+import { RuleHygieneReport, RulesRefreshResponse } from "@/lib/types";
 import { downloadBlob, defaultRulesExportFilename } from "@/lib/download";
 import { getActiveWorkspaceTab, setActiveWorkspaceTab, WorkspaceTab } from "@/lib/storage";
 import { useRuleSnapshots } from "@/hooks/useRuleSnapshots";
 import { useAccessCompare } from "@/hooks/useAccessCompare";
+import { useCheck } from "@/hooks/useCheck";
 import { AccessDiagnosticModal } from "../auth/AccessDiagnosticModal";
-import { AccessCompareWorkspace } from "../compare/AccessCompareWorkspace";
-import { HygieneTable, hygieneBadgeColor } from "../rules/RuleHygieneReportView";
-import { RuleHygieneWorkspace } from "../rules/RuleHygieneWorkspace";
+import { HygieneTable } from "../rules/RuleHygieneReportView";
 import { RulesExportConfirmModal } from "../rules/RulesExportConfirmModal";
 import { RulesRefreshModal } from "../rules/RulesRefreshModal";
-import { diffBadgeColor } from "../rules/SnapshotDiffView";
-import { SnapshotComparisonWorkspace } from "../rules/SnapshotComparisonWorkspace";
 import { Header } from "../shell/Header";
 import { SettingsModal } from "../shell/SettingsModal";
-import { WorkspaceTabs } from "../shell/WorkspaceTabs";
-import { CheckWorkspace, EmptyTraceResult } from "../trace/CheckWorkspace";
-import { TraceForm, TraceSubmitPayload } from "../trace/TraceForm";
-import { TraceResult } from "../trace/TraceResult";
-import { useMobileResultScroll } from "@/hooks/useMobileResultScroll";
+import { Workspace } from "./Workspace";
 
 export function MainScreen() {
   const session = useSession();
   const toast = useToast();
   const errorMessage = useApiErrorMessage();
-  const { t } = useI18n();
   const { traceAnimationEnabled } = usePublicConfig();
 
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -53,7 +44,8 @@ export function MainScreen() {
   // ---- rule hygiene (top-level workspace tab) ----
   const hygieneEnabled = (session.session?.rule_hygiene_enabled ?? false) && traceAllowed;
   // Restore the section chosen before a reload (F5) from sessionStorage; a
-  // missing/unavailable value falls back to "check" via `activeTab` below.
+  // missing/unavailable value falls back to "check" via `Workspace`'s own
+  // availability clamp.
   const [tab, setTab] = useState<WorkspaceTab>(() => getActiveWorkspaceTab() ?? "check");
   useEffect(() => {
     setActiveWorkspaceTab(tab);
@@ -95,7 +87,7 @@ export function MainScreen() {
   // ---- rule snapshots + diff (top-level workspace tab, docs/source/snapshots.md fork f) ----
   const snapshotsEnabled = (session.session?.rule_snapshots_enabled ?? false) && traceAllowed;
   const snapshotState = useRuleSnapshots({ active: tab === "snapshots", enabled: snapshotsEnabled });
-  const { diffChangeCount, invalidateCurrentDiff } = snapshotState;
+  const { invalidateCurrentDiff } = snapshotState;
 
   const runExport = useCallback(async () => {
     setExporting(true);
@@ -125,7 +117,7 @@ export function MainScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [refreshResult, setRefreshResult] = useState<RulesRefreshResponse | null>(null);
   const [refreshError, setRefreshError] = useState<ApiError | null>(null);
-  // Iteration 3 (#9): bumped after each successful refresh so TraceForm
+  // Iteration 3 (#9): bumped after each successful refresh so the check tab
   // invalidates its local users cache and re-fetches GET /api/users.
   const [usersVersion, setUsersVersion] = useState(0);
   const autoRefreshTriggered = useRef(false);
@@ -134,7 +126,6 @@ export function MainScreen() {
   const compareEnabled = (session.session?.access_compare_enabled ?? false) && traceAllowed;
   const compareState = useAccessCompare({ rulesLoaded, traceAllowed, usersVersion });
   const { invalidateResult: invalidateCompareResult } = compareState;
-  const compareDivergentCount = compareState.result ? compareState.result.stages.filter((stage) => stage.classification === "divergent").length : 0;
 
   useEffect(() => {
     if (!traceAllowed) setAccessModalOpen(true);
@@ -194,120 +185,8 @@ export function MainScreen() {
     }
   }, [traceAllowed, rulesLoaded, runRefresh]);
 
-  // ---- trace state ----
-  const [tracing, setTracing] = useState(false);
-  const [traceResult, setTraceResult] = useState<TraceResponse | null>(null);
-  const resultRef = useRef<HTMLElement>(null);
-  useMobileResultScroll(resultRef, traceResult);
-
-  async function runTrace(payload: TraceSubmitPayload) {
-    if (!traceAllowed) return;
-    setTracing(true);
-    try {
-      const res = await api.trace({
-        url: payload.url,
-        // Sent explicitly (including the "any" default) so the backend never
-        // has to guess which protocol filter was intended.
-        protocol: payload.protocol,
-        ...(payload.userId ? { user_id: payload.userId } : {}),
-        ...(payload.sourceIp ? { source_ip: payload.sourceIp } : {}),
-      });
-      setTraceResult(res);
-      // v2: trace reports which snapshot it ran on (covers lazy first load).
-      session.markRulesUpdated(res.rules_updated_at);
-    } catch (e) {
-      const apiErr = toApiError(e);
-      if (!session.handleAuthError(apiErr)) {
-        toast.show(errorMessage(apiErr), "error");
-      }
-    } finally {
-      setTracing(false);
-    }
-  }
-
-  // Top-level sections; the tab bar only exists when at least one optional
-  // panel is enabled. The bar sticks under the header (WorkspaceTabs),
-  // surviving result scrolling.
-  const showTabs = hygieneEnabled || snapshotsEnabled || compareEnabled;
-  // A restored (or previously selected) tab may not be available now — the
-  // feature flag is off, or the role lost trace access. Fall back to "check"
-  // for rendering while keeping the stored intent, so it re-appears if the tab
-  // becomes available again.
-  const tabAvailable: Record<WorkspaceTab, boolean> = {
-    check: true,
-    hygiene: hygieneEnabled,
-    snapshots: snapshotsEnabled,
-    compare: compareEnabled,
-  };
-  const activeTab: WorkspaceTab = tabAvailable[tab] ? tab : "check";
-  const workspaceTabs = showTabs ? (
-    <WorkspaceTabs ariaLabel={t("tabs.aria")}>
-      <button
-        role="tab"
-        id="tab-check"
-        aria-selected={activeTab === "check"}
-        aria-controls="tabpanel-check"
-        className="workspace-tabs__tab"
-        onClick={() => setTab("check")}
-      >
-        {t("tabs.check")}
-      </button>
-      {compareEnabled && (
-        <button
-          role="tab"
-          id="tab-compare"
-          aria-selected={activeTab === "compare"}
-          aria-controls="tabpanel-compare"
-          className="workspace-tabs__tab"
-          onClick={() => setTab("compare")}
-        >
-          {t("compare.title")}
-          {compareDivergentCount > 0 && (
-            <span className="workspace-tabs__badge" style={{ background: "var(--bad)" }}>
-              {compareDivergentCount}
-            </span>
-          )}
-        </button>
-      )}
-      {/* Divider between the "traffic" tabs (check, compare) and the "rules"
-          tabs (hygiene, snapshots) — only meaningful when a rules tab exists. */}
-      {(hygieneEnabled || snapshotsEnabled) && <span className="workspace-tabs__divider" aria-hidden="true" />}
-      {hygieneEnabled && (
-        <button
-          role="tab"
-          id="tab-hygiene"
-          aria-selected={activeTab === "hygiene"}
-          aria-controls="tabpanel-hygiene"
-          className="workspace-tabs__tab"
-          onClick={() => setTab("hygiene")}
-        >
-          {t("hygiene.title")}
-          {hygieneReport !== null && hygieneReport.summary.total > 0 && (
-            <span className="workspace-tabs__badge" style={{ background: hygieneBadgeColor(hygieneReport.summary) }}>
-              {hygieneReport.summary.total}
-            </span>
-          )}
-        </button>
-      )}
-      {snapshotsEnabled && (
-        <button
-          role="tab"
-          id="tab-snapshots"
-          aria-selected={activeTab === "snapshots"}
-          aria-controls="tabpanel-snapshots"
-          className="workspace-tabs__tab"
-          onClick={() => setTab("snapshots")}
-        >
-          {t("snapshots.title")}
-          {diffChangeCount > 0 && (
-            <span className="workspace-tabs__badge" style={{ background: diffBadgeColor(snapshotState.diff!.summary) }}>
-              {diffChangeCount}
-            </span>
-          )}
-        </button>
-      )}
-    </WorkspaceTabs>
-  ) : null;
+  // ---- check tab (top-level workspace tab) ----
+  const checkState = useCheck({ rulesLoaded, traceAllowed, usersVersion });
 
   return (
     <div className="app-shell">
@@ -325,86 +204,25 @@ export function MainScreen() {
         onExport={() => setExportConfirmOpen(true)}
       />
 
-      {workspaceTabs}
-
-      {/* Hygiene and snapshots are conditionally rendered (not display:none) —
-          unlike the check tab, neither has animation state to preserve across
-          a remount, and keeping both mounted at once duplicates group labels
-          they share (e.g. "Firewall · Forward"), breaking strict-mode text
-          queries. Only the active one of the two is ever in the DOM. */}
-      {hygieneEnabled && activeTab === "hygiene" && (
-        <RuleHygieneWorkspace
-          report={hygieneReport}
-          loading={hygieneLoading}
-          error={hygieneError}
-          section={hygieneSection}
-          onSectionChange={setHygieneSection}
-          onRecheck={() => void loadHygiene(true)}
-          port={session.session?.ngfw_port}
-        />
-      )}
-
-      {snapshotsEnabled && activeTab === "snapshots" && (
-        <SnapshotComparisonWorkspace state={snapshotState} rulesUpdatedAt={rulesUpdatedAt} port={session.session?.ngfw_port} />
-      )}
-
-      {compareEnabled && activeTab === "compare" && (
-        <AccessCompareWorkspace state={compareState} server={session.session?.server} port={session.session?.ngfw_port} />
-      )}
-
-      {/* The check tabpanel stays MOUNTED and toggles via display — unmounting
-          would reset useStageReveal and replay the trace animation on every
-          return to the tab. */}
-      <div
-        role={showTabs ? "tabpanel" : undefined}
-        id="tabpanel-check"
-        aria-labelledby={showTabs ? "tab-check" : undefined}
-        style={{ display: activeTab === "check" ? "contents" : "none" }}
-      >
-        <CheckWorkspace
-          resultRef={resultRef}
-          controls={
-            <>
-              {!traceAllowed && (
-                <div
-                  role="alert"
-                  data-testid="access-warning"
-                  style={{
-                    marginBottom: 14,
-                    borderRadius: "var(--radius-sm)",
-                    padding: "11px 13px",
-                    color: "var(--warn)",
-                    background: "var(--warn-soft)",
-                    fontSize: 13,
-                    lineHeight: 1.45,
-                  }}
-                >
-                  {t("access.persistentWarning")}
-                </div>
-              )}
-              <TraceForm
-                rulesLoaded={rulesLoaded}
-                traceAllowed={traceAllowed}
-                submitting={tracing}
-                usersVersion={usersVersion}
-                onSubmit={(p) => void runTrace(p)}
-              />
-            </>
-          }
-          result={
-            traceResult ? (
-              <TraceResult
-                result={traceResult}
-                traceAnimationEnabled={traceAnimationEnabled}
-                ngfwServer={session.session?.server}
-                ngfwPort={session.session?.ngfw_port}
-              />
-            ) : (
-              <EmptyTraceResult />
-            )
-          }
-        />
-      </div>
+      <Workspace
+        tab={tab}
+        onTabChange={setTab}
+        check={checkState}
+        hygiene={{
+          enabled: hygieneEnabled,
+          report: hygieneReport,
+          loading: hygieneLoading,
+          error: hygieneError,
+          section: hygieneSection,
+          onSectionChange: setHygieneSection,
+          onRecheck: () => void loadHygiene(true),
+        }}
+        snapshots={{ enabled: snapshotsEnabled, state: snapshotState, rulesUpdatedAt }}
+        compare={{ enabled: compareEnabled, state: compareState }}
+        server={session.session?.server}
+        port={session.session?.ngfw_port}
+        traceAnimationEnabled={traceAnimationEnabled}
+      />
 
       {settingsOpen && <SettingsModal onClose={() => setSettingsOpen(false)} />}
 

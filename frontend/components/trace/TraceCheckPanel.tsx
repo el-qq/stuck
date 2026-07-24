@@ -10,7 +10,7 @@ import { ProtocolPicker } from "./ProtocolPicker";
 import { SourceAddressPicker } from "./SourceAddressPicker";
 import { TraceTargetFields } from "./TraceTargetFields";
 import { UserPicker } from "./UserPicker";
-import type { TraceSubmitPayload } from "./TraceForm";
+import type { TraceSubmitPayload } from "./checkState";
 
 interface Props {
   rulesLoaded: boolean;
