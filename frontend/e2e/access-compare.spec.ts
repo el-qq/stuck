@@ -104,16 +104,46 @@ test("demo: access-compare tab shows the side-by-side stage diff", async ({ page
 
   await page.getByRole("tab", { name: "Traffic compare" }).click();
 
-  // Both sides render side by side.
-  await expect(page.getByText("Side A", { exact: true })).toBeVisible();
-  await expect(page.getByText("Side B", { exact: true })).toBeVisible();
+  // The demo compare tab now renders the exact same interactive form the
+  // live tab does (unification: the form used to be entirely absent here),
+  // so "Side A"/"Side B" also label the form's subject pickers — scope to
+  // the result panel to keep this assertion about the shown DIFF, not the form.
+  const result = page.locator(".hygiene-workspace__result");
+  await expect(result.getByText("Side A", { exact: true })).toBeVisible();
+  await expect(result.getByText("Side B", { exact: true })).toBeVisible();
 
-  // The demo fixture diverges (side B is blocked at the firewall), so the
-  // primary-divergence banner names the first differing stage and that stage
-  // carries the "first difference" tag. (Per-stage classification is encoded
-  // by row colour, not text, so it is asserted structurally, not by label.)
+  // The pre-loaded showcase result diverges (side B is blocked at the
+  // firewall), so the primary-divergence banner names the first differing
+  // stage and that stage carries the "first difference" tag. (Per-stage
+  // classification is encoded by row colour, not text, so it is asserted
+  // structurally, not by label.)
   await expect(page.getByText(/The first stage where access clearly differs/)).toBeVisible();
   await expect(page.getByText("first difference").first()).toBeVisible();
+});
+
+test("demo: the compare form is interactive and computes locally without contacting the backend", async ({ page }) => {
+  const apiRequests: string[] = [];
+  page.on("request", (request) => {
+    const url = new URL(request.url());
+    if (url.pathname.startsWith("/api/")) apiRequests.push(url.pathname);
+  });
+
+  await openDemo(page);
+  await page.getByRole("tab", { name: "Traffic compare" }).click();
+
+  // The form starts pre-filled with the same rich example shown above; edit
+  // it and re-run the comparison to prove it is a real, interactive control
+  // rather than a static illustration next to an inert form.
+  const panel = page.locator("#tabpanel-compare");
+  await panel.getByPlaceholder("example.com:12345").fill("intranet.example");
+  await panel.getByRole("button", { name: "UDP", exact: true }).click();
+  await panel.getByRole("button", { name: "Compare", exact: true }).click();
+
+  await expect(panel.locator(".access-compare__target")).toContainText("intranet.example");
+
+  // No POST /api/trace/compare (or any other backend call) is ever made —
+  // the result above was computed locally from `lib/demoData.ts` fixtures.
+  expect(apiRequests.some((path) => path.startsWith("/api/trace"))).toBe(false);
 });
 
 test("live: access-compare tab is available when enabled and trace is allowed", async ({ page }) => {

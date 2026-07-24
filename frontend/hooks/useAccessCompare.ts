@@ -17,7 +17,7 @@ interface UseAccessCompareOptions {
   rulesLoaded: boolean;
   traceAllowed: boolean;
   /** Bumped after a successful rules refresh — invalidates both sides' cached
-   * users/source-address lookups, mirroring `TraceForm`'s `usersVersion`. */
+   * users/source-address lookups, mirroring `useCheck`'s `usersVersion`. */
   usersVersion: number;
 }
 
