@@ -90,14 +90,32 @@
   font-weight: 600;
 }
 
+/* Cell separators are real borders on the buttons, NOT 1px grid gaps showing a
+   container background: hairline gaps depend on the element's subpixel offset
+   and collapse to nothing at fractional zoom / HiDPI, which made the grid look
+   borderless in one panel but not the other. */
 .protocol-picker__options {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 1px;
   border: 1px solid var(--line);
   border-radius: var(--radius-sm);
   overflow: hidden;
-  background: var(--line);
+  background: var(--panel);
+}
+
+/* 8 options in 4 columns: no right border on the last column (4, 8), no bottom
+   border on the last row (5-8). */
+.protocol-picker__options .seg-btn {
+  border-right: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+
+.protocol-picker__options .seg-btn:nth-child(4n) {
+  border-right: 0;
+}
+
+.protocol-picker__options .seg-btn:nth-child(n + 5) {
+  border-bottom: 0;
 }
 
 .protocol-picker__options .seg-btn {
@@ -127,6 +145,20 @@
 @media (max-width: 340px) {
   .protocol-picker__options {
     grid-template-columns: repeat(2, 1fr);
+  }
+
+  /* Two columns: the last column is every 2nd option, the last row is 7-8. */
+  .protocol-picker__options .seg-btn {
+    border-right: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+  }
+
+  .protocol-picker__options .seg-btn:nth-child(2n) {
+    border-right: 0;
+  }
+
+  .protocol-picker__options .seg-btn:nth-child(n + 7) {
+    border-bottom: 0;
   }
 }
 
