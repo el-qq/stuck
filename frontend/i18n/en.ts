@@ -257,6 +257,39 @@ export const en = {
   "check.validation.urlRequired": "Enter a site address.",
   "check.validation.userRequired": "Choose a user for this scenario.",
 
+  // ---- access compare (docs/source/comparison.md) ----
+  "compare.title": "Access compare",
+  "compare.subtitle": "Compare how two subjects reach the same destination, stage by stage.",
+  "compare.sideA": "Side A",
+  "compare.sideB": "Side B",
+  "compare.modeNone": "No subject",
+  "compare.modeUser": "User",
+  "compare.modeIp": "IP address",
+  "compare.manualIpLabel": "Source IP address",
+  "compare.manualIpPlaceholder": "e.g. 192.0.2.10",
+  "compare.submit": "Compare",
+  "compare.comparing": "Comparing…",
+  "compare.resultLoading": "Comparing…",
+  "compare.empty": "Set up both sides and run Compare to see the stage-by-stage result.",
+  "compare.noSubject": "No specific subject",
+  "compare.identicalSubjectsBanner": "Both sides are the same subject — there is nothing to compare.",
+  "compare.noStageDifferencesBanner": "No differences at any stage — both sides get the same result.",
+  "compare.contextMismatchBanner":
+    "The two sides have a different amount of context (one has a source IP, the other does not). Stages that depend on the missing IP show as “not comparable”, not as a proven difference.",
+  "compare.contextIncompleteBanner": "The comparison is incomplete: some stages could not be proven to differ because of missing context on one side.",
+  "compare.primaryDivergenceBanner": "The first stage where access clearly differs: {stage}.",
+  "compare.differentRuleTag": "different rule",
+  "compare.primaryTag": "first difference",
+  "compare.classificationSame": "Same",
+  "compare.classificationDivergent": "Different",
+  "compare.classificationIncomparable": "Not comparable",
+  "compare.legendHint":
+    "Same — identical outcome and rule. Different — both sides are certain but disagree. Not comparable — at least one side lacks enough context (e.g. no source IP) to prove a difference.",
+  "compare.reason.unknown_user": "Unknown user for this side.",
+  "compare.reason.multiple_source_ips": "This user has several active or assigned source IP addresses — choose one below.",
+  "compare.reason.source_ip_not_assigned": "This IP address is not active or assigned to the selected user.",
+  "compare.reason.invalid_source_ip": "Enter a valid IPv4 or IPv6 address.",
+
   // ---- stage titles (also used as fallback for server-supplied title_key) ----
   "stage.hw_filter": "Hardware filtering",
   "stage.pre_filter": "Preliminary filtering",
@@ -426,6 +459,7 @@ export const en = {
   "errors.snapshot_import_invalid": "This file could not be read as a STUCK rules export.",
   "errors.snapshot_import_unsupported_format": "This file’s format is not supported for import.",
   "errors.snapshot_import_too_large": "The file is too large to import.",
+  "errors.compare_side_invalid": "One of the compared subjects is invalid. Check the highlighted side for details.",
   "errors.genericTitle": "Something went wrong",
 } as const;
 

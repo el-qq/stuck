@@ -11,7 +11,9 @@ import { ApiError, toApiError } from "@/lib/errors";
 import { RuleHygieneReport, RulesRefreshResponse, TraceResponse } from "@/lib/types";
 import { downloadBlob, defaultRulesExportFilename } from "@/lib/download";
 import { useRuleSnapshots } from "@/hooks/useRuleSnapshots";
+import { useAccessCompare } from "@/hooks/useAccessCompare";
 import { AccessDiagnosticModal } from "../auth/AccessDiagnosticModal";
+import { AccessCompareWorkspace } from "../compare/AccessCompareWorkspace";
 import { HygieneTable, hygieneBadgeColor } from "../rules/RuleHygieneReportView";
 import { RuleHygieneWorkspace } from "../rules/RuleHygieneWorkspace";
 import { RulesExportConfirmModal } from "../rules/RulesExportConfirmModal";
@@ -49,7 +51,7 @@ export function MainScreen() {
 
   // ---- rule hygiene (top-level workspace tab) ----
   const hygieneEnabled = (session.session?.rule_hygiene_enabled ?? false) && traceAllowed;
-  const [tab, setTab] = useState<"check" | "hygiene" | "snapshots">("check");
+  const [tab, setTab] = useState<"check" | "hygiene" | "snapshots" | "compare">("check");
   const [hygieneSection, setHygieneSection] = useState<"all" | HygieneTable>("all");
   // The report is cached until the rules snapshot is refreshed (it is a pure
   // function of the snapshot); null = not loaded yet / invalidated.
@@ -122,6 +124,12 @@ export function MainScreen() {
   const [usersVersion, setUsersVersion] = useState(0);
   const autoRefreshTriggered = useRef(false);
 
+  // ---- access compare (top-level workspace tab, docs/source/comparison.md) ----
+  const compareEnabled = (session.session?.access_compare_enabled ?? false) && traceAllowed;
+  const compareState = useAccessCompare({ rulesLoaded, traceAllowed, usersVersion });
+  const { invalidateResult: invalidateCompareResult } = compareState;
+  const compareDivergentCount = compareState.result ? compareState.result.stages.filter((stage) => stage.classification === "divergent").length : 0;
+
   useEffect(() => {
     if (!traceAllowed) setAccessModalOpen(true);
   }, [traceAllowed]);
@@ -158,6 +166,10 @@ export function MainScreen() {
       // A refresh invalidates only the live `current` side. The hook also
       // cancels any old in-flight response before another comparison starts.
       invalidateCurrentDiff();
+      // The shown access-compare result (if any) was computed on the
+      // pre-refresh snapshot — clear it rather than silently keep a stale
+      // diff on screen (docs/source/comparison.md §3.i case 6).
+      invalidateCompareResult();
     } catch (e) {
       const apiErr = toApiError(e);
       if (session.handleAuthError(apiErr)) return;
@@ -165,7 +177,7 @@ export function MainScreen() {
     } finally {
       setRefreshing(false);
     }
-  }, [invalidateCurrentDiff, session, traceAllowed]);
+  }, [invalidateCompareResult, invalidateCurrentDiff, session, traceAllowed]);
 
   // FR-2.1: on first login for this admin+server pair, load the rule snapshot
   // automatically (visualized with the step popup, as in the design mock).
@@ -207,7 +219,7 @@ export function MainScreen() {
   // Top-level sections; the tab bar only exists when at least one optional
   // panel is enabled. The bar sticks under the header (WorkspaceTabs),
   // surviving result scrolling.
-  const showTabs = hygieneEnabled || snapshotsEnabled;
+  const showTabs = hygieneEnabled || snapshotsEnabled || compareEnabled;
   const workspaceTabs = showTabs ? (
     <WorkspaceTabs ariaLabel={t("tabs.aria")}>
       <button
@@ -254,6 +266,23 @@ export function MainScreen() {
           )}
         </button>
       )}
+      {compareEnabled && (
+        <button
+          role="tab"
+          id="tab-compare"
+          aria-selected={tab === "compare"}
+          aria-controls="tabpanel-compare"
+          className="workspace-tabs__tab"
+          onClick={() => setTab("compare")}
+        >
+          {t("compare.title")}
+          {compareDivergentCount > 0 && (
+            <span className="workspace-tabs__badge" style={{ background: "var(--bad)" }}>
+              {compareDivergentCount}
+            </span>
+          )}
+        </button>
+      )}
     </WorkspaceTabs>
   ) : null;
 
@@ -294,6 +323,10 @@ export function MainScreen() {
 
       {snapshotsEnabled && tab === "snapshots" && (
         <SnapshotComparisonWorkspace state={snapshotState} rulesUpdatedAt={rulesUpdatedAt} port={session.session?.ngfw_port} />
+      )}
+
+      {compareEnabled && tab === "compare" && (
+        <AccessCompareWorkspace state={compareState} server={session.session?.server} port={session.session?.ngfw_port} />
       )}
 
       {/* The check tabpanel stays MOUNTED and toggles via display — unmounting

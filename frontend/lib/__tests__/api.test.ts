@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  compareAccess,
   createRuleSnapshot,
   deleteRuleSnapshot,
   exportRules,
@@ -530,6 +531,95 @@ describe("lib/api.ts", () => {
     it("maps a disabled-feature 404 to ApiError(not_found)", async () => {
       vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse({ error: { code: "not_found" } }, 404)));
       await expectApiError(getRuleHygiene(), "not_found");
+    });
+  });
+
+  describe("compareAccess (docs/source/comparison.md)", () => {
+    const STAGE_KEYS = [
+      "hw_filter",
+      "pre_filter",
+      "rate_limit",
+      "dns",
+      "dnat",
+      "content_filter",
+      "antivirus",
+      "firewall",
+      "app_control",
+      "ips",
+      "snat",
+      "destination",
+    ];
+
+    function compareSide(sourceIp: string | null) {
+      return {
+        subject: { user: null, source_ip: sourceIp },
+        context: { has_user: false, has_source_ip: sourceIp !== null },
+        target: {
+          input: "example.com",
+          normalized_url: "example.com",
+          host: "example.com",
+          resolved_ip: null,
+          source_ip: sourceIp,
+          dst_port: 443,
+          protocol: "tcp",
+          effective_destination_ip: null,
+          effective_destination_port: 443,
+        },
+        summary: { reached_destination: true, blocked_at: null, verdict: "allowed" },
+      };
+    }
+
+    function compareResponse() {
+      return {
+        binding: { admin: "admin", server: "10.0.0.1" },
+        target_input: { url: "example.com", protocol: "tcp", dst_port: null },
+        a: compareSide(null),
+        b: compareSide(null),
+        categories: [],
+        stages: STAGE_KEYS.map((key) => ({
+          key,
+          order: 1,
+          title_key: `stage.${key}`,
+          a: { key, order: 1, title_key: `stage.${key}`, status: "pass" },
+          b: { key, order: 1, title_key: `stage.${key}`, status: "pass" },
+          classification: "same",
+        })),
+        primary_divergence: null,
+        divergence_reason: "identical",
+        identical_subjects: true,
+        rules_updated_at: "2026-07-22T00:00:00Z",
+        generated_at: "2026-07-22T00:00:01Z",
+      };
+    }
+
+    it("posts the request and returns the parsed comparison", async () => {
+      const fetchMock = vi.fn().mockResolvedValue(jsonResponse(compareResponse()));
+      vi.stubGlobal("fetch", fetchMock);
+
+      const res = await compareAccess({ url: "example.com", a: {}, b: { user_id: "u1" } });
+      expect(res.stages).toHaveLength(12);
+      expect(res.identical_subjects).toBe(true);
+      expect(fetchMock.mock.calls[0]![0]).toBe("/api/trace/compare");
+      expect(fetchMock.mock.calls[0]![1]?.method).toBe("POST");
+    });
+
+    it("maps a per-side subject problem to ApiError(compare_side_invalid) with details.side", async () => {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValue(jsonResponse({ error: { code: "compare_side_invalid", details: { side: "b", reason: "unknown_user" } } }, 400)),
+      );
+      const err = await expectApiError(compareAccess({ url: "example.com", a: {}, b: { user_id: "missing" } }), "compare_side_invalid");
+      expect(err.details?.side).toBe("b");
+    });
+
+    it("maps a disabled-feature 404 to ApiError(not_found)", async () => {
+      vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse({ error: { code: "not_found" } }, 404)));
+      await expectApiError(compareAccess({ url: "example.com", a: {}, b: {} }), "not_found");
+    });
+
+    it("rejects a malformed response (wrong stage count)", async () => {
+      vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse({ ...compareResponse(), stages: [] })));
+      await expectApiError(compareAccess({ url: "example.com", a: {}, b: {} }), "api_changed");
     });
   });
 

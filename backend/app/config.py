@@ -80,6 +80,11 @@ class Settings(BaseSettings):
     # (docs/source/snapshots.md). Read-only; disabling answers 404 on every
     # snapshot endpoint and hides the panel in the UI, like export/hygiene.
     STUCK_ENABLE_RULE_SNAPSHOTS: bool = True
+    # Access compare: two subjects side-by-side against one snapshot, with a
+    # per-stage diff (docs/source/comparison.md). Read-only; disabling answers
+    # 404 on POST /api/trace/compare and hides the tab in the UI, exactly like
+    # export/hygiene/snapshots.
+    STUCK_ENABLE_ACCESS_COMPARE: bool = True
     # Maximum saved snapshots per (admin, server) pair — one shared limit for
     # manual and imported snapshots (решение В11). Reaching it is an explicit
     # 409 snapshot_limit_reached, never a silent eviction (решение В4).

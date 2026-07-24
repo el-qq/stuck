@@ -236,6 +236,40 @@ export const ms: Record<keyof typeof en, string> = {
   "check.validation.urlRequired": "Masukkan alamat laman.",
   "check.validation.userRequired": "Pilih pengguna untuk senario ini.",
 
+  // ---- bandingan akses (docs/source/comparison.md) ----
+  "compare.title": "Bandingan akses",
+  "compare.subtitle": "Bandingkan bagaimana dua subjek sampai ke destinasi yang sama, peringkat demi peringkat.",
+  "compare.sideA": "Pihak A",
+  "compare.sideB": "Pihak B",
+  "compare.modeNone": "Tiada subjek",
+  "compare.modeUser": "Pengguna",
+  "compare.modeIp": "Alamat IP",
+  "compare.manualIpLabel": "Alamat IP sumber",
+  "compare.manualIpPlaceholder": "cth. 192.0.2.10",
+  "compare.submit": "Bandingkan",
+  "compare.comparing": "Membandingkan…",
+  "compare.resultLoading": "Membandingkan…",
+  "compare.empty": "Sediakan kedua-dua pihak dan jalankan Bandingkan untuk melihat hasil peringkat demi peringkat.",
+  "compare.noSubject": "Tiada subjek tertentu",
+  "compare.identicalSubjectsBanner": "Kedua-dua pihak ialah subjek yang sama — tiada apa untuk dibandingkan.",
+  "compare.noStageDifferencesBanner": "Tiada perbezaan pada mana-mana peringkat — kedua-dua pihak mendapat hasil yang sama.",
+  "compare.contextMismatchBanner":
+    "Kedua-dua pihak mempunyai jumlah konteks yang berbeza (satu mempunyai IP sumber, satu lagi tidak). Peringkat yang bergantung pada IP yang hilang dipaparkan sebagai “tidak boleh dibandingkan”, bukan perbezaan yang terbukti.",
+  "compare.contextIncompleteBanner":
+    "Perbandingan tidak lengkap: sesetengah peringkat tidak dapat dibuktikan berbeza kerana kekurangan konteks pada satu pihak.",
+  "compare.primaryDivergenceBanner": "Peringkat pertama akses jelas berbeza: {stage}.",
+  "compare.differentRuleTag": "peraturan berbeza",
+  "compare.primaryTag": "perbezaan pertama",
+  "compare.classificationSame": "Sama",
+  "compare.classificationDivergent": "Berbeza",
+  "compare.classificationIncomparable": "Tidak boleh dibandingkan",
+  "compare.legendHint":
+    "Sama — hasil dan peraturan yang sama. Berbeza — kedua-dua pihak pasti tetapi tidak bersetuju. Tidak boleh dibandingkan — sekurang-kurangnya satu pihak tiada cukup konteks (cth. tiada IP sumber) untuk membuktikan perbezaan.",
+  "compare.reason.unknown_user": "Pengguna tidak diketahui untuk pihak ini.",
+  "compare.reason.multiple_source_ips": "Pengguna ini mempunyai beberapa alamat IP sumber aktif atau ditetapkan — pilih satu di bawah.",
+  "compare.reason.source_ip_not_assigned": "Alamat IP ini tidak aktif atau ditetapkan kepada pengguna yang dipilih.",
+  "compare.reason.invalid_source_ip": "Masukkan alamat IPv4 atau IPv6 yang sah.",
+
   "stage.hw_filter": "Penapisan perkakasan",
   "stage.pre_filter": "Penapisan awal",
   "stage.rate_limit": "Had kadar",
@@ -408,5 +442,6 @@ export const ms: Record<keyof typeof en, string> = {
   "errors.snapshot_import_invalid": "Fail ini tidak dapat dibaca sebagai eksport peraturan STUCK.",
   "errors.snapshot_import_unsupported_format": "Format fail ini tidak disokong untuk diimport.",
   "errors.snapshot_import_too_large": "Fail terlalu besar untuk diimport.",
+  "errors.compare_side_invalid": "Salah satu subjek yang dibandingkan tidak sah. Semak pihak yang ditonjolkan untuk butiran.",
   "errors.genericTitle": "Sesuatu tidak kena",
 };

@@ -1,0 +1,381 @@
+/* compare.css — Access compare tab (docs/source/comparison.md): the two
+   per-side subject controls in the input panel, and the side-by-side stage
+   diff result view. New selectors only — no rule shared with another file. */
+
+/* ---- input panel: two subject controls ---- */
+
+.access-compare-sides {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.access-compare-side {
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--panel2);
+}
+
+.access-compare-side__label {
+  margin-bottom: 8px;
+  color: var(--text);
+  font-size: 12.5px;
+  font-weight: 700;
+}
+
+.access-compare-side__modes {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  margin-bottom: 4px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.access-compare-side__modes .seg-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  /* Let the label wrap onto a second line instead of truncating; the fixed
+     min-height keeps the three buttons aligned whether they wrap or not. */
+  min-height: 40px;
+  padding: 6px 4px;
+  color: var(--muted);
+  font-size: 11.5px;
+  font-weight: 600;
+  line-height: 1.2;
+  text-align: center;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  background: var(--panel);
+}
+
+.access-compare-side__modes .seg-btn[aria-pressed="true"] {
+  background: var(--accent);
+  color: var(--accent-contrast);
+}
+
+.access-compare-side__manual-ip {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 4px 0 2px;
+}
+
+.access-compare-side__manual-ip-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.access-compare-side__manual-ip input {
+  border: 1px solid var(--line);
+  background: var(--panel);
+  color: var(--text);
+  border-radius: var(--radius-sm);
+  padding: 10px 11px;
+  font-size: 13.5px;
+}
+
+.access-compare-side__error {
+  margin-top: 8px;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  color: var(--bad);
+  background: var(--bad-soft);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+/* ---- result: subject headers ---- */
+
+.access-compare {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+
+.access-compare__subjects {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 10px;
+}
+
+.access-compare__subject {
+  min-width: 0;
+  padding: 13px 15px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--panel);
+  box-shadow: var(--shadow);
+}
+
+.access-compare__subject-side {
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.access-compare__subject-name {
+  margin-top: 4px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.access-compare__subject-verdict {
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.access-compare__subject[data-verdict="allowed"] .access-compare__subject-verdict {
+  color: var(--ok);
+}
+
+.access-compare__subject[data-verdict="blocked"] .access-compare__subject-verdict {
+  color: var(--bad);
+}
+
+.access-compare__subject[data-verdict="conditional"],
+.access-compare__subject[data-verdict="partial"] {
+  color: var(--info);
+}
+
+.access-compare__subject[data-verdict="conditional"] .access-compare__subject-verdict,
+.access-compare__subject[data-verdict="partial"] .access-compare__subject-verdict {
+  color: var(--info);
+}
+
+.access-compare__subject[data-verdict="unknown"] .access-compare__subject-verdict {
+  color: var(--skip);
+}
+
+.access-compare__target {
+  padding: 0 2px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.access-compare__categories {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 0 2px;
+}
+
+.access-compare__category {
+  padding: 3px 10px;
+  border-radius: 999px;
+  color: var(--accent);
+  background: var(--accent-soft);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* ---- result: banners (mirrors .snapshot-diff__banner tones) ---- */
+
+.access-compare__banner {
+  padding: 11px 13px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.access-compare__banner--ok {
+  color: var(--ok);
+  background: var(--ok-soft);
+}
+
+.access-compare__banner--info {
+  color: var(--info);
+  background: var(--info-soft);
+}
+
+.access-compare__banner--warn {
+  color: var(--warn);
+  background: var(--warn-soft);
+}
+
+.access-compare__banner--bad {
+  color: var(--bad);
+  background: var(--bad-soft);
+}
+
+/* ---- result: stage rows ---- */
+
+.access-compare__rows {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.access-compare__row {
+  display: grid;
+  grid-template-columns: minmax(130px, 190px) minmax(0, 1fr) minmax(0, 1fr);
+  gap: 10px;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--panel);
+}
+
+/* Honesty (invariant №7): `divergent` is a proven difference — a solid,
+   saturated treatment. `incomparable` must never look the same — it gets a
+   dashed border and a soft diagonal texture instead of a solid fill, so an
+   administrator cannot mistake "unproven" for "proven different". */
+.access-compare__row[data-tone="divergent"] {
+  border-left-color: var(--bad);
+  background: var(--bad-soft);
+}
+
+.access-compare__row[data-tone="warn"] {
+  border-style: dashed;
+  border-left-style: solid;
+  border-left-color: var(--warn);
+  background: repeating-linear-gradient(135deg, var(--panel2) 0 10px, var(--panel) 10px 20px);
+}
+
+.access-compare__row[data-primary="true"] {
+  box-shadow: 0 0 0 2px var(--accent);
+}
+
+.access-compare__row-label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-self: center;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-size: 12.5px;
+  font-weight: 700;
+}
+
+.access-compare__row-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.access-compare__tag {
+  padding: 1px 7px;
+  border: 1px solid var(--muted);
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.access-compare__tag--primary {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.access-compare__mini-stage {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  background: var(--panel2);
+}
+
+.access-compare__mini-stage[data-blocking="true"] {
+  box-shadow: inset 3px 0 var(--bad);
+}
+
+.access-compare__mini-status {
+  align-self: flex-start;
+  padding: 2px 9px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.access-compare__mini-stage[data-status-tone="ok"] .access-compare__mini-status {
+  color: var(--ok);
+  background: var(--ok-soft);
+}
+
+.access-compare__mini-stage[data-status-tone="bad"] .access-compare__mini-status {
+  color: var(--bad);
+  background: var(--bad-soft);
+}
+
+.access-compare__mini-stage[data-status-tone="warn"] .access-compare__mini-status {
+  color: var(--warn);
+  background: var(--warn-soft);
+}
+
+.access-compare__mini-stage[data-status-tone="info"] .access-compare__mini-status {
+  color: var(--info);
+  background: var(--info-soft);
+}
+
+.access-compare__mini-stage[data-status-tone="skip"] .access-compare__mini-status {
+  color: var(--muted);
+  background: var(--skip-soft);
+}
+
+.access-compare__mini-rule {
+  overflow-wrap: anywhere;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.access-compare__mini-rule-id {
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.access-compare__mini-link {
+  display: inline-block;
+  margin-left: 6px;
+  font-size: 11px;
+}
+
+.access-compare__mini-reason {
+  overflow-wrap: anywhere;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.access-compare__legend {
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  color: var(--muted);
+  background: var(--panel2);
+  font-size: 11.5px;
+  line-height: 1.5;
+}
+
+@media (max-width: 700px) {
+  .access-compare__subjects {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .access-compare__row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 6px;
+  }
+
+  .access-compare__row-label {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+}

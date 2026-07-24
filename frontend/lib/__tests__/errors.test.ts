@@ -42,6 +42,7 @@ describe("lib/errors.ts", () => {
         "snapshot_import_invalid",
         "snapshot_import_unsupported_format",
         "snapshot_import_too_large",
+        "compare_side_invalid",
       ];
 
       for (const code of knownCodes) {

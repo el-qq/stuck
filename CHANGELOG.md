@@ -4,6 +4,18 @@ All notable user-visible changes are recorded here. The project follows
 [Semantic Versioning](https://semver.org/) and the structure of
 [Keep a Changelog](https://keepachangelog.com/).
 
+## [Unreleased]
+
+### ✨ Added
+
+- **Access compare.** Trace two subjects — each a user or a source IP, in any
+  combination — side by side against the same destination on one rules
+  snapshot, with a stage-by-stage diff that points to the first stage where
+  access clearly differs: the answer to "why does it work for one and not the
+  other". Stages that differ only through missing context on one side are shown
+  as not-comparable rather than a proven difference. Disable the panel with
+  `STUCK_ENABLE_ACCESS_COMPARE`.
+
 ## [0.3.0]: rule snapshots
 
 ### ✨ Highlights

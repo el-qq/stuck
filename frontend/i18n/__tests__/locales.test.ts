@@ -97,6 +97,8 @@ describe("i18n locales (FR-6: Localization)", () => {
       "snapshot_import_invalid",
       "snapshot_import_unsupported_format",
       "snapshot_import_too_large",
+      // Access compare (docs/source/comparison.md, §3.i).
+      "compare_side_invalid",
     ];
 
     it("all error codes are present in en locale", () => {
@@ -300,6 +302,50 @@ describe("i18n locales (FR-6: Localization)", () => {
     it("all snapshot/diff keys are present and non-empty in every locale", () => {
       for (const locale of localeNames) {
         for (const key of snapshotKeys) {
+          const value = locales[locale][key as keyof typeof en];
+          expect(value, `Locale ${locale} is missing: ${key}`).toBeDefined();
+          expect(typeof value === "string" && value.trim().length > 0, `Locale ${locale} has an empty value for: ${key}`).toBe(true);
+        }
+      }
+    });
+  });
+
+  describe("Access compare keys (docs/source/comparison.md)", () => {
+    const compareKeys = [
+      "compare.title",
+      "compare.subtitle",
+      "compare.sideA",
+      "compare.sideB",
+      "compare.modeNone",
+      "compare.modeUser",
+      "compare.modeIp",
+      "compare.manualIpLabel",
+      "compare.manualIpPlaceholder",
+      "compare.submit",
+      "compare.comparing",
+      "compare.resultLoading",
+      "compare.empty",
+      "compare.noSubject",
+      "compare.identicalSubjectsBanner",
+      "compare.noStageDifferencesBanner",
+      "compare.contextMismatchBanner",
+      "compare.contextIncompleteBanner",
+      "compare.primaryDivergenceBanner",
+      "compare.differentRuleTag",
+      "compare.primaryTag",
+      "compare.classificationSame",
+      "compare.classificationDivergent",
+      "compare.classificationIncomparable",
+      "compare.legendHint",
+      "compare.reason.unknown_user",
+      "compare.reason.multiple_source_ips",
+      "compare.reason.source_ip_not_assigned",
+      "compare.reason.invalid_source_ip",
+    ];
+
+    it("all access-compare keys are present and non-empty in every locale", () => {
+      for (const locale of localeNames) {
+        for (const key of compareKeys) {
           const value = locales[locale][key as keyof typeof en];
           expect(value, `Locale ${locale} is missing: ${key}`).toBeDefined();
           expect(typeof value === "string" && value.trim().length > 0, `Locale ${locale} has an empty value for: ${key}`).toBe(true);

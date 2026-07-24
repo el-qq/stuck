@@ -166,6 +166,25 @@ dynamic and never cached in the snapshot.
 4. Normalize the target, resolve DNS and categorize the URL dynamically.
 5. Evaluate all stages in fixed order and return the complete stage list.
 
+### Access compare
+
+Two subjects (each a user and/or source IP) against one target, gated by
+`STUCK_ENABLE_ACCESS_COMPARE`. It introduces no new NGFW call kind: it is two
+ordinary read-only traces plus a pure diff.
+
+1. Load the current pair's snapshot once; both sides evaluate on it (never two
+   snapshots, so a difference is never a mix of "different subject" and
+   "different rules").
+2. Resolve each side's subject independently. The live auth sessions/rules are
+   read once and shared; a per-side failure surfaces as `compare_side_invalid`
+   with `details.side`, not a whole-request error.
+3. Resolve the subject-independent target facts (categorization, DNS) once and
+   inject them into both traces so the two sides cannot artificially diverge on
+   the target; run the two subject-dependent traces under one `asyncio.gather`.
+4. Diff the aligned stage lists into `same` / `divergent` / `incomparable`,
+   naming the first `divergent` stage. The diff is pure and never stored; the
+   response and log carry no secrets and no `source_ip`.
+
 ## Trace semantics
 
 ```text
@@ -184,6 +203,10 @@ hw_filter → pre_filter → rate_limit → dns → dnat → content_filter
   evaluated after firewall/IPS and is skipped for INPUT traffic.
 - Antivirus and IPS payload decisions cannot be reproduced offline. Their
   stages expose module/profile/rule applicability without inventing a verdict.
+- Access compare extends this honesty to the diff: a stage is `incomparable`
+  whenever either side is `unknown`/`na`, so `unknown` is never presented as a
+  discovered difference; only two definite statuses (or one status via
+  different matched rules) count as `divergent`.
 
 ## Security invariants
 

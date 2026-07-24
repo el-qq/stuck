@@ -13,7 +13,7 @@
       print and prefers-reduced-motion blocks re-declare properties on
       selectors defined in layout.css/hygiene.css/snapshots.css/trace.css at
       equal specificity, so they must appear after those declarations to win.
-   The four files in between (layout, hygiene, snapshots, trace) target
+   The files in between (layout, hygiene, snapshots, compare, trace) target
    disjoint sets of selectors — none of them share a selector with another,
    so their relative import order does not affect the rendered result.
 
@@ -25,6 +25,7 @@
 @import "./layout.css";
 @import "./hygiene.css";
 @import "./snapshots.css";
+@import "./compare.css";
 @import "./trace.css";
 @import "./dialogs.css";
 @import "./utilities.css";

@@ -2,6 +2,8 @@ import { ApiError, logApiError, normalizeErrorCode } from "./errors";
 import {
   ErrorEnvelope,
   AccessProfileRefreshResponse,
+  CompareRequest,
+  CompareResponse,
   CreateSnapshotRequest,
   CreateSnapshotResponse,
   DeleteSnapshotResponse,
@@ -275,6 +277,28 @@ export async function health(): Promise<HealthResponse> {
 export async function getRuleHygiene(refresh = false): Promise<RuleHygieneReport> {
   const query = refresh ? "?refresh=true" : "";
   return request<RuleHygieneReport>(`/api/rules/hygiene${query}`, { method: "GET" });
+}
+
+// --- Access compare (docs/source/comparison.md) -----------------------------
+// Draft contract — the backend phases (1-3 of the same doc) land in parallel;
+// keep this thin plumbing in sync with docs/API_CONTRACT.md once published.
+
+/**
+ * Runs two trace subjects against the SAME target and the SAME rules
+ * snapshot and returns the server's canonical stage-by-stage diff (fork d,
+ * decision А — never diffed client-side). Gated on the backend — a 404
+ * surfaces as ApiError(not_found) and the caller hides the panel. A per-side
+ * subject problem (unknown user, ambiguous multi-IP, foreign IP, bad format)
+ * surfaces as ApiError(compare_side_invalid) with `details.side`/`details.reason`
+ * (fork i, cases 2-4) — the caller must address that side, not the whole form.
+ */
+export async function compareAccess(payload: CompareRequest): Promise<CompareResponse> {
+  const data = await request<CompareResponse>("/api/trace/compare", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+  assertShape(Array.isArray(data?.stages) && data.stages.length === STAGE_ORDER.length && !!data?.a && !!data?.b, "/api/trace/compare");
+  return data;
 }
 
 // --- Rule snapshots and diff (docs/source/snapshots.md, fork f) -------------

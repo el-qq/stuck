@@ -11,6 +11,7 @@ from __future__ import annotations
 import asyncio
 import ipaddress
 import socket
+from dataclasses import dataclass
 from typing import Any
 from urllib.parse import urlsplit
 
@@ -86,22 +87,31 @@ def rules_applicable_to_user(snapshot: RulesSnapshot, user: S.NgfwUser) -> dict[
     return _rules_applicable_to_user(snapshot, user)
 
 
-async def run_trace(
+@dataclass(frozen=True)
+class TargetContext:
+    """Subject-independent target facts shared by every trace of one URL.
+
+    Access-compare runs two traces against the SAME target, so categorization
+    and DNS resolution are computed once here and reused by both sides. This
+    both saves reads and guarantees the two sides cannot artificially diverge
+    on target facts that do not depend on the subject.
+    """
+
+    normalized: str
+    host: str
+    dst_port: int
+    resolved_ip: str | None
+    url_categories: list[str]
+
+
+async def resolve_target_context(
     snapshot: RulesSnapshot,
     client: NgfwClient,
     *,
     url: str,
-    user: S.NgfwUser | None,
-    protocol: str,
     dst_port_override: int | None,
-    source_ip: str | None = None,
-) -> dict[str, Any]:
-    """Produce the complete, stable ``POST /api/trace`` response body.
-
-    The explicit calls below are the architectural source of truth for the
-    fixed NGFW pipeline. A blocking stage prevents effective evaluation of all
-    later stages, which are still returned as ``na`` for a stable UI contract.
-    """
+) -> TargetContext:
+    """Resolve the shared, subject-independent facts of a trace target."""
     settings = get_settings()
     normalized, host, url_port = normalize_target(url, settings.STUCK_TRACE_DEFAULT_PORT)
     dst_port = dst_port_override or url_port
@@ -112,9 +122,39 @@ async def run_trace(
     resolved_ip = None if local_dns_zone is not None else await resolve_ip(host)
 
     categorize = await ep.categorize(client, normalized if "://" in normalized else host)
-    url_categories = categorize.all
     if categorize.normalizedUrl:
         normalized = categorize.normalizedUrl
+    return TargetContext(normalized, host, dst_port, resolved_ip, list(categorize.all))
+
+
+async def run_trace(
+    snapshot: RulesSnapshot,
+    client: NgfwClient,
+    *,
+    url: str,
+    user: S.NgfwUser | None,
+    protocol: str,
+    dst_port_override: int | None,
+    source_ip: str | None = None,
+    context: TargetContext | None = None,
+) -> dict[str, Any]:
+    """Produce the complete, stable ``POST /api/trace`` response body.
+
+    The explicit calls below are the architectural source of truth for the
+    fixed NGFW pipeline. A blocking stage prevents effective evaluation of all
+    later stages, which are still returned as ``na`` for a stable UI contract.
+
+    ``context`` lets a caller (access-compare) inject already-resolved,
+    subject-independent target facts so both sides share one categorization and
+    DNS answer; when omitted it is resolved here exactly as before.
+    """
+    if context is None:
+        context = await resolve_target_context(snapshot, client, url=url, dst_port_override=dst_port_override)
+    normalized = context.normalized
+    host = context.host
+    dst_port = context.dst_port
+    resolved_ip = context.resolved_ip
+    url_categories = context.url_categories
 
     category_names = build_category_names(snapshot.cf_categories)
     human_categories = [category_names.get(category, category) for category in url_categories]
