@@ -132,6 +132,28 @@ cookie, raw payload, endpoint path or competence values.
 - DNAT changes the address and port used by later stages. SNAT is not applicable
   to INPUT traffic.
 
+### Protocol matching
+
+- Access-rule objects store the protocol as `protocol.<name>`
+  (`protocol.ah`, `protocol.esp`, `protocol.gre`, `protocol.icmp`,
+  `protocol.tcp`, `protocol.udp`) or the unrestricted `any`. There is also a
+  "TCP/UDP" choice meaning "TCP or UDP" (canonicalized as `tcp_udp`).
+  Source: `docs/source/docs-ru-ngfw-objects-api.md`,
+  `docs/source/docs-ru-ngfw-access-rules-api-firewall.md`.
+- Hardware-filter rows carry the numeric IANA network-layer protocol
+  (`1` ICMP, `6` TCP, `17` UDP, `47` GRE, `50` ESP, `51` AH). STUCK maps these
+  numbers to the same canonical names.
+- Matching is tri-state, mirroring source/destination/port matching. An `any`
+  rule imposes no protocol constraint (always matches). A protocol-specific rule
+  matches only its protocol. A `tcp_udp` rule is a superset covering both `tcp`
+  and `udp`.
+- The result is `unknown` (fail-closed, never a guessed verdict) when the traced
+  protocol cannot be resolved against the first possible rule: a request for
+  `any` protocol against a protocol-specific rule, a `tcp_udp` request against a
+  `tcp`- or `udp`-only rule, or an unrecognized vendor protocol token.
+- Port-less protocols (`icmp`, `ah`, `esp`, `gre`) carry no L4 destination port,
+  so a rule narrowed to specific destination ports cannot apply and is skipped.
+
 ## Deliberately unused native checks
 
 NGFW exposes `checks_*`-style firewall verification helpers, but their workflow

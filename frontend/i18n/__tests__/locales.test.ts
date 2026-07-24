@@ -316,6 +316,7 @@ describe("i18n locales (FR-6: Localization)", () => {
       "compare.subtitle",
       "compare.sideA",
       "compare.sideB",
+      "compare.protocolLabel",
       "compare.modeNone",
       "compare.modeUser",
       "compare.modeIp",
@@ -346,6 +347,26 @@ describe("i18n locales (FR-6: Localization)", () => {
     it("all access-compare keys are present and non-empty in every locale", () => {
       for (const locale of localeNames) {
         for (const key of compareKeys) {
+          const value = locales[locale][key as keyof typeof en];
+          expect(value, `Locale ${locale} is missing: ${key}`).toBeDefined();
+          expect(typeof value === "string" && value.trim().length > 0, `Locale ${locale} has an empty value for: ${key}`).toBe(true);
+        }
+      }
+    });
+  });
+
+  describe("Protocol selector keys (NGFW firewall protocol filter)", () => {
+    // The 8-way protocol picker (check + access-compare forms) only localizes
+    // the "any" wildcard label — acronyms and "TCP/UDP" are literal. The two
+    // reason keys are emitted for an undetermined-protocol outcome:
+    // `fw_protocol_unknown` by the firewall/DNAT/SNAT stages (they reuse the
+    // firewall condition reason keys) and `pre_filter_protocol_unknown` by
+    // the preliminary-filter stage.
+    const protocolKeys = ["protocol.any", "reason.fw_protocol_unknown", "reason.pre_filter_protocol_unknown"];
+
+    it("all protocol keys are present and non-empty in every locale", () => {
+      for (const locale of localeNames) {
+        for (const key of protocolKeys) {
           const value = locales[locale][key as keyof typeof en];
           expect(value, `Locale ${locale} is missing: ${key}`).toBeDefined();
           expect(typeof value === "string" && value.trim().length > 0, `Locale ${locale} has an empty value for: ${key}`).toBe(true);

@@ -178,7 +178,10 @@ export interface UsersResponse {
   cached: boolean;
 }
 
-export type Protocol = "tcp" | "udp";
+/** NGFW firewall protocol filter. "any" is the wildcard default (matches every
+ *  protocol); the rest are the exact values the NGFW firewall rule engine
+ *  understands. Keep in sync with docs/API_CONTRACT.md. */
+export type Protocol = "any" | "ah" | "esp" | "gre" | "icmp" | "tcp" | "udp" | "tcp_udp";
 
 export interface TraceRequest {
   url: string;

@@ -7,17 +7,68 @@ from typing import Any
 
 from ...ngfw import schemas as S
 
+# IANA network-layer protocol numbers used by hardware-filter and native
+# firewall rows (docs/source/docs-ru-ngfw-access-rules-api-firewall.md).
+_IANA_PROTOCOLS = {"1": "icmp", "6": "tcp", "17": "udp", "47": "gre", "50": "esp", "51": "ah"}
+# Protocol tokens STUCK can reason about honestly. Anything else is a vendor
+# extension we must not guess (fail to ``unknown``, never a verdict).
+_KNOWN_PROTOCOLS = {"any", "tcp_udp", "ah", "esp", "gre", "icmp", "tcp", "udp"}
+# L3/ICMP protocols carry no L4 port; destination-port conditions cannot apply.
+_PORTLESS_PROTOCOLS = {"icmp", "ah", "esp", "gre"}
 
-def protocol_matches(rule_protocol: str, requested_protocol: str) -> bool:
-    """Match an NGFW protocol representation against the traced protocol."""
-    normalized = (rule_protocol or "any").lower()
-    if normalized in ("any", "protocol.any", ""):
+
+def canonical_protocol(value: str) -> str:
+    """Normalize any rule/request protocol token to a canonical name.
+
+    Handles the ``protocol.<name>`` object prefix, IANA numeric codes and the
+    ``tcp/udp`` (TCP or UDP) spelling variants. Unrecognized tokens are returned
+    lowercased so the caller can detect and refuse to guess them.
+    """
+    text = (value or "").strip().lower()
+    text = text.removeprefix("protocol.")
+    if text in _IANA_PROTOCOLS:
+        return _IANA_PROTOCOLS[text]
+    if text in ("tcp_udp", "tcp/udp", "tcpudp"):
+        return "tcp_udp"
+    if text in ("any", ""):
+        return "any"
+    return text
+
+
+def _expand_protocol(name: str) -> set[str]:
+    """Expand a canonical protocol into the concrete protocols it covers."""
+    return {"tcp", "udp"} if name == "tcp_udp" else {name}
+
+
+def protocol_match_state(rule_protocol: str, requested_protocol: str) -> bool | None:
+    """Tri-state match of an NGFW rule protocol against the traced protocol.
+
+    ``None`` (undetermined) is returned when the outcome genuinely depends on
+    context STUCK does not have — e.g. a request for ``any`` protocol facing a
+    protocol-specific rule, an ambiguous ``tcp_udp`` request against a ``tcp``
+    rule, or an unrecognized vendor token — so the stage becomes ``unknown``
+    rather than fabricating a verdict (AGENTS.md invariant 7).
+    """
+    rule = canonical_protocol(rule_protocol)
+    requested = canonical_protocol(requested_protocol)
+    if rule == "any":
         return True
-    if normalized in {"6", "tcp"}:
-        return requested_protocol.lower() == "tcp"
-    if normalized in {"17", "udp"}:
-        return requested_protocol.lower() == "udp"
-    return normalized.endswith(requested_protocol.lower())
+    if requested == "any":
+        return None
+    if rule not in _KNOWN_PROTOCOLS:
+        return None
+    rule_set = _expand_protocol(rule)
+    requested_set = _expand_protocol(requested)
+    if requested_set <= rule_set:
+        return True
+    if requested_set & rule_set:
+        return None
+    return False
+
+
+def protocol_is_portless(requested_protocol: str) -> bool:
+    """Return whether the traced protocol carries no L4 destination port."""
+    return canonical_protocol(requested_protocol) in _PORTLESS_PROTOCOLS
 
 
 def ports_match_state(port_ids: Iterable[str], aliases: dict[str, S.Alias], dst_port: int) -> bool | None:

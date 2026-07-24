@@ -38,7 +38,7 @@ def _iso(ts: float) -> str:
 class TraceRequest(BaseModel):
     url: str = Field(min_length=1)
     user_id: str | None = None
-    protocol: Literal["tcp", "udp"] = "tcp"
+    protocol: Literal["any", "ah", "esp", "gre", "icmp", "tcp", "udp", "tcp_udp"] = "tcp"
     dst_port: int | None = Field(default=None, ge=1, le=65535)
     source_ip: str | None = None
 

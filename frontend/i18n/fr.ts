@@ -233,10 +233,12 @@ export const fr: Record<keyof typeof en, string> = {
   "check.validation.userRequired": "Choisissez un utilisateur pour ce scénario.",
 
   // ---- comparaison d'accès (docs/source/comparison.md) ----
-  "compare.title": "Comparaison d'accès",
+  "compare.title": "Comparaison du trafic",
   "compare.subtitle": "Comparez comment deux sujets atteignent la même destination, étape par étape.",
   "compare.sideA": "Côté A",
   "compare.sideB": "Côté B",
+  "compare.protocolLabel": "Protocole",
+  "protocol.any": "Tous",
   "compare.modeNone": "Sans sujet",
   "compare.modeUser": "Utilisateur",
   "compare.modeIp": "Adresse IP",
@@ -329,6 +331,8 @@ export const fr: Record<keyof typeof en, string> = {
     "Une règle préliminaire de blocage vérifie aussi le port source, les indicateurs TCP ou la taille des paquets, inconnus de cette trace.",
   "reason.pre_filter_blocked": "Le trafic est abandonné par la première règle de filtrage préliminaire correspondante.",
   "reason.pre_filter_no_matching_rule": "Aucune règle de filtrage préliminaire ne correspond.",
+  "reason.pre_filter_protocol_unknown":
+    "La règle de filtrage préliminaire correspondante s’applique à un protocole précis ; le protocole tracé est « Tous », donc le résultat dépend du protocole réel.",
   "reason.dnat_disabled": "Les règles DNAT sont désactivées avec les règles pare-feu utilisateur.",
   "reason.dnat_conditions_unknown": "La règle DNAT correspondante requiert des données de port source, d’interface ou de calendrier indisponibles.",
   "reason.source_ip_unknown": "Une règle antérieure dépend de l’IP source, mais l’utilisateur n’a pas d’adresse active ou attribuée.",
@@ -365,6 +369,8 @@ export const fr: Record<keyof typeof en, string> = {
   "reason.fw_destination_unknown": "Une règle de trafic peut correspondre à la destination, mais son adresse IP réelle est indisponible.",
   "reason.fw_object_unknown": "La règle de trafic correspondante référence un objet absent ou non pris en charge dans l’instantané chargé.",
   "reason.fw_port_unknown": "La règle de trafic correspondante référence un objet de port de destination impossible à résoudre.",
+  "reason.fw_protocol_unknown":
+    "La règle correspondante s’applique à un protocole précis ; le protocole tracé est « Tous », donc le résultat dépend du protocole réel.",
   "reason.fw_rule_accept": "La première règle pare-feu correspondante autorise le trafic.",
   "reason.fw_rule_blocked": "La première règle pare-feu correspondante bloque le trafic.",
   "reason.fw_action_unknown": "La règle pare-feu correspondante utilise une action que cette version de STUCK ne reconnaît pas.",

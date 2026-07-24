@@ -258,10 +258,15 @@ export const en = {
   "check.validation.userRequired": "Choose a user for this scenario.",
 
   // ---- access compare (docs/source/comparison.md) ----
-  "compare.title": "Access compare",
+  "compare.title": "Traffic compare",
   "compare.subtitle": "Compare how two subjects reach the same destination, stage by stage.",
   "compare.sideA": "Side A",
   "compare.sideB": "Side B",
+  "compare.protocolLabel": "Protocol",
+  // NGFW firewall protocol selector (shared by the check and access-compare
+  // forms). The acronyms/"TCP/UDP" are literal, not translated — only the
+  // "any" wildcard has a localized label.
+  "protocol.any": "Any",
   "compare.modeNone": "No subject",
   "compare.modeUser": "User",
   "compare.modeIp": "IP address",
@@ -360,6 +365,8 @@ export const en = {
   "reason.pre_filter_conditions_unknown": "A preliminary blocking rule also checks source port, TCP flags or packet length, which this trace does not know.",
   "reason.pre_filter_blocked": "Traffic is dropped by the first matching preliminary-filter rule.",
   "reason.pre_filter_no_matching_rule": "No preliminary-filter rule matched.",
+  "reason.pre_filter_protocol_unknown":
+    "The preliminary-filter rule matches a specific protocol; the traced protocol is “Any”, so the outcome depends on the actual protocol.",
   "reason.dnat_disabled": "DNAT rules are disabled with user firewall rules.",
   "reason.dnat_conditions_unknown": "The matching DNAT rule needs source-port, interface or schedule data that is unavailable.",
   "reason.source_ip_unknown": "An earlier rule depends on the source IP, but the user has no active or assigned address.",
@@ -394,6 +401,10 @@ export const en = {
   "reason.fw_destination_unknown": "A traffic rule may match the destination, but its actual IP address is unavailable.",
   "reason.fw_object_unknown": "The matching traffic rule references an object that is absent or unsupported in the loaded snapshot.",
   "reason.fw_port_unknown": "The matching traffic rule references a destination-port object that cannot be resolved.",
+  // Emitted by the firewall, DNAT and SNAT stages alike (their condition
+  // reason keys reuse the firewall ones) when the matching rule is scoped to
+  // a specific protocol but the trace protocol is the "any" wildcard.
+  "reason.fw_protocol_unknown": "The rule matches a specific protocol; the traced protocol is “Any”, so the outcome depends on the actual protocol.",
   "reason.fw_rule_accept": "The first matching firewall rule allows the traffic.",
   "reason.fw_rule_blocked": "The first matching firewall rule blocks the traffic.",
   "reason.fw_action_unknown": "The matching firewall rule uses an action this version of STUCK does not recognise.",

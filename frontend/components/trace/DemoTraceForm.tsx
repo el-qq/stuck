@@ -6,6 +6,8 @@ import type { TraceTargetController } from "@/hooks/useTraceTarget";
 import type { TraceMode, TraceSubjectsState } from "@/hooks/useTraceSubjects";
 import { clampPort, parseTarget } from "@/lib/servicePresets";
 import { DEMO_SOURCE_ADDRESSES, DEMO_TARGETS, DEMO_USERS } from "@/lib/demoData";
+import { DEFAULT_PROTOCOL } from "@/lib/protocol";
+import { Protocol } from "@/lib/types";
 import type { TraceSubmitPayload } from "./TraceForm";
 import { TraceCheckPanel } from "./TraceCheckPanel";
 
@@ -18,6 +20,7 @@ interface Props {
  * has no API/session imports: all subjects and source IPs are static fixtures. */
 export function DemoTraceForm({ submitting, onSubmit }: Props) {
   const [mode, setMode] = useState<TraceMode>("all");
+  const [protocol, setProtocol] = useState<Protocol>(DEFAULT_PROTOCOL);
   const target = useDemoTraceTarget();
   const subjects = useDemoTraceSubjects(mode);
 
@@ -29,6 +32,8 @@ export function DemoTraceForm({ submitting, onSubmit }: Props) {
       mode={mode}
       onModeChange={setMode}
       target={target}
+      protocol={protocol}
+      onProtocolChange={setProtocol}
       subjects={subjects}
       onSubmit={onSubmit}
     />

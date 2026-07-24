@@ -286,11 +286,24 @@ be both `active` and `assigned`. Data is scoped by `user_object_id`.
 {
   url: string;
   user_id?: string;
-  protocol?: "tcp" | "udp";
+  protocol?: TraceProtocol;        // default "tcp"
   dst_port?: number;
   source_ip?: string;
 }
+
+type TraceProtocol =
+  "any" | "ah" | "esp" | "gre" | "icmp" | "tcp" | "udp" | "tcp_udp";
 ```
+
+`protocol` selects the L3/L4 protocol the trace assumes. `tcp_udp` means "TCP or
+UDP"; `any` means "Любой" (any protocol). Matching against firewall/NAT/pre-
+filter rules is honest: when the first possible rule is protocol-specific and
+the requested protocol cannot be resolved against it — `any` versus a concrete
+rule, or `tcp_udp` versus a `tcp`/`udp`-only rule — the stage is `unknown`
+(reason `fw_protocol_unknown`, or `pre_filter_protocol_unknown` in the pre-
+filter), never a fabricated verdict. Port-less protocols (`icmp`, `ah`, `esp`,
+`gre`) carry no L4 port, so a rule narrowed to specific destination ports cannot
+apply to them and is skipped.
 
 When `user_id` is present, `source_ip` must belong to that user's current or
 configured addresses. One available address is selected automatically. Several
@@ -339,7 +352,7 @@ interface TraceStage {
     resolved_ip: string | null;
     source_ip: string | null;
     dst_port: number;
-    protocol: "tcp" | "udp";
+    protocol: TraceProtocol;
     effective_destination_ip: string | null;
     effective_destination_port: number;
   };
@@ -389,7 +402,7 @@ interface CompareSubject {
 }
 {
   url: string;                     // one shared target for both sides
-  protocol?: "tcp" | "udp";        // default "tcp"
+  protocol?: TraceProtocol;        // default "tcp"; see POST /api/trace
   dst_port?: number;               // 1..65535; overrides a port in url
   a: CompareSubject;
   b: CompareSubject;
@@ -443,7 +456,7 @@ interface CompareSide {
 
 {
   binding: { admin: string; server: string };
-  target_input: { url: string; protocol: "tcp" | "udp"; dst_port: number | null };
+  target_input: { url: string; protocol: TraceProtocol; dst_port: number | null };
   a: CompareSide;
   b: CompareSide;
   categories: string[];            // shared target categories, computed once

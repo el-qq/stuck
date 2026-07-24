@@ -47,7 +47,7 @@ export function DemoScreen({ onExit, traceAnimationEnabled = true }: DemoScreenP
 
   function handleCheck(payload: TraceSubmitPayload) {
     const user = payload.userId ? (DEMO_USERS.find((candidate) => candidate.id === payload.userId) ?? null) : null;
-    setResult(runDemoTrace(demoTargetForInput(payload.url), user, t, payload.sourceIp));
+    setResult(runDemoTrace(demoTargetForInput(payload.url), user, t, payload.sourceIp, payload.protocol));
     setRunKey((key) => key + 1);
   }
 
@@ -63,6 +63,22 @@ export function DemoScreen({ onExit, traceAnimationEnabled = true }: DemoScreenP
       >
         {t("tabs.check")}
       </button>
+      <button
+        role="tab"
+        id="tab-compare"
+        aria-selected={tab === "compare"}
+        aria-controls="tabpanel-compare"
+        className="workspace-tabs__tab"
+        onClick={() => setTab("compare")}
+      >
+        {t("compare.title")}
+        <span className="workspace-tabs__badge" style={{ background: "var(--bad)" }}>
+          {compareState.response.stages.filter((stage) => stage.classification === "divergent").length}
+        </span>
+      </button>
+      {/* Divider between the "traffic" tabs (check, compare) and the "rules"
+          tabs (hygiene, snapshots). */}
+      <span className="workspace-tabs__divider" aria-hidden="true" />
       <button
         role="tab"
         id="tab-hygiene"
@@ -90,19 +106,6 @@ export function DemoScreen({ onExit, traceAnimationEnabled = true }: DemoScreenP
             {snapshotState.diffChangeCount}
           </span>
         )}
-      </button>
-      <button
-        role="tab"
-        id="tab-compare"
-        aria-selected={tab === "compare"}
-        aria-controls="tabpanel-compare"
-        className="workspace-tabs__tab"
-        onClick={() => setTab("compare")}
-      >
-        {t("compare.title")}
-        <span className="workspace-tabs__badge" style={{ background: "var(--bad)" }}>
-          {compareState.response.stages.filter((stage) => stage.classification === "divergent").length}
-        </span>
       </button>
     </WorkspaceTabs>
   );
