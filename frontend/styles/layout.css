@@ -151,6 +151,16 @@
   -webkit-overflow-scrolling: touch;
 }
 
+/* Visual separation between the "traffic" tab group (check, compare) and the
+   "rules" tab group (hygiene, snapshots). */
+.workspace-tabs__divider {
+  flex: 0 0 auto;
+  align-self: stretch;
+  width: 1px;
+  margin: 4px 2px;
+  background: var(--line);
+}
+
 .workspace-tabs__tab {
   display: inline-flex;
   align-items: center;

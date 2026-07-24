@@ -15,7 +15,12 @@ from .address_matching import (
     _unknown_object_reason,
 )
 from .contracts import stage
-from .port_matching import has_specific_values, ports_match_state, protocol_matches
+from .port_matching import (
+    has_specific_values,
+    ports_match_state,
+    protocol_is_portless,
+    protocol_match_state,
+)
 
 
 def evaluate_content_filter(
@@ -100,7 +105,14 @@ def evaluate_firewall(
         )
 
     for rule in rules:
-        if not rule.enabled or not protocol_matches(rule.protocol, protocol):
+        if not rule.enabled:
+            continue
+        protocol_match = protocol_match_state(rule.protocol, protocol)
+        if protocol_match is False:
+            continue
+        # A portless protocol (ICMP/AH/ESP/GRE) carries no L4 port, so a rule
+        # narrowed to specific destination ports cannot apply to it.
+        if protocol_is_portless(protocol) and has_specific_values(rule.destination_ports):
             continue
         source_match = _sources_block_match_state(rule, user_tokens, source_ip, snapshot.aliases)
         if source_match is False:
@@ -111,6 +123,8 @@ def evaluate_firewall(
         ports_match = ports_match_state(rule.destination_ports, snapshot.aliases, dst_port)
         if ports_match is False:
             continue
+        if protocol_match is None:
+            return _unknown_rule_stage(rule, table, "fw_protocol_unknown"), None
         if source_match is None:
             return _unknown_rule_stage(
                 rule,

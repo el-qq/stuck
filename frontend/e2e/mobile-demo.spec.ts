@@ -299,7 +299,7 @@ test("a preset value in the port field maps to its service and submits", async (
   await expect(portField).toHaveAttribute("title", "RDP");
 
   await page.getByRole("button", { name: "Check address" }).click();
-  await expect.poll(() => tracePayload).toEqual({ url: "target.example:3389" });
+  await expect.poll(() => tracePayload).toEqual({ url: "target.example:3389", protocol: "any" });
 });
 
 test("the port field accepts any custom port inline", async ({ page }) => {
@@ -320,7 +320,7 @@ test("the port field accepts any custom port inline", async ({ page }) => {
   await expect(portField).toHaveAttribute("title", "Port 9443");
 
   await page.getByRole("button", { name: "Check address" }).click();
-  await expect.poll(() => tracePayload).toEqual({ url: "target.example:9443" });
+  await expect.poll(() => tracePayload).toEqual({ url: "target.example:9443", protocol: "any" });
 });
 
 test("a port typed into the address moves into the port block on blur", async ({ page }) => {

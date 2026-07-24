@@ -12,6 +12,7 @@ import {
   CompareResponse,
   CompareSide,
   NgfwUser,
+  Protocol,
   RuleHygieneReport,
   SnapshotDescriptor,
   SnapshotDiffResponse,
@@ -151,7 +152,13 @@ const BLOCKED_SCENARIO: Scenario = {
  * `t` localizes the free-text category label; stage titles/reasons stay as
  * i18n keys the UI already knows how to render.
  */
-export function runDemoTrace(target: DemoTarget, user: NgfwUser | null, t: (key: MessageKey) => string, sourceIp?: string): TraceResponse {
+export function runDemoTrace(
+  target: DemoTarget,
+  user: NgfwUser | null,
+  t: (key: MessageKey) => string,
+  sourceIp?: string,
+  protocol: Protocol = "any",
+): TraceResponse {
   const scenario = target.outcome === "blocked" ? BLOCKED_SCENARIO : ALLOWED_SCENARIO;
   const blockIndex = scenario.blockedAt ? STAGE_ORDER.indexOf(scenario.blockedAt) : -1;
 
@@ -183,7 +190,7 @@ export function runDemoTrace(target: DemoTarget, user: NgfwUser | null, t: (key:
       resolved_ip: target.resolved_ip,
       source_ip: user ? (sourceIp ?? "192.0.2.100") : null,
       dst_port: target.dst_port,
-      protocol: "tcp",
+      protocol,
       effective_destination_ip: target.resolved_ip,
       effective_destination_port: target.dst_port,
     },

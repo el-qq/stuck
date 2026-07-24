@@ -13,7 +13,13 @@ from .address_matching import (
     _unknown_object_reason,
 )
 from .contracts import stage
-from .port_matching import has_specific_values, ports_match_state, protocol_matches, single_nat_port
+from .port_matching import (
+    has_specific_values,
+    ports_match_state,
+    protocol_is_portless,
+    protocol_match_state,
+    single_nat_port,
+)
 
 
 def evaluate_dnat(
@@ -41,7 +47,7 @@ def evaluate_dnat(
         detail = _rule_detail(rule)
         if match_state is None:
             detail["reason_key"] = _unknown_match_reason(
-                rule, snapshot, user_tokens, source_ip, destination_ip, host, dst_port
+                rule, snapshot, user_tokens, source_ip, destination_ip, host, dst_port, protocol
             )
             return stage("dnat", "unknown", detail), destination_ip, dst_port
         if _conditions_unknown(rule, dnat=True):
@@ -103,7 +109,7 @@ def evaluate_snat(
         detail = _rule_detail(rule)
         if match_state is None:
             detail["reason_key"] = _unknown_match_reason(
-                rule, snapshot, user_tokens, source_ip, destination_ip, host, dst_port
+                rule, snapshot, user_tokens, source_ip, destination_ip, host, dst_port, protocol
             )
             return stage("snat", "unknown", detail)
         if _conditions_unknown(rule, dnat=False):
@@ -137,11 +143,16 @@ def _rule_match_state(
     protocol: str,
     dst_port: int,
 ) -> bool | None:
+    protocol_match = protocol_match_state(rule.protocol, protocol)
+    # A portless protocol (ICMP/AH/ESP/GRE) carries no L4 port, so a rule
+    # narrowed to specific destination ports cannot apply to it.
+    port_inapplicable = protocol_is_portless(protocol) and has_specific_values(rule.destination_ports)
     destination_match = _dests_block_match_state(rule, snapshot.aliases, destination_ip, host)
     ports_match = ports_match_state(rule.destination_ports, snapshot.aliases, dst_port)
     if (
         not rule.enabled
-        or not protocol_matches(rule.protocol, protocol)
+        or protocol_match is False
+        or port_inapplicable
         or destination_match is False
         or ports_match is False
     ):
@@ -149,7 +160,7 @@ def _rule_match_state(
     source_match = _sources_block_match_state(rule, user_tokens, source_ip, snapshot.aliases)
     if source_match is False:
         return False
-    if destination_match is None or ports_match is None:
+    if protocol_match is None or destination_match is None or ports_match is None:
         return None
     return source_match
 
@@ -180,8 +191,11 @@ def _unknown_match_reason(
     destination_ip: str | None,
     host: str,
     dst_port: int,
+    protocol: str,
 ) -> str:
     """Keep the prior first-match explanation for an undecidable NAT rule."""
+    if protocol_match_state(rule.protocol, protocol) is None:
+        return "fw_protocol_unknown"
     destination_match = _dests_block_match_state(rule, snapshot.aliases, destination_ip, host)
     source_match = _sources_block_match_state(rule, user_tokens, source_ip, snapshot.aliases)
     if destination_match is None:

@@ -130,6 +130,28 @@ class TestHonestyInvariant:
         assert cls["ips"] == "incomparable"
         assert cls["destination"] == "incomparable"
 
+    def test_identical_early_block_leaves_no_incomparable_stages(self):
+        # Both subjects blocked at content_filter by the SAME rule: the later
+        # stages are na on BOTH sides — an identical, fully-known state. Those
+        # na/na pairs must be "same", not "incomparable" (the outcome is known
+        # and equal, so this is not missing context).
+        blocked = _line(
+            {
+                "content_filter": ("block", {"rule_id": "cf.1"}),
+                "firewall": ("na", None),
+                "ips": ("na", None),
+                "destination": ("na", None),
+            }
+        )
+        stages, primary = compare_stage_lists(blocked, [dict(s) for s in blocked])
+        assert primary is None
+        cls = _classify_map(stages)
+        assert cls["content_filter"] == "same"
+        assert cls["firewall"] == "same"
+        assert cls["ips"] == "same"
+        assert cls["destination"] == "same"
+        assert not any(s["classification"] == "incomparable" for s in stages)
+
 
 class TestPrimaryDivergence:
     def test_first_divergent_stage_wins(self):
@@ -163,6 +185,20 @@ class TestDivergenceReason:
 
     def test_none_when_all_same_but_distinct_subjects(self):
         stages, primary = compare_stage_lists(_line({}), _line({}))
+        assert _divergence_reason(primary, stages, identical_subjects=False) is None
+
+    def test_none_when_both_blocked_identically(self):
+        # Regression: two distinct subjects blocked by the same early rule are
+        # equally, fully known — the banner must read "no differences", not
+        # "context_incomplete" (the na/na tail is not missing context).
+        blocked = _line(
+            {
+                "content_filter": ("block", {"rule_id": "cf.1"}),
+                "firewall": ("na", None),
+                "destination": ("na", None),
+            }
+        )
+        stages, primary = compare_stage_lists(blocked, [dict(s) for s in blocked])
         assert _divergence_reason(primary, stages, identical_subjects=False) is None
 
 

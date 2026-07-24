@@ -9,7 +9,7 @@ from ...ngfw import schemas as S
 from ..binding_pool import RulesSnapshot
 from .address_matching import _alias_matches_target, _ip_equal, _raw_ip_matches
 from .contracts import stage
-from .port_matching import protocol_matches, raw_port_matches
+from .port_matching import protocol_is_portless, protocol_match_state, raw_port_matches
 
 
 def evaluate_hw_filter(snapshot: RulesSnapshot, source_ip: str | None, resolved_ip: str | None) -> dict[str, Any]:
@@ -151,12 +151,31 @@ def evaluate_pre_filter(
     if not snapshot.fw_state.enabled:
         return stage("pre_filter", "skip", {"module_enabled": False, "reason_key": "pre_filter_disabled"})
     for rule in snapshot.fw_pre_filter:
-        if not rule.enabled or not protocol_matches(rule.protocol, protocol):
+        if not rule.enabled:
+            continue
+        protocol_match = protocol_match_state(rule.protocol, protocol)
+        if protocol_match is False:
+            continue
+        # A portless protocol (ICMP/AH/ESP/GRE) carries no L4 port, so a rule
+        # narrowed to a specific destination port cannot apply to it.
+        if protocol_is_portless(protocol) and rule.destination_port:
             continue
         if not _raw_ip_matches(rule.destination_address, destination_ip):
             continue
         if not raw_port_matches(rule.destination_port, dst_port):
             continue
+        if protocol_match is None:
+            return stage(
+                "pre_filter",
+                "unknown",
+                {
+                    "rule_id": rule.id,
+                    "rule_name": rule.comment or None,
+                    "action": "drop",
+                    "module_enabled": True,
+                    "reason_key": "pre_filter_protocol_unknown",
+                },
+            )
         if rule.source_address and source_ip is None:
             return stage(
                 "pre_filter",

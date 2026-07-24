@@ -238,10 +238,12 @@ export const es: Record<keyof typeof en, string> = {
   "check.validation.userRequired": "Elija un usuario para este escenario.",
 
   // ---- access compare (docs/source/comparison.md) ----
-  "compare.title": "Comparación de acceso",
+  "compare.title": "Comparación de tráfico",
   "compare.subtitle": "Compare cómo dos sujetos llegan al mismo destino, etapa por etapa.",
   "compare.sideA": "Lado A",
   "compare.sideB": "Lado B",
+  "compare.protocolLabel": "Protocolo",
+  "protocol.any": "Cualquiera",
   "compare.modeNone": "Sin sujeto",
   "compare.modeUser": "Usuario",
   "compare.modeIp": "Dirección IP",
@@ -338,6 +340,8 @@ export const es: Record<keyof typeof en, string> = {
     "La regla preliminar también comprueba el puerto de origen, las marcas TCP o la longitud del paquete, datos no disponibles.",
   "reason.pre_filter_blocked": "La primera regla coincidente de filtrado preliminar descarta el tráfico.",
   "reason.pre_filter_no_matching_rule": "No coincide ninguna regla de filtrado preliminar.",
+  "reason.pre_filter_protocol_unknown":
+    "La regla de filtrado preliminar coincidente se aplica a un protocolo específico; el protocolo trazado es «Cualquiera», así que el resultado depende del protocolo real.",
   "reason.dnat_disabled": "Las reglas DNAT están desactivadas junto con las reglas de usuario del cortafuegos.",
   "reason.dnat_conditions_unknown": "La regla DNAT requiere datos de puerto de origen, interfaz u horario no disponibles.",
   "reason.source_ip_unknown": "Una regla anterior depende de la IP de origen, pero el usuario no tiene una dirección activa ni asignada.",
@@ -374,6 +378,8 @@ export const es: Record<keyof typeof en, string> = {
   "reason.fw_destination_unknown": "Una regla de tráfico podría coincidir con el destino, pero su dirección IP real no está disponible.",
   "reason.fw_object_unknown": "La regla de tráfico coincidente hace referencia a un objeto ausente o no compatible con la instantánea cargada.",
   "reason.fw_port_unknown": "La regla de tráfico coincidente hace referencia a un objeto de puerto de destino que no se puede resolver.",
+  "reason.fw_protocol_unknown":
+    "La regla coincidente se aplica a un protocolo específico; el protocolo trazado es «Cualquiera», así que el resultado depende del protocolo real.",
   "reason.fw_rule_accept": "La primera regla de cortafuegos coincidente permite el tráfico.",
   "reason.fw_rule_blocked": "La primera regla de cortafuegos coincidente bloquea el tráfico.",
   "reason.fw_action_unknown": "La regla de cortafuegos coincidente usa una acción que esta versión de STUCK no reconoce.",

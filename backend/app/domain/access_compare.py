@@ -22,11 +22,12 @@ from ..ngfw.client import NgfwClient
 from . import trace_engine
 from .binding_pool import RulesSnapshot
 
-# Statuses that carry no proven decision for the subject: either the required
-# read-only context is missing (``unknown``) or the stage was never reached
-# because an earlier stage already blocked (``na``). Neither may be used as
-# evidence of a configuration difference.
-_INDETERMINATE: frozenset[str] = frozenset({"unknown", "na"})
+# ``unknown`` = the read-only context needed to decide this stage is missing;
+# it may never be used as evidence of a difference (honesty invariant #7).
+# ``na`` = the stage was not reached because an earlier stage already decided
+# the outcome — a known, not a missing, state (handled explicitly below).
+_UNKNOWN = "unknown"
+_NOT_APPLICABLE = "na"
 
 StageClassification = Literal["same", "divergent", "incomparable"]
 Side = Literal["a", "b"]
@@ -52,12 +53,18 @@ def _classify_stage(a: dict[str, Any], b: dict[str, Any]) -> dict[str, Any]:
     """Classify one aligned stage pair as same / divergent / incomparable.
 
     Ordered precedence, honesty-first:
-    1. Either side indeterminate (``unknown``/``na``) → ``incomparable``.
-    2. Different definite statuses → ``divergent`` (kind ``status``); if exactly
+    1. Either side ``unknown`` → ``incomparable`` (missing context, never a
+       proven difference).
+    2. Both sides ``na`` → ``same``: neither reached this stage because an
+       earlier stage already decided both — an identical, fully-known state
+       (e.g. both blocked by the same upstream rule), not missing context.
+    3. Exactly one side ``na`` → ``incomparable``: that side stopped earlier, so
+       the stage cannot be compared (the real difference is the upstream stage).
+    4. Different definite statuses → ``divergent`` (kind ``status``); if exactly
        one side blocks, ``blocking_side`` names it.
-    3. Equal statuses but different matched ``rule_id`` → ``divergent`` (kind
+    5. Equal statuses but different matched ``rule_id`` → ``divergent`` (kind
        ``same_status_different_rule``): both sides proceed, by different rules.
-    4. Otherwise → ``same``.
+    6. Otherwise → ``same``.
     """
     entry: dict[str, Any] = {
         "key": a["key"],
@@ -68,7 +75,13 @@ def _classify_stage(a: dict[str, Any], b: dict[str, Any]) -> dict[str, Any]:
     }
 
     status_a, status_b = a["status"], b["status"]
-    if status_a in _INDETERMINATE or status_b in _INDETERMINATE:
+    if status_a == _UNKNOWN or status_b == _UNKNOWN:
+        entry["classification"] = "incomparable"
+        return entry
+    if status_a == _NOT_APPLICABLE and status_b == _NOT_APPLICABLE:
+        entry["classification"] = "same"
+        return entry
+    if status_a == _NOT_APPLICABLE or status_b == _NOT_APPLICABLE:
         entry["classification"] = "incomparable"
         return entry
 

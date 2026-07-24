@@ -237,10 +237,12 @@ export const ms: Record<keyof typeof en, string> = {
   "check.validation.userRequired": "Pilih pengguna untuk senario ini.",
 
   // ---- bandingan akses (docs/source/comparison.md) ----
-  "compare.title": "Bandingan akses",
+  "compare.title": "Bandingan trafik",
   "compare.subtitle": "Bandingkan bagaimana dua subjek sampai ke destinasi yang sama, peringkat demi peringkat.",
   "compare.sideA": "Pihak A",
   "compare.sideB": "Pihak B",
+  "compare.protocolLabel": "Protokol",
+  "protocol.any": "Sebarang",
   "compare.modeNone": "Tiada subjek",
   "compare.modeUser": "Pengguna",
   "compare.modeIp": "Alamat IP",
@@ -337,6 +339,8 @@ export const ms: Record<keyof typeof en, string> = {
   "reason.pre_filter_conditions_unknown": "Peraturan awal juga menyemak port sumber, bendera TCP atau panjang paket yang tidak diketahui oleh jejak ini.",
   "reason.pre_filter_blocked": "Trafik digugurkan oleh peraturan penapisan awal pertama yang sepadan.",
   "reason.pre_filter_no_matching_rule": "Tiada peraturan penapisan awal yang sepadan.",
+  "reason.pre_filter_protocol_unknown":
+    "Peraturan penapisan awal yang sepadan terpakai kepada protokol tertentu; protokol yang dijejaki ialah “Sebarang”, jadi keputusan bergantung pada protokol sebenar.",
   "reason.dnat_disabled": "Peraturan DNAT dimatikan bersama peraturan firewall pengguna.",
   "reason.dnat_conditions_unknown": "Peraturan DNAT memerlukan data port sumber, antara muka atau jadual yang tiada.",
   "reason.source_ip_unknown": "Peraturan terdahulu bergantung pada IP sumber, tetapi pengguna tiada alamat aktif atau ditetapkan.",
@@ -373,6 +377,8 @@ export const ms: Record<keyof typeof en, string> = {
   "reason.fw_destination_unknown": "Peraturan trafik mungkin sepadan dengan destinasi, tetapi alamat IP sebenarnya tidak tersedia.",
   "reason.fw_object_unknown": "Peraturan trafik yang sepadan merujuk objek yang tiada atau tidak disokong dalam syot kilat yang dimuatkan.",
   "reason.fw_port_unknown": "Peraturan trafik yang sepadan merujuk objek port destinasi yang tidak dapat dihuraikan.",
+  "reason.fw_protocol_unknown":
+    "Peraturan yang sepadan terpakai kepada protokol tertentu; protokol yang dijejaki ialah “Sebarang”, jadi keputusan bergantung pada protokol sebenar.",
   "reason.fw_rule_accept": "Peraturan firewall pertama yang sepadan membenarkan trafik.",
   "reason.fw_rule_blocked": "Peraturan firewall pertama yang sepadan menyekat trafik.",
   "reason.fw_action_unknown": "Peraturan firewall yang sepadan menggunakan tindakan yang tidak dikenali oleh versi STUCK ini.",

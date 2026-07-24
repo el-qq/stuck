@@ -77,6 +77,59 @@
   min-width: 0;
 }
 
+/* ---- protocol picker (shared by the check and access-compare forms) ---- */
+
+.protocol-picker {
+  margin-bottom: 14px;
+}
+
+.protocol-picker__label {
+  margin-bottom: 6px;
+  color: var(--muted);
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.protocol-picker__options {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  background: var(--line);
+}
+
+.protocol-picker__options .seg-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  /* 44px keeps every option a comfortable touch target on mobile (matches
+     .check-submit and the e2e touch-friendliness assertion). */
+  min-height: 44px;
+  padding: 6px 4px;
+  color: var(--muted);
+  font-size: 11.5px;
+  font-weight: 600;
+  line-height: 1.2;
+  text-align: center;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  background: var(--panel);
+}
+
+.protocol-picker__options .seg-btn[aria-pressed="true"] {
+  background: var(--accent);
+  color: var(--accent-contrast);
+}
+
+@media (max-width: 340px) {
+  .protocol-picker__options {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
 .form-control {
   min-width: 0;
   max-width: 100%;

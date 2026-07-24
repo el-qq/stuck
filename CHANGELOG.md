@@ -8,7 +8,13 @@ All notable user-visible changes are recorded here. The project follows
 
 ### ✨ Added
 
-- **Access compare.** Trace two subjects — each a user or a source IP, in any
+- **Firewall protocol selection.** Traffic check and access compare now let you
+  trace as any firewall protocol — Any (default), AH, ESP, GRE, ICMP, TCP, UDP
+  or TCP/UDP — instead of assuming TCP. Rules are matched honestly: tracing with
+  "Any" against a protocol-specific rule reports the firewall stage as unknown
+  rather than guessing a verdict that would only hold for one protocol, and
+  port-less protocols (ICMP/AH/ESP/GRE) skip port-restricted rules.
+- **Traffic compare.** Trace two subjects — each a user or a source IP, in any
   combination — side by side against the same destination on one rules
   snapshot, with a stage-by-stage diff that points to the first stage where
   access clearly differs: the answer to "why does it work for one and not the

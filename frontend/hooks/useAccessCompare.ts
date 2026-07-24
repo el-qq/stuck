@@ -6,7 +6,8 @@ import { useApiErrorMessage } from "@/hooks/useApiErrorMessage";
 import { useI18n } from "@/i18n";
 import * as api from "@/lib/api";
 import { toApiError } from "@/lib/errors";
-import { CompareRequest, CompareResponse, CompareSubject } from "@/lib/types";
+import { CompareRequest, CompareResponse, CompareSubject, Protocol } from "@/lib/types";
+import { DEFAULT_PROTOCOL } from "@/lib/protocol";
 import { compareErrorSide, compareSideReasonKey } from "@/components/compare/accessComparePresentation";
 import type { AccessCompareSideState, AccessCompareState, CompareSubjectMode } from "@/components/compare/accessCompareState";
 import { useTraceSubjects, TraceSubjectsState } from "@/hooks/useTraceSubjects";
@@ -23,7 +24,12 @@ interface UseAccessCompareOptions {
 function sideReady(mode: CompareSubjectMode, subjects: TraceSubjectsState, manualIp: string): boolean {
   if (mode === "none") return true;
   if (mode === "ip") return manualIp.trim().length > 0;
-  return !!subjects.selectedUser && !subjects.sourceAddressesLoading && (subjects.sourceAddresses.length === 0 || !!subjects.selectedSourceIp);
+  // A failed source-address load leaves the list empty, which is NOT proof the
+  // user has no address — submitting then risks a server-side
+  // `multiple_source_ips` rejection with no way to pick one. Block until the
+  // addresses actually load (error clears on retry).
+  if (!subjects.selectedUser || subjects.sourceAddressesLoading || subjects.sourceAddressesError) return false;
+  return subjects.sourceAddresses.length === 0 || !!subjects.selectedSourceIp;
 }
 
 function buildSubject(mode: CompareSubjectMode, subjects: TraceSubjectsState, manualIp: string): CompareSubject {
@@ -51,6 +57,7 @@ export function useAccessCompare({ rulesLoaded, traceAllowed, usersVersion }: Us
 
   const target = useTraceTarget();
 
+  const [protocol, setProtocol] = useState<Protocol>(DEFAULT_PROTOCOL);
   const [modeA, setModeA] = useState<CompareSubjectMode>("none");
   const [modeB, setModeB] = useState<CompareSubjectMode>("none");
   const [manualIpA, setManualIpA] = useState("");
@@ -88,6 +95,7 @@ export function useAccessCompare({ rulesLoaded, traceAllowed, usersVersion }: Us
     const url = target.submitTarget();
     const payload: CompareRequest = {
       url,
+      protocol,
       a: buildSubject(modeA, subjectsA, manualIpA),
       b: buildSubject(modeB, subjectsB, manualIpB),
     };
@@ -112,7 +120,24 @@ export function useAccessCompare({ rulesLoaded, traceAllowed, usersVersion }: Us
       .finally(() => {
         if (requestVersion.current === requestId) setSubmitting(false);
       });
-  }, [errorMessage, manualIpA, manualIpB, modeA, modeB, readyA, readyB, rulesLoaded, session, subjectsA, subjectsB, submitting, t, target, traceAllowed]);
+  }, [
+    errorMessage,
+    manualIpA,
+    manualIpB,
+    modeA,
+    modeB,
+    protocol,
+    readyA,
+    readyB,
+    rulesLoaded,
+    session,
+    subjectsA,
+    subjectsB,
+    submitting,
+    t,
+    target,
+    traceAllowed,
+  ]);
 
   const sideA = useMemo<AccessCompareSideState>(
     () => ({ mode: modeA, setMode: setModeA, subjects: subjectsA, manualIp: manualIpA, setManualIp: setManualIpA, ready: readyA, errorText: sideAError }),
@@ -125,6 +150,8 @@ export function useAccessCompare({ rulesLoaded, traceAllowed, usersVersion }: Us
 
   return {
     target,
+    protocol,
+    setProtocol,
     sideA,
     sideB,
     canSubmit,

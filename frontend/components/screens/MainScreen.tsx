@@ -200,6 +200,9 @@ export function MainScreen() {
     try {
       const res = await api.trace({
         url: payload.url,
+        // Sent explicitly (including the "any" default) so the backend never
+        // has to guess which protocol filter was intended.
+        protocol: payload.protocol,
         ...(payload.userId ? { user_id: payload.userId } : {}),
         ...(payload.sourceIp ? { source_ip: payload.sourceIp } : {}),
       });
@@ -232,6 +235,26 @@ export function MainScreen() {
       >
         {t("tabs.check")}
       </button>
+      {compareEnabled && (
+        <button
+          role="tab"
+          id="tab-compare"
+          aria-selected={tab === "compare"}
+          aria-controls="tabpanel-compare"
+          className="workspace-tabs__tab"
+          onClick={() => setTab("compare")}
+        >
+          {t("compare.title")}
+          {compareDivergentCount > 0 && (
+            <span className="workspace-tabs__badge" style={{ background: "var(--bad)" }}>
+              {compareDivergentCount}
+            </span>
+          )}
+        </button>
+      )}
+      {/* Divider between the "traffic" tabs (check, compare) and the "rules"
+          tabs (hygiene, snapshots) — only meaningful when a rules tab exists. */}
+      {(hygieneEnabled || snapshotsEnabled) && <span className="workspace-tabs__divider" aria-hidden="true" />}
       {hygieneEnabled && (
         <button
           role="tab"
@@ -262,23 +285,6 @@ export function MainScreen() {
           {diffChangeCount > 0 && (
             <span className="workspace-tabs__badge" style={{ background: diffBadgeColor(snapshotState.diff!.summary) }}>
               {diffChangeCount}
-            </span>
-          )}
-        </button>
-      )}
-      {compareEnabled && (
-        <button
-          role="tab"
-          id="tab-compare"
-          aria-selected={tab === "compare"}
-          aria-controls="tabpanel-compare"
-          className="workspace-tabs__tab"
-          onClick={() => setTab("compare")}
-        >
-          {t("compare.title")}
-          {compareDivergentCount > 0 && (
-            <span className="workspace-tabs__badge" style={{ background: "var(--bad)" }}>
-              {compareDivergentCount}
             </span>
           )}
         </button>

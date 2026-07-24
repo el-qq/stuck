@@ -4,6 +4,7 @@ import React from "react";
 import { useI18n } from "@/i18n";
 import { MessageKey } from "@/i18n/en";
 import { CompareResponse } from "@/lib/types";
+import { protocolDisplayLabel } from "@/lib/protocol";
 import { compareSubjectLabel } from "./accessComparePresentation";
 import { AccessCompareStageRow } from "./AccessCompareStageRow";
 
@@ -48,7 +49,7 @@ export function AccessCompareView({ response, server, port }: Props) {
       </div>
 
       <div className="access-compare__target mono breakable">
-        {t("verdict.targetLabel")}: {response.a.target.normalized_url} · {response.target_input.protocol.toUpperCase()}
+        {t("verdict.targetLabel")}: {response.a.target.normalized_url} · {protocolDisplayLabel(response.target_input.protocol, t)}
         {response.target_input.dst_port ? `:${response.target_input.dst_port}` : ""}
       </div>
 

@@ -1,6 +1,6 @@
 import type { TraceTargetController } from "@/hooks/useTraceTarget";
 import type { TraceSubjectsState } from "@/hooks/useTraceSubjects";
-import { CompareResponse } from "@/lib/types";
+import { CompareResponse, Protocol } from "@/lib/types";
 
 /**
  * A side's subject is the same shape as a single trace subject (docs/source/
@@ -35,6 +35,11 @@ export interface AccessCompareSideState {
  * input panel and `AccessCompareView`) receive no API client or session. */
 export interface AccessCompareState {
   target: TraceTargetController;
+  /** Transport for both sides. Sent to the backend so protocol-specific
+   * rules are evaluated correctly; a missing protocol defaults to "any"
+   * (every protocol) server-side. */
+  protocol: Protocol;
+  setProtocol: (protocol: Protocol) => void;
   sideA: AccessCompareSideState;
   sideB: AccessCompareSideState;
   canSubmit: boolean;

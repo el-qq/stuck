@@ -4,8 +4,9 @@ import React, { useState } from "react";
 import { useI18n } from "@/i18n";
 import type { TraceTargetController } from "@/hooks/useTraceTarget";
 import type { TraceMode, TraceSubjectsState } from "@/hooks/useTraceSubjects";
-import { DomainType } from "@/lib/types";
+import { DomainType, Protocol } from "@/lib/types";
 import { PipelineOrder } from "./PipelineOrder";
+import { ProtocolPicker } from "./ProtocolPicker";
 import { SourceAddressPicker } from "./SourceAddressPicker";
 import { TraceTargetFields } from "./TraceTargetFields";
 import { UserPicker } from "./UserPicker";
@@ -18,6 +19,8 @@ interface Props {
   mode: TraceMode;
   onModeChange: (mode: TraceMode) => void;
   target: TraceTargetController;
+  protocol: Protocol;
+  onProtocolChange: (protocol: Protocol) => void;
   subjects: TraceSubjectsState;
   onSubmit: (payload: TraceSubmitPayload) => void;
 }
@@ -27,7 +30,7 @@ interface Props {
  * target and subjects are provided by an adapter. This keeps the demo's
  * offline data path visually and structurally identical to the live form.
  */
-export function TraceCheckPanel({ rulesLoaded, traceAllowed, submitting, mode, onModeChange, target, subjects, onSubmit }: Props) {
+export function TraceCheckPanel({ rulesLoaded, traceAllowed, submitting, mode, onModeChange, target, protocol, onProtocolChange, subjects, onSubmit }: Props) {
   const { t } = useI18n();
   const [userQuery, setUserQuery] = useState("");
   const [domainFilter, setDomainFilter] = useState<"all" | DomainType>("all");
@@ -46,6 +49,7 @@ export function TraceCheckPanel({ rulesLoaded, traceAllowed, submitting, mode, o
     const url = target.submitTarget();
     onSubmit({
       url,
+      protocol,
       userId: mode === "user" ? (subjects.selectedUser?.id ?? undefined) : undefined,
       sourceIp: mode === "user" ? (subjects.selectedSourceIp ?? undefined) : undefined,
     });
@@ -65,6 +69,8 @@ export function TraceCheckPanel({ rulesLoaded, traceAllowed, submitting, mode, o
       <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 16 }}>{t("check.panelTitle")}</div>
 
       <TraceTargetFields target={target} onSubmit={handleSubmit} />
+
+      <ProtocolPicker value={protocol} onChange={onProtocolChange} />
 
       <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--muted)", marginBottom: 6 }}>{t("check.scenarioLabel")}</div>
       <div

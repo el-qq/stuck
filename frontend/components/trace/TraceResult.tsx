@@ -4,6 +4,7 @@ import React from "react";
 import { useI18n } from "@/i18n";
 import { MessageKey } from "@/i18n/en";
 import { TraceResponse } from "@/lib/types";
+import { protocolDisplayLabel } from "@/lib/protocol";
 import { downloadTraceExport } from "@/lib/traceExport";
 import { useStageReveal } from "@/hooks/useStageReveal";
 import { StageNode } from "./StageNode";
@@ -185,7 +186,7 @@ export function TraceResult({ result, traceAnimationEnabled = true, ngfwServer, 
             <div style={{ fontSize: 17, fontWeight: 700 }}>{v.title}</div>
             <div style={{ fontSize: 13.5, marginTop: 6, opacity: 0.85, lineHeight: 1.5 }}>{v.sub}</div>
             <div className="trace-result__target mono breakable" style={{ fontSize: 12, marginTop: 10, opacity: 0.7 }}>
-              {t("verdict.targetLabel")}: {result.target.normalized_url} · {result.target.protocol.toUpperCase()}:{result.target.dst_port}
+              {t("verdict.targetLabel")}: {result.target.normalized_url} · {protocolDisplayLabel(result.target.protocol, t)}:{result.target.dst_port}
             </div>
           </div>
         </div>

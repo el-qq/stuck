@@ -2,6 +2,7 @@
 
 import React from "react";
 import { useI18n } from "@/i18n";
+import { ProtocolPicker } from "../trace/ProtocolPicker";
 import { TraceTargetFields } from "../trace/TraceTargetFields";
 import { AccessCompareSideControl } from "./AccessCompareSideControl";
 import { AccessCompareView } from "./AccessCompareView";
@@ -29,6 +30,8 @@ export function AccessCompareWorkspace({ state, port, server }: Props) {
           <div style={{ fontSize: 12.5, color: "var(--muted)", lineHeight: 1.5, marginBottom: 14 }}>{t("compare.subtitle")}</div>
 
           <TraceTargetFields target={state.target} onSubmit={state.runCompare} />
+
+          <ProtocolPicker value={state.protocol} onChange={state.setProtocol} />
 
           <div className="access-compare-sides">
             <AccessCompareSideControl label={t("compare.sideA")} side={state.sideA} />

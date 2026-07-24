@@ -189,7 +189,7 @@ class TestValidationErrors:
         assert resp.json()["error"]["code"] == "validation_error"
 
     def test_trace_bad_protocol(self, authenticated_client: TestClient):
-        resp = authenticated_client.post("/api/trace", json={"url": "example.com", "protocol": "icmp"})
+        resp = authenticated_client.post("/api/trace", json={"url": "example.com", "protocol": "sctp"})
 
         assert resp.status_code == 400
         assert resp.json()["error"]["code"] == "validation_error"
