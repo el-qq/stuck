@@ -5,8 +5,8 @@ import json
 
 import httpx
 import pytest
-from conftest import NGFW_SERVER, NGFW_SESSION_VALUE
 from fastapi.testclient import TestClient
+from support import NGFW_SERVER, NGFW_SESSION_VALUE
 
 
 def _stuck_set_cookie_header(resp) -> str | None:

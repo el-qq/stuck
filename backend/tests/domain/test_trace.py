@@ -1,7 +1,7 @@
 """Tests for trace / users / rules-refresh + binding pool (contract v2.1 §3.4-3.6, §5.1)."""
 
-from conftest import DEFAULT_USERS, NGFW_SERVER
 from fastapi.testclient import TestClient
+from support import DEFAULT_USERS, NGFW_SERVER
 
 STAGE_KEYS = [
     "hw_filter",
@@ -1349,7 +1349,7 @@ class TestBindingPool:
         # Load the snapshot so the binding is fully populated.
         assert authenticated_client.get("/api/users").status_code == 200
 
-        from conftest import NGFW_SESSION_VALUE
+        from support import NGFW_SESSION_VALUE
 
         binding = binding_pool.get(valid_login_data["login"], NGFW_SERVER)
         assert binding is not None

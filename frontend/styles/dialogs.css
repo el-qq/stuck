@@ -1,0 +1,135 @@
+/* dialogs.css — modal dialogs, toast viewport and shared keyframe animations.
+   Extracted verbatim from globals.css; no rule, value or selector changed. */
+
+/* ---- dialogs and transient UI ---- */
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+  background: rgba(10, 15, 28, 0.55);
+  backdrop-filter: blur(3px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  animation: fadeUp 0.2s ease both;
+}
+
+.modal-card {
+  width: 100%;
+  max-height: calc(100dvh - 32px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
+  padding: 28px;
+  color: var(--text);
+}
+
+.modal-card--settings {
+  max-width: 420px;
+}
+
+.modal-card--rules {
+  max-width: 440px;
+}
+
+.modal-card--access-diagnostic {
+  max-width: 420px;
+}
+
+.modal-card--rules-export {
+  max-width: 420px;
+}
+
+.toast-viewport {
+  left: auto;
+  width: min(360px, calc(100vw - 32px));
+}
+
+::selection {
+  background: color-mix(in srgb, var(--accent) 90%, transparent);
+  color: var(--accent-contrast);
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}
+
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes dashFlow {
+  to {
+    stroke-dashoffset: -24;
+  }
+}
+
+@keyframes flowDot {
+  0% {
+    top: -4px;
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+  }
+  85% {
+    opacity: 1;
+  }
+  100% {
+    top: 100%;
+    opacity: 0;
+  }
+}
+
+/* Iteration 3 (#7): traffic visually flows upward in the bottom-up pipeline. */
+@keyframes flowDotUp {
+  0% {
+    top: 100%;
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+  }
+  85% {
+    opacity: 1;
+  }
+  100% {
+    top: -4px;
+    opacity: 0;
+  }
+}

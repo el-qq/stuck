@@ -1,0 +1,578 @@
+/* snapshots.css — Rule Snapshots tab: before/after picker, comparison
+   targets and the snapshot diff result view.
+   Extracted verbatim from globals.css; no rule, value or selector changed. */
+
+/* ---- snapshot comparison ----
+   Picker rows are buttons for every input method; drag-and-drop simply
+   reaches the same selected target on desktop. */
+.snapshot-picker__hint {
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--info-soft);
+  color: var(--info);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.snapshot-picker__list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.snapshot-picker__row {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--panel);
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.snapshot-picker__row:hover {
+  background: var(--panel2);
+}
+
+.snapshot-picker__row[data-before="true"][data-after="false"] {
+  border-color: var(--accent);
+}
+
+.snapshot-picker__row[data-before="false"][data-after="true"] {
+  border-color: var(--ok);
+}
+
+.snapshot-picker__row[data-before="true"][data-after="true"] {
+  border-color: color-mix(in srgb, var(--accent) 50%, var(--ok));
+}
+
+/* The selected cards retain their colored border and badge. Only the side
+   currently being populated gets a colored background, so the list remains
+   a clear answer to “what will this next click change?”. */
+.snapshot-picker__row[data-active-side="before"][data-before="true"] {
+  background: var(--accent-soft);
+  box-shadow: inset 3px 0 var(--accent);
+}
+
+.snapshot-picker__row[data-active-side="after"][data-after="true"] {
+  background: var(--ok-soft);
+  box-shadow: inset -3px 0 var(--ok);
+}
+
+.snapshot-picker__item {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  padding: 11px 12px;
+  color: var(--text);
+  text-align: left;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  cursor: pointer;
+}
+
+.snapshot-picker__item-head,
+.snapshot-picker__badges,
+.snapshot-picker__selection {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+/* Source labels use the same compact horizontal row in the picker and the
+   Before/After cards. */
+.snapshot-picker__badges {
+  flex-wrap: nowrap;
+}
+
+.snapshot-picker__item-head {
+  justify-content: space-between;
+}
+
+.snapshot-picker__item-title {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 12.5px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.snapshot-picker__selection {
+  flex-shrink: 0;
+}
+
+.snapshot-picker__selection > span,
+.snapshot-picker__badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 18px;
+  padding: 1px 5px;
+  border: 1px solid var(--muted);
+  border-radius: 4px;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.snapshot-picker__selection > span[data-side="before"] {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.snapshot-picker__selection > span[data-side="after"] {
+  border-color: var(--ok);
+  color: var(--ok);
+}
+
+.snapshot-picker__badge[data-imported="true"] {
+  border-color: var(--info);
+  color: var(--info);
+}
+
+.snapshot-picker__badge--foreign {
+  border-color: var(--warn);
+  color: var(--warn);
+}
+
+.snapshot-picker__comment,
+.snapshot-picker__count {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 11.5px;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.snapshot-picker__delete {
+  align-self: flex-start;
+  flex-shrink: 0;
+  margin: 6px 4px 0 0;
+  padding: 4px 8px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.snapshot-comparison__targets {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  gap: 10px;
+  align-items: stretch;
+}
+
+.snapshot-comparison__target {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  min-height: 112px;
+  padding: 15px 16px;
+  color: var(--text);
+  text-align: left;
+  border: 1px dashed var(--line);
+  border-radius: var(--radius-md);
+  background: var(--panel);
+  cursor: pointer;
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.snapshot-comparison__target[data-side="before"] {
+  border-color: color-mix(in srgb, var(--accent) 58%, var(--line));
+}
+
+.snapshot-comparison__target[data-side="after"] {
+  border-color: color-mix(in srgb, var(--ok) 58%, var(--line));
+}
+
+.snapshot-comparison__target[data-active="true"] {
+  border-style: solid;
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.snapshot-comparison__target[data-side="after"][data-active="true"] {
+  box-shadow: 0 0 0 3px var(--ok-soft);
+}
+
+.snapshot-comparison__target-label {
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.snapshot-comparison__target[data-side="after"] .snapshot-comparison__target-label {
+  color: var(--ok);
+}
+
+.snapshot-comparison__target-title {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 14px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.snapshot-comparison__target-meta {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 11.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.snapshot-comparison__target-source {
+  border: 1px solid var(--info);
+  border-radius: 999px;
+  color: var(--info);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.2;
+  padding: 2px 6px;
+}
+
+.snapshot-comparison__target-badges {
+  align-self: flex-start;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  gap: 4px;
+}
+
+.snapshot-comparison__target-source[data-foreign="true"] {
+  border-color: var(--warn);
+  color: var(--warn);
+}
+
+.snapshot-comparison__swap {
+  align-self: center;
+  width: 38px;
+  height: 38px;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: var(--panel);
+  color: var(--muted);
+  font-size: 20px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.snapshot-comparison__swap:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.snapshot-comparison__result {
+  min-width: 0;
+  padding: 4px 0;
+}
+
+.snapshot-comparison__loading {
+  padding: 22px 0;
+  color: var(--muted);
+  font-size: 13.5px;
+}
+
+.snapshot-comparison__error {
+  padding: 12px 14px;
+  border-radius: var(--radius-sm);
+  background: var(--bad-soft);
+  color: var(--bad);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.snapshot-comparison__empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 260px;
+  padding: 32px;
+  border: 1.5px dashed var(--line);
+  border-radius: var(--radius-lg);
+  color: var(--muted);
+  font-size: 13.5px;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.snapshot-comparison__empty > span {
+  margin-bottom: 12px;
+  color: var(--skip);
+  font-size: 36px;
+}
+
+/* ---- snapshot diff result ----
+   A changed field is a three-column comparison on wide screens. The same
+   semantic markup collapses to labelled values on small screens, avoiding a
+   horizontal data table that would hide the before/after relationship. */
+.snapshot-diff {
+  min-width: 0;
+}
+
+.snapshot-diff__banner {
+  margin-bottom: 12px;
+  padding: 11px 13px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.snapshot-diff__banner--info {
+  color: var(--info);
+  background: var(--info-soft);
+}
+
+.snapshot-diff__banner--warning {
+  color: var(--warn);
+  background: var(--warn-soft);
+}
+
+.snapshot-diff__counters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 2px 0 14px;
+}
+
+.snapshot-diff__counter {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.snapshot-diff__counter-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.snapshot-diff__clean {
+  padding: 14px 16px;
+  border-radius: var(--radius-sm);
+  color: var(--ok);
+  background: var(--ok-soft);
+  font-size: 13.5px;
+  line-height: 1.5;
+}
+
+.snapshot-diff__groups {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+.snapshot-diff__group {
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--panel);
+  box-shadow: var(--shadow);
+}
+
+.snapshot-diff__group > summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 13px 16px;
+  font-size: 13.5px;
+  font-weight: 700;
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+}
+
+.snapshot-diff__group > summary::-webkit-details-marker {
+  display: none;
+}
+
+.snapshot-diff__group > summary::before {
+  color: var(--muted);
+  content: "▸";
+  transition: transform 0.15s ease;
+}
+
+.snapshot-diff__group[open] > summary::before {
+  transform: rotate(90deg);
+}
+
+.snapshot-diff__group-count {
+  padding: 2px 8px;
+  border-radius: 999px;
+  color: var(--muted);
+  background: var(--panel2);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.snapshot-diff__group-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 0 16px 16px;
+}
+
+.snapshot-diff-entry {
+  --snapshot-diff-kind: var(--info);
+  min-width: 0;
+  padding: 11px 13px;
+  border-left: 3px solid var(--snapshot-diff-kind);
+  border-radius: var(--radius-sm);
+  background: var(--panel2);
+}
+
+.snapshot-diff-entry[data-kind="added"] {
+  --snapshot-diff-kind: var(--ok);
+}
+
+.snapshot-diff-entry[data-kind="removed"] {
+  --snapshot-diff-kind: var(--bad);
+}
+
+.snapshot-diff-entry[data-kind="changed"] {
+  --snapshot-diff-kind: var(--warn);
+}
+
+.snapshot-diff-entry__header {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.snapshot-diff-entry__kind {
+  font-size: 13.5px;
+  font-weight: 700;
+}
+
+.snapshot-diff-entry__meta,
+.snapshot-diff-entry__link {
+  font-size: 11.5px;
+  font-weight: 600;
+}
+
+.snapshot-diff-entry__meta {
+  color: var(--muted);
+  font-family: var(--font-mono);
+  overflow-wrap: anywhere;
+}
+
+.snapshot-diff-entry__link {
+  color: var(--accent);
+}
+
+.snapshot-diff-entry__name {
+  max-width: 100%;
+  margin: 4px 0 7px;
+  overflow: hidden;
+  color: color-mix(in srgb, var(--text) 60%, transparent);
+  font-size: 12.5px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.snapshot-diff-entry__fields {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin-top: 6px;
+}
+
+.snapshot-diff-entry__field-header,
+.snapshot-diff-entry__field {
+  display: grid;
+  grid-template-columns: minmax(120px, 0.7fr) minmax(0, 1fr) minmax(0, 1fr);
+  gap: 12px;
+  min-width: 0;
+}
+
+.snapshot-diff-entry__field-header {
+  padding: 0 8px;
+  color: var(--muted);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.snapshot-diff-entry__field {
+  align-items: start;
+  padding: 7px 8px;
+  border-radius: 5px;
+  background: var(--panel);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.snapshot-diff-entry__field-name {
+  overflow-wrap: anywhere;
+  font-family: var(--font-mono);
+  font-weight: 700;
+}
+
+.snapshot-diff-entry__field-value {
+  display: block;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.snapshot-diff-entry__field-mobile-label {
+  display: none;
+  margin-right: 6px;
+  color: var(--muted);
+  font-family: var(--font-sans);
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.snapshot-diff__state-list {
+  gap: 6px;
+}
+
+.snapshot-diff__state {
+  display: grid;
+  grid-template-columns: minmax(180px, 0.8fr) minmax(0, 1fr) minmax(0, 1fr);
+  gap: 12px;
+  align-items: baseline;
+  padding: 8px;
+  border-radius: var(--radius-sm);
+  background: var(--panel2);
+  font-size: 12.5px;
+}
+
+.snapshot-diff__state-label {
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.snapshot-diff__state-value {
+  min-width: 0;
+  color: var(--muted);
+  font-family: var(--font-mono);
+  overflow-wrap: anywhere;
+}
+
+.snapshot-diff__state-value > span {
+  display: none;
+}

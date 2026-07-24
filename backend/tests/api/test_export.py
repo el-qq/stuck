@@ -14,8 +14,8 @@ from contextlib import contextmanager
 
 import httpx
 import pytest
-from conftest import DEFAULT_USERS, NGFW_SERVER, NGFW_SESSION_VALUE, LiveTestClient
 from fastapi.testclient import TestClient
+from support import DEFAULT_USERS, NGFW_SERVER, NGFW_SESSION_VALUE, LiveTestClient
 
 from app.config import get_settings
 from app.domain import trace_engine
