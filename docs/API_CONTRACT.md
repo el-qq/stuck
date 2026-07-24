@@ -286,7 +286,7 @@ be both `active` and `assigned`. Data is scoped by `user_object_id`.
 {
   url: string;
   user_id?: string;
-  protocol?: TraceProtocol;        // default "tcp"
+  protocol?: TraceProtocol;        // default "any"
   dst_port?: number;
   source_ip?: string;
 }
@@ -402,7 +402,7 @@ interface CompareSubject {
 }
 {
   url: string;                     // one shared target for both sides
-  protocol?: TraceProtocol;        // default "tcp"; see POST /api/trace
+  protocol?: TraceProtocol;        // default "any"; see POST /api/trace
   dst_port?: number;               // 1..65535; overrides a port in url
   a: CompareSubject;
   b: CompareSubject;

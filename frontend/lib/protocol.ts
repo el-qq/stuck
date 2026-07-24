@@ -4,8 +4,8 @@ import { Protocol } from "./types";
 /**
  * Fixed order for the NGFW firewall protocol selector, shared by the trace
  * ("Проверка трафика") and access-compare forms so both tabs offer the exact
- * same 8 choices in the exact same order. "any" is first because it is the
- * request default.
+ * same 8 choices in the exact same order. "any" is first because it is both
+ * the wildcard option and the request default.
  */
 export const PROTOCOL_OPTIONS: readonly Protocol[] = ["any", "ah", "esp", "gre", "icmp", "tcp", "udp", "tcp_udp"];
 

@@ -323,6 +323,25 @@ test("the port field accepts any custom port inline", async ({ page }) => {
   await expect.poll(() => tracePayload).toEqual({ url: "target.example:9443", protocol: "any" });
 });
 
+test("the traffic-check protocol picker sends the selected protocol", async ({ page }) => {
+  let tracePayload: unknown;
+  await page.route("**/api/trace", async (route) => {
+    tracePayload = route.request().postDataJSON();
+    await route.fulfill({
+      status: 422,
+      contentType: "application/json",
+      body: JSON.stringify({ error: { code: "validation_error", message: "test response" } }),
+    });
+  });
+  await openAuthenticatedApp(page);
+
+  await page.getByPlaceholder("example.com:12345").fill("icmp.example");
+  await page.getByRole("button", { name: "ICMP", exact: true }).click();
+  await page.getByRole("button", { name: "Check address" }).click();
+
+  await expect.poll(() => tracePayload).toEqual({ url: "icmp.example", protocol: "icmp" });
+});
+
 test("a port typed into the address moves into the port block on blur", async ({ page }) => {
   await openAuthenticatedApp(page);
 

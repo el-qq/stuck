@@ -41,7 +41,7 @@ class CompareSubject(BaseModel):
 
 class CompareRequest(BaseModel):
     url: str = Field(min_length=1)
-    protocol: Literal["any", "ah", "esp", "gre", "icmp", "tcp", "udp", "tcp_udp"] = "tcp"
+    protocol: Literal["any", "ah", "esp", "gre", "icmp", "tcp", "udp", "tcp_udp"] = "any"
     dst_port: int | None = Field(default=None, ge=1, le=65535)
     a: CompareSubject
     b: CompareSubject
