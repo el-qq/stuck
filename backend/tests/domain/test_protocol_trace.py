@@ -40,6 +40,16 @@ def _trace(client, protocol, **body):
 
 
 class TestFirewallProtocolMatching:
+    def test_omitted_protocol_defaults_to_any(self, authenticated_client: TestClient, ngfw_mock):
+        ngfw_mock.state["fw_forward"] = (200, [_forward_rule("fw.tcp", "protocol.tcp", "drop")])
+
+        response = authenticated_client.post("/api/trace", json={"url": _PUBLIC_URL, "user_id": _USER})
+        firewall = _firewall_stage(response)
+
+        assert response.json()["target"]["protocol"] == "any"
+        assert firewall["status"] == "unknown"
+        assert firewall["detail"]["reason_key"] == "fw_protocol_unknown"
+
     @pytest.mark.parametrize("protocol", ["ah", "esp", "gre", "icmp", "tcp", "udp"])
     def test_rule_of_the_traced_protocol_blocks(self, authenticated_client: TestClient, ngfw_mock, protocol):
         ngfw_mock.state["fw_forward"] = (200, [_forward_rule("fw.block", f"protocol.{protocol}", "drop")])

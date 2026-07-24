@@ -153,9 +153,8 @@ describe("lib/demoData.ts — pipeline invariants", () => {
     expect(result.target.input).toBe(target.address);
     expect(result.target.host).toBe(target.host);
     expect(result.target.dst_port).toBe(target.dst_port);
-    // "any" is the protocol default across the app (decision: the wildcard
-    // protocol filter, not TCP specifically) — runDemoTrace mirrors it when
-    // no explicit protocol argument is supplied.
+    // "any" is the protocol default across the app; the demo mirrors it when
+    // no explicit protocol is supplied.
     expect(result.target.protocol).toBe("any");
     expect(result.target.resolved_ip).toBe(target.resolved_ip);
   });

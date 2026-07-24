@@ -144,7 +144,7 @@ class TestContractShape:
             "generated_at",
         }
         assert body["binding"] == {"admin": "admin", "server": NGFW_SERVER}
-        assert body["target_input"] == {"url": "example.com", "protocol": "tcp", "dst_port": None}
+        assert body["target_input"] == {"url": "example.com", "protocol": "any", "dst_port": None}
         # 12 stages in fixed order, each with both sides.
         assert [s["key"] for s in body["stages"]] == STAGE_KEYS
         for s in body["stages"]:
