@@ -22,7 +22,13 @@ and IP-dependent decisions remain explicitly unknown.
 
 - **🔎 Traffic trace** — check a domain, IP address or `host:port`; service and
   port presets shorten common checks. Select an NGFW user and, when available,
-  a source IP for user-aware evaluation.
+  a source IP for user-aware evaluation. The protocol comes from the same set
+  the firewall rules use: Any (default), AH, ESP, GRE, ICMP, TCP, UDP, TCP/UDP.
+- **⇄ Traffic compare** — trace two subjects (a user or a source IP, in any
+  combination) side by side against the same destination on a single rules
+  snapshot, and get a stage-by-stage diff that points to the first stage where
+  access clearly differs. Stages that differ only because one side lacks
+  context are marked not-comparable rather than presented as the cause.
 - **🧭 Processing-path view** — follow the ordered decision path, including
   hardware filtering, DNS/NAT, firewall and inspection modules. Unavailable
   packet or policy context is shown as `unknown`, never assumed to pass.
@@ -161,6 +167,7 @@ with the same name; environment variables take precedence.
 | `STUCK_ENABLE_RULE_SNAPSHOTS`      | `true`              | Enable named in-memory rule snapshots and the snapshot-diff panel (create/delete/import snapshots, compare two states); set `false` to answer 404 and hide it.        |
 | `STUCK_SNAPSHOT_LIMIT_PER_BINDING` | `10`                | Maximum saved snapshots per administrator+server pair (manual and imported share the limit; range 1-50). At the limit creation fails with `snapshot_limit_reached`.   |
 | `STUCK_REQUIRE_READONLY_ADMIN`     | `false`             | Accept sign-in only from NGFW administrators with the read-only role; any other role is rejected after authentication (including 2FA) with `readonly_admin_required`. |
+| `STUCK_ENABLE_ACCESS_COMPARE`      | `true`              | Enable the traffic-compare section (two subjects side by side, stage-by-stage diff); set `false` to answer 404 and hide it.                                           |
 
 To lock STUCK to one NGFW host for a local development run:
 
