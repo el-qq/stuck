@@ -6,6 +6,8 @@ import { useMobileResultScroll } from "@/hooks/useMobileResultScroll";
 import { DEMO_HYGIENE_REPORT, DEMO_RULES_UPDATED_AT, DEMO_USERS, demoTargetForInput, runDemoTrace } from "@/lib/demoData";
 import { TraceResponse } from "@/lib/types";
 import { useDemoRuleSnapshots } from "@/hooks/useDemoRuleSnapshots";
+import { useDemoAccessCompare } from "@/hooks/useDemoAccessCompare";
+import { AccessCompareDemoWorkspace } from "../compare/AccessCompareDemoWorkspace";
 import { HygieneTable, hygieneBadgeColor } from "../rules/RuleHygieneReportView";
 import { RuleHygieneWorkspace } from "../rules/RuleHygieneWorkspace";
 import { SnapshotComparisonWorkspace } from "../rules/SnapshotComparisonWorkspace";
@@ -34,12 +36,13 @@ interface DemoScreenProps {
 export function DemoScreen({ onExit, traceAnimationEnabled = true }: DemoScreenProps) {
   const { t } = useI18n();
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [tab, setTab] = useState<"check" | "hygiene" | "snapshots">("check");
+  const [tab, setTab] = useState<"check" | "hygiene" | "snapshots" | "compare">("check");
   const [hygieneSection, setHygieneSection] = useState<"all" | HygieneTable>("all");
   const [result, setResult] = useState<TraceResponse | null>(null);
   const [runKey, setRunKey] = useState(0);
   const resultRef = useRef<HTMLElement>(null);
   const snapshotState = useDemoRuleSnapshots();
+  const compareState = useDemoAccessCompare();
   useMobileResultScroll(resultRef, runKey);
 
   function handleCheck(payload: TraceSubmitPayload) {
@@ -88,6 +91,19 @@ export function DemoScreen({ onExit, traceAnimationEnabled = true }: DemoScreenP
           </span>
         )}
       </button>
+      <button
+        role="tab"
+        id="tab-compare"
+        aria-selected={tab === "compare"}
+        aria-controls="tabpanel-compare"
+        className="workspace-tabs__tab"
+        onClick={() => setTab("compare")}
+      >
+        {t("compare.title")}
+        <span className="workspace-tabs__badge" style={{ background: "var(--bad)" }}>
+          {compareState.response.stages.filter((stage) => stage.classification === "divergent").length}
+        </span>
+      </button>
     </WorkspaceTabs>
   );
 
@@ -114,6 +130,8 @@ export function DemoScreen({ onExit, traceAnimationEnabled = true }: DemoScreenP
       )}
 
       {tab === "snapshots" && <SnapshotComparisonWorkspace state={snapshotState} rulesUpdatedAt={DEMO_RULES_UPDATED_AT} />}
+
+      {tab === "compare" && <AccessCompareDemoWorkspace response={compareState.response} />}
 
       <div role="tabpanel" id="tabpanel-check" aria-labelledby="tab-check" style={{ display: tab === "check" ? "contents" : "none" }}>
         <CheckWorkspace

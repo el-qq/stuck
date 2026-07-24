@@ -24,7 +24,9 @@ export type ErrorCode =
   | "snapshot_limit_reached"
   | "snapshot_import_invalid"
   | "snapshot_import_unsupported_format"
-  | "snapshot_import_too_large";
+  | "snapshot_import_too_large"
+  // ---- access compare (docs/source/comparison.md, §3.i) ----
+  | "compare_side_invalid";
 
 /** Closed list per contract §2.1 — used to validate/fallback unknown codes from the backend. */
 export const KNOWN_ERROR_CODES: readonly ErrorCode[] = [
@@ -48,6 +50,7 @@ export const KNOWN_ERROR_CODES: readonly ErrorCode[] = [
   "snapshot_import_invalid",
   "snapshot_import_unsupported_format",
   "snapshot_import_too_large",
+  "compare_side_invalid",
 ];
 
 export interface ErrorEnvelope {
@@ -131,6 +134,10 @@ export interface SessionStatus {
    *  (`STUCK_ENABLE_RULE_SNAPSHOTS`, docs/source/snapshots.md fork f).
    *  Optional — older backends omit it; treat absence as false. */
   rule_snapshots_enabled?: boolean;
+  /** Whether the access-compare panel is enabled on the backend
+   *  (`STUCK_ENABLE_ACCESS_COMPARE`, docs/source/comparison.md §4).
+   *  Optional — older backends omit it; treat absence as false. */
+  access_compare_enabled?: boolean;
   /** HTTPS port of the authenticated NGFW, used only for safe admin links.
    *  Optional for compatibility with older backends. */
   ngfw_port?: number;
@@ -315,6 +322,8 @@ export interface HealthResponse {
   rules_export_enabled?: boolean;
   /** Mirrors `SessionStatus.rule_snapshots_enabled` for the pre-login/public probe. */
   rule_snapshots_enabled?: boolean;
+  /** Mirrors `SessionStatus.access_compare_enabled` for the pre-login/public probe. */
+  access_compare_enabled?: boolean;
 }
 
 /** Non-sensitive values needed before the administrator has a session. */
@@ -533,4 +542,91 @@ export interface SnapshotDiffResponse {
   /** Only tables with at least one entry — an empty array means "no changes". */
   tables: DiffTableGroup[];
   states: DiffStateChange[];
+}
+
+// --- Access compare (docs/source/comparison.md) -----------------------------
+//
+// Analyst draft, not yet an implemented backend contract — kept in sync with
+// `docs/API_CONTRACT.md` once the backend phases (1-3 of the same doc) land.
+// Owner decisions in §5 are final; this mirrors the API sketch of §4 exactly.
+// Distinct from the rule-snapshots diff above: the rules snapshot is the SAME
+// on both sides here — only the traffic SUBJECT (user and/or source IP)
+// differs (§0 "Отношение к соседним фичам").
+
+/** Either half of a compare request — same subject shape as a single trace. */
+export interface CompareSubject {
+  user_id?: string;
+  source_ip?: string;
+}
+
+export interface CompareRequest {
+  /** Common target for both sides (fork a, decision А) — comparing two
+   *  different targets is explicitly out of scope. */
+  url: string;
+  protocol?: Protocol;
+  dst_port?: number;
+  a: CompareSubject;
+  b: CompareSubject;
+}
+
+/** Honest three-way classification of one pipeline stage across both sides
+ *  (fork b, decision B). `unknown`/`na` on either side NEVER counts as a
+ *  proven `divergent` — invariant №7: it means "context missing", not
+ *  "different". */
+export type StageClassification = "same" | "divergent" | "incomparable";
+
+export interface CompareStage {
+  key: StageKey;
+  order: number;
+  title_key: string;
+  /** Full stage as it would appear in a standalone `POST /api/trace` result. */
+  a: TraceStage;
+  b: TraceStage;
+  classification: StageClassification;
+  /** Present only when `classification === "divergent"` (fork e, decision №3):
+   *  `"status"` when the stage statuses differ (includes "one side block");
+   *  `"same_status_different_rule"` when both sides pass/match but via a
+   *  different rule — diagnostically distinct from a real block. */
+  divergence_kind?: "status" | "same_status_different_rule";
+  /** The side whose status is `block` at this stage, if exactly one is. */
+  blocking_side?: CompareSideId | null;
+}
+
+export type CompareSideId = "a" | "b";
+
+export interface CompareSide {
+  subject: {
+    user: TraceUser | null;
+    source_ip: string | null;
+  };
+  /** Per-side completeness, shown before the stage list so a thin-context side
+   *  (fork b) is never mistaken for a proven configuration difference. */
+  context: { has_user: boolean; has_source_ip: boolean };
+  /** `effective_destination_*` may legitimately differ between sides when DNAT
+   *  depends on the subject (fork a — a legitimate, honestly-shown exception
+   *  to "one shared target"). */
+  target: TraceTarget;
+  summary: TraceSummary;
+}
+
+export interface CompareResponse {
+  binding: { admin: string; server: string };
+  target_input: { url: string; protocol: Protocol; dst_port: number | null };
+  a: CompareSide;
+  b: CompareSide;
+  /** Computed once for the shared target and reused by both sides. */
+  categories: string[];
+  /** Always all 12 pipeline stages, in fixed order (invariant №6) — the UI
+   *  matches columns by index/key, never by searching. */
+  stages: CompareStage[];
+  /** First `divergent` stage in pipeline order; `null` when there is none
+   *  (either everything is `same`, or every difference is `incomparable`). */
+  primary_divergence: StageKey | null;
+  /** `null` only if the backend predates this field. */
+  divergence_reason: "diverged" | "context_incomplete" | "identical" | null;
+  /** True when both sides resolved to the exact same subject (case i.1) —
+   *  the diff is empty by construction, not because nothing differs. */
+  identical_subjects: boolean;
+  rules_updated_at: string;
+  generated_at: string;
 }

@@ -39,6 +39,7 @@ interface ErrorEnvelope {
 | `snapshot_import_invalid`            |  400 | Import body is not a valid `stuck.rules/v2` document; `details.reason` explains   |
 | `snapshot_import_unsupported_format` |  400 | `format` is present but not supported; `details.format` echoes it (or null)       |
 | `snapshot_import_too_large`          |  413 | Import body exceeds the limit; `details.limit_bytes` carries it                   |
+| `compare_side_invalid`               |  400 | One access-compare side subject is invalid/ambiguous; see `details` below         |
 | `server_unreachable`                 |  502 | NGFW/network timeout or connection failure                                        |
 | `api_changed`                        |  502 | Required NGFW response shape changed                                              |
 | `ngfw_error`                         |  502 | Other NGFW failure                                                                |
@@ -60,6 +61,7 @@ unknown codes with a generic fallback.
   rules_export_enabled?: boolean;
   rule_hygiene_enabled?: boolean;
   rule_snapshots_enabled?: boolean;
+  access_compare_enabled?: boolean;
 }
 ```
 
@@ -188,6 +190,7 @@ best-effort closes its NGFW session. The non-secret rules snapshot remains.
   rules_export_enabled?: boolean;
   rule_hygiene_enabled?: boolean;
   rule_snapshots_enabled?: boolean;
+  access_compare_enabled?: boolean;
   ngfw_port?: number;
 }
 ```
@@ -367,6 +370,102 @@ Status intent:
   confirmed allow.
 - `limited`, `applied` and `bypass` are definite non-blocking transformations.
 - `reason_key` is an open localized vocabulary; unknown keys need a fallback.
+
+### `POST /api/trace/compare`
+
+Runs two subjects side-by-side against **one** target and **one** snapshot and
+diffs the pipeline stage by stage. Gated by `STUCK_ENABLE_ACCESS_COMPARE`
+(surfaced as `access_compare_enabled` in `GET /api/health` and
+`GET /api/session`); disabled behaves as 404. Requires
+`access_profile.trace_allowed` like every snapshot-loading endpoint; the binding
+comes from the session only. Both sides are ordinary read-only traces — no new
+kind of NGFW call is introduced.
+
+```ts
+// request
+interface CompareSubject {
+  user_id?: string;
+  source_ip?: string;
+}
+{
+  url: string;                     // one shared target for both sides
+  protocol?: "tcp" | "udp";        // default "tcp"
+  dst_port?: number;               // 1..65535; overrides a port in url
+  a: CompareSubject;
+  b: CompareSubject;
+}
+```
+
+Each side's subject is resolved exactly as in `POST /api/trace` (unknown user,
+IP format, IP membership, single-IP auto-select, no-IP identity-only), but a
+per-side failure is reported as `compare_side_invalid` rather than failing the
+whole request opaquely:
+
+```ts
+// 400 compare_side_invalid
+{
+  error: {
+    code: "compare_side_invalid";
+    details: {
+      side: "a" | "b";
+      reason: "unknown_user" | "multiple_source_ips"
+            | "source_ip_not_assigned" | "invalid_source_ip";
+      user_id?: string;
+      source_ip?: string;
+      source_ips?: string[];       // present for multiple_source_ips
+    };
+  };
+}
+```
+
+```ts
+// response
+type StageClassification = "same" | "divergent" | "incomparable";
+
+interface CompareStage {
+  key: StageKey;
+  order: number;
+  title_key: string;
+  a: TraceStage;                   // full stage of side A (as in /api/trace)
+  b: TraceStage;                   // full stage of side B
+  classification: StageClassification;
+  divergence_kind?: "status" | "same_status_different_rule"; // divergent only
+  blocking_side?: "a" | "b" | null;                          // divergent only
+}
+
+interface CompareSide {
+  subject: { user: { id: string; name: string; login: string } | null;
+             source_ip: string | null };
+  context: { has_user: boolean; has_source_ip: boolean };
+  target: TraceTarget;             // effective_* may differ on subject-dependent DNAT
+  summary: TraceSummary;
+}
+
+{
+  binding: { admin: string; server: string };
+  target_input: { url: string; protocol: "tcp" | "udp"; dst_port: number | null };
+  a: CompareSide;
+  b: CompareSide;
+  categories: string[];            // shared target categories, computed once
+  stages: CompareStage[];          // always the 12 keys in fixed order
+  primary_divergence: StageKey | null;
+  divergence_reason: "diverged" | "context_incomplete" | "identical" | null;
+  identical_subjects: boolean;
+  rules_updated_at: string;
+  generated_at: string;
+}
+```
+
+Classification is honesty-first (invariant #7): a stage is `incomparable`
+whenever either side is `unknown` or `na`, so `unknown` NEVER counts as a
+divergence. A stage is `divergent` only when both sides are definite and either
+their statuses differ (`divergence_kind: "status"`; `blocking_side` names the
+single blocking side, else `null`) or they share a status but matched different
+rules (`divergence_kind: "same_status_different_rule"`). `primary_divergence` is
+the first `divergent` stage in pipeline order. `divergence_reason` is
+`identical` when both subjects are equal (empty diff), `diverged` when a
+`divergent` stage exists, `context_incomplete` when the only differences are
+`incomparable`, and `null` when both sides are equivalent.
 
 ## Rules lifecycle
 

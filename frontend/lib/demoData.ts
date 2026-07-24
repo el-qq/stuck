@@ -9,6 +9,8 @@
  */
 
 import {
+  CompareResponse,
+  CompareSide,
   NgfwUser,
   RuleHygieneReport,
   SnapshotDescriptor,
@@ -20,6 +22,7 @@ import {
   UserSourceAddress,
   STAGE_ORDER,
 } from "./types";
+import { classifyCompareStages } from "./accessCompare";
 import { MessageKey } from "@/i18n/en";
 import { parseTarget } from "./servicePresets";
 
@@ -389,4 +392,107 @@ export const DEMO_SNAPSHOT_DIFF: SnapshotDiffResponse = {
     },
   ],
   states: [{ key: "ips_state", from: true, to: false }],
+};
+
+/**
+ * Offline access-compare showcase (docs/source/comparison.md). A single fixed
+ * scenario — not driven by pickers — that packs every classification the
+ * feature can produce into one screen, the same way the hygiene/snapshot
+ * fixtures above pack every finding/diff kind into one example:
+ *
+ * - Side A: an office user with an assigned source IP (all context present).
+ * - Side B: a Wi-Fi guest with NO active/assigned IP (`context.has_source_ip`
+ *   is false) — so the IP-dependent early stages are honestly `unknown`,
+ *   never guessed (invariant №7).
+ *
+ * Coverage: `same` (dns, dnat, antivirus), `divergent` with
+ * `same_status_different_rule` (content_filter — both sides pass, but via a
+ * different rule) as the `primary_divergence`, `divergent` with a `block`
+ * (firewall, `blocking_side: "b"`), and `incomparable` for both the
+ * IP-dependent early stages AND the stages after B's block (case i.9: a
+ * later `na` following an earlier block is "incomparable", not a fresh
+ * "difference"). The classification itself is computed by the same
+ * `classifyCompareStages` the demo never otherwise needs (see lib/accessCompare.ts).
+ */
+function demoCompareStage(key: StageKey, status: StageStatus, detail?: TraceStage["detail"]): TraceStage {
+  return { key, order: STAGE_ORDER.indexOf(key) + 1, title_key: `stage.${key}`, status, ...(detail ? { detail } : {}) };
+}
+
+const DEMO_COMPARE_TARGET = { host: "reports.corp.local", dst_port: 443, resolved_ip: "10.20.0.15" };
+
+const DEMO_COMPARE_STAGES_A: TraceStage[] = [
+  demoCompareStage("hw_filter", "pass", { hw_mode: "src-ip", reason_key: "hw_no_matching_rule" }),
+  demoCompareStage("pre_filter", "pass", { reason_key: "pre_filter_no_matching_rule" }),
+  demoCompareStage("rate_limit", "pass", { reason_key: "rate_limit_no_matching_rule", module_enabled: true }),
+  demoCompareStage("dns", "resolved", { resolved_ip: DEMO_COMPARE_TARGET.resolved_ip }),
+  demoCompareStage("dnat", "skip", { reason_key: "dnat_disabled" }),
+  demoCompareStage("content_filter", "pass", { rule_id: "cf12", rule_name: "Allow business categories", action: "accept" }),
+  demoCompareStage("antivirus", "active", { reason_key: "av_active_content_unknown", module_enabled: true }),
+  demoCompareStage("firewall", "pass", { rule_id: "fw4", rule_name: "Allow office LAN to internal apps", action: "accept", reason_key: "fw_rule_accept" }),
+  demoCompareStage("app_control", "skip", { reason_key: "dpi_disabled_in_rule" }),
+  demoCompareStage("ips", "active", { module_enabled: true }),
+  demoCompareStage("snat", "active", { reason_key: "snat_automatic_active" }),
+  demoCompareStage("destination", "pass"),
+];
+
+const DEMO_COMPARE_STAGES_B: TraceStage[] = [
+  demoCompareStage("hw_filter", "unknown", { reason_key: "hw_source_ip_unknown" }),
+  demoCompareStage("pre_filter", "unknown", { reason_key: "pre_filter_source_unknown" }),
+  demoCompareStage("rate_limit", "unknown", { reason_key: "source_ip_unknown" }),
+  demoCompareStage("dns", "resolved", { resolved_ip: DEMO_COMPARE_TARGET.resolved_ip }),
+  demoCompareStage("dnat", "skip", { reason_key: "dnat_disabled" }),
+  demoCompareStage("content_filter", "pass", { rule_id: "cf20", rule_name: "Allow default web for guests", action: "accept" }),
+  demoCompareStage("antivirus", "active", { reason_key: "av_active_content_unknown", module_enabled: true }),
+  demoCompareStage("firewall", "block", { rule_id: "fw9", rule_name: "Default deny for guest network", action: "drop", reason_key: "fw_rule_blocked" }),
+  demoCompareStage("app_control", "na", { reason_key: "blocked_upstream" }),
+  demoCompareStage("ips", "na", { reason_key: "blocked_upstream" }),
+  demoCompareStage("snat", "na", { reason_key: "blocked_upstream" }),
+  demoCompareStage("destination", "na", { reason_key: "blocked_upstream" }),
+];
+
+function demoCompareSide(
+  user: { id: string; name: string; login: string } | null,
+  sourceIp: string | null,
+  summary: { reached_destination: boolean; blocked_at: StageKey | null; verdict: "allowed" | "blocked" },
+): CompareSide {
+  return {
+    subject: { user, source_ip: sourceIp },
+    context: { has_user: user !== null, has_source_ip: sourceIp !== null },
+    target: {
+      input: `${DEMO_COMPARE_TARGET.host}:${DEMO_COMPARE_TARGET.dst_port}`,
+      normalized_url: DEMO_COMPARE_TARGET.host,
+      host: DEMO_COMPARE_TARGET.host,
+      resolved_ip: DEMO_COMPARE_TARGET.resolved_ip,
+      source_ip: sourceIp,
+      dst_port: DEMO_COMPARE_TARGET.dst_port,
+      protocol: "tcp",
+      effective_destination_ip: DEMO_COMPARE_TARGET.resolved_ip,
+      effective_destination_port: DEMO_COMPARE_TARGET.dst_port,
+    },
+    summary,
+  };
+}
+
+const {
+  stages: DEMO_COMPARE_STAGES,
+  primary_divergence: DEMO_COMPARE_PRIMARY_DIVERGENCE,
+  divergence_reason: DEMO_COMPARE_DIVERGENCE_REASON,
+} = classifyCompareStages(DEMO_COMPARE_STAGES_A, DEMO_COMPARE_STAGES_B);
+
+export const DEMO_ACCESS_COMPARE: CompareResponse = {
+  binding: { admin: "demo", server: "demo.local" },
+  target_input: { url: `${DEMO_COMPARE_TARGET.host}:${DEMO_COMPARE_TARGET.dst_port}`, protocol: "tcp", dst_port: DEMO_COMPARE_TARGET.dst_port },
+  a: demoCompareSide({ id: "u2", name: "Svetlana Petrova", login: "s.petrova" }, "192.0.2.102", {
+    reached_destination: true,
+    blocked_at: null,
+    verdict: "allowed",
+  }),
+  b: demoCompareSide({ id: "u6", name: "Guest #204", login: "guest-204" }, null, { reached_destination: false, blocked_at: "firewall", verdict: "blocked" }),
+  categories: ["business-apps"],
+  stages: DEMO_COMPARE_STAGES,
+  primary_divergence: DEMO_COMPARE_PRIMARY_DIVERGENCE,
+  divergence_reason: DEMO_COMPARE_DIVERGENCE_REASON,
+  identical_subjects: false,
+  rules_updated_at: DEMO_RULES_UPDATED_AT,
+  generated_at: DEMO_RULES_UPDATED_AT,
 };

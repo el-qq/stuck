@@ -82,6 +82,8 @@ async def session_status(
         "rule_hygiene_enabled": settings.STUCK_ENABLE_RULE_HYGIENE,
         # frontend shows the "Snapshots" panel only when true.
         "rule_snapshots_enabled": settings.STUCK_ENABLE_RULE_SNAPSHOTS,
+        # frontend shows the "Access compare" tab only when true.
+        "access_compare_enabled": settings.STUCK_ENABLE_ACCESS_COMPARE,
     }
 
 

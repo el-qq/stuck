@@ -46,6 +46,10 @@ ERROR_HTTP_STATUS: dict[str, int] = {
     "snapshot_import_invalid": 400,
     "snapshot_import_unsupported_format": 400,
     "snapshot_import_too_large": 413,
+    # Access compare (docs/source/comparison.md, развилка i): a single side's
+    # subject is invalid or ambiguous. Addressed per-side via details.side so the
+    # UI highlights the offending column instead of failing the whole request.
+    "compare_side_invalid": 400,
     "server_unreachable": 502,
     "api_changed": 502,
     "ngfw_error": 502,
@@ -95,6 +99,23 @@ def session_expired() -> StuckError:
 
 def not_found(message: str, **details: Any) -> StuckError:
     return StuckError("not_found", message, details=details or None)
+
+
+def compare_side_invalid(side: str, reason: str, message: str = "", **details: Any) -> StuckError:
+    """One access-compare side has an invalid or ambiguous subject.
+
+    ``details`` always carries ``side`` ("a"|"b") and a ``reason`` sub-code so
+    the frontend can localize by reason and highlight the offending side. Never
+    include cookies, tokens or any secret; ``source_ip``/``source_ips`` are
+    echoed only to let the UI resolve the ambiguity.
+    """
+    payload: dict[str, Any] = {"side": side, "reason": reason}
+    payload.update({k: v for k, v in details.items() if v is not None})
+    return StuckError(
+        "compare_side_invalid",
+        message or f"Compare side {side} is invalid: {reason}",
+        details=payload,
+    )
 
 
 def second_factor_invalid(*, can_retry: bool, message: str = "") -> StuckError:
