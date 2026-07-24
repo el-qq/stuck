@@ -1115,13 +1115,17 @@ class TestTraceStages:
         )
         ngfw_mock.state["av_state"] = (200, {"enabled": False})
 
+        # The rules above are TCP-specific, so the traced protocol must be
+        # definite: with the request default ("any") the firewall stage is
+        # honestly `unknown` (invariant #7), which would say nothing about the
+        # rule ORDERING this test is about.
         blocked = authenticated_client.post(
             "/api/trace",
-            json={"url": "198.51.100.25:9443", "user_id": "user.id.1"},
+            json={"url": "198.51.100.25:9443", "user_id": "user.id.1", "protocol": "tcp"},
         )
         allowed = authenticated_client.post(
             "/api/trace",
-            json={"url": "198.51.100.25:443", "user_id": "user.id.1"},
+            json={"url": "198.51.100.25:443", "user_id": "user.id.1", "protocol": "tcp"},
         )
 
         assert blocked.status_code == 200
