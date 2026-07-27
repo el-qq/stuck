@@ -4,7 +4,7 @@ All notable user-visible changes are recorded here. The project follows
 [Semantic Versioning](https://semver.org/) and the structure of
 [Keep a Changelog](https://keepachangelog.com/).
 
-## [Unreleased]
+## [0.4.1]
 
 ### ✨ Highlights
 
