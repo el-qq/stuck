@@ -48,7 +48,25 @@ evaluates traces locally.
   opaque snapshot ids and the active comparison side, scoped to one
   administrator/NGFW pair; it never stores snapshot metadata, rules,
   credentials or session material.
-- `frontend/i18n/` contains complete, key-compatible locale dictionaries.
+- `frontend/i18n/` holds the locale dictionaries and their registry. `en.ts`
+  defines the canonical key set and the translation policy; `core.ts` defines
+  the two tiers; `locales.ts` is the single registry every consumer derives
+  from — the provider, the settings selector and the locale test.
+  - A **full** locale translates every key. A **core** locale must translate
+    `CORE_MESSAGE_KEYS` (sign-in, header, tabs, settings, session and contract
+    errors, the check form, stage names, statuses and the verdict) and may omit
+    the rest, which then renders in English through the lookup fallback in
+    `index.tsx`. Both tiers are shippable; the tier only bounds how much of the
+    long tail may stay English, so a new market language does not require
+    translating every rule-hygiene and `reason.*` sentence up front.
+  - Language tags resolve in two modes: an exact tag first (`pt-BR`), then the
+    base language (`pt`, `pt-PT` → `pt-BR`; `es-MX` → `es`). The same matcher
+    reads the stored preference, so a value saved before a regional dictionary
+    existed still resolves.
+  - NGFW acronyms (DNS, DNAT, SNAT, IPS, NGFW, protocol names) and the product
+    name stay literal in every locale — an administrator has to map STUCK's
+    wording onto the NGFW console. The locale test enforces this, along with
+    key/placeholder parity per tier.
 - IBM Plex WOFF2 files are bundled from exact npm packages at build time; the
   browser has no font-CDN dependency. The OFL text is shipped with the UI.
 - Demo mode uses `frontend/lib/demoData.ts` and performs no backend requests.

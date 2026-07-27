@@ -1,7 +1,7 @@
-import { en } from "./en";
+import type { FullDictionary } from "./core";
 
 /** Malay (Bahasa Melayu). Must stay in sync with the key set in en.ts. */
-export const ms: Record<keyof typeof en, string> = {
+export const ms: FullDictionary = {
   "common.appName": "STUCK",
   "common.appTagline": "Pengesahan laluan trafik untuk Ideco NGFW",
   "common.loading": "Memuatkan…",

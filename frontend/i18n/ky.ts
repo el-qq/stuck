@@ -1,8 +1,14 @@
-import { en } from "./en";
+import type { CoreDictionary } from "./core";
 
-/** Kyrgyz (кыргызча). */
-export const ky: Record<keyof typeof en, string> = {
-  ...en,
+/**
+ * Kyrgyz (кыргызча). Core-tier locale: keys outside CORE_MESSAGE_KEYS fall back to
+ * English (see core.ts).
+ *
+ * This file used to spread `...en`, which produced the same rendering while
+ * presenting the locale as complete. The tier states it instead.
+ */
+export const ky: CoreDictionary = {
+  "common.appName": "STUCK",
   "common.appTagline": "Ideco NGFW үчүн трафик жолун текшерүү",
   "common.loading": "Жүктөлүүдө…",
   "common.cancel": "Жокко чыгаруу",
@@ -24,6 +30,7 @@ export const ky: Record<keyof typeof en, string> = {
   "login.title": "Кирүү",
   "login.subtitle": "Администратордун маалыматтарын жана NGFW серверинин дарегин киргизиңиз",
   "login.serverLabel": "Сервер",
+  "login.serverPlaceholder": "192.168.1.1",
   "login.readonlyHint": "Окууга гана уруксаты бар администратор эсеби менен кирүү сунушталат.",
   "login.unrestrictedNgfwWarning": "Лабораториялык режим иштетилген: бул STUCK нускасы каалаган NGFW хостуна туташа алат. Аны ишенимсиз тармактарга ачпаңыз.",
   "login.sessionExpiredNotice": "NGFW сеансынын мөөнөтү бүттү. Сырсөзүңүздү киргизип, кайра кириңиз.",
@@ -31,7 +38,9 @@ export const ky: Record<keyof typeof en, string> = {
   "login.showPassword": "Сырсөздү көрсөтүү",
   "login.hidePassword": "Сырсөздү жашыруу",
   "login.loginLabel": "Логин",
+  "login.loginPlaceholder": "admin",
   "login.passwordLabel": "Сырсөз",
+  "login.passwordPlaceholder": "••••••••",
   "login.submit": "Туташуу",
   "login.submitting": "Туташууда…",
   "login.footnote": "Киргенден кийин эрежелер топтому серверден анын API'си аркылуу жүктөлөт.",
@@ -195,6 +204,7 @@ export const ky: Record<keyof typeof en, string> = {
   "access.role.unknown": "NGFW администраторунун ролу",
   "check.panelTitle": "Даректи текшерүү",
   "check.addressLabel": "Сайт же дарек",
+  "check.addressPlaceholder": "example.com:12345",
   "check.servicePortHint": "Порт {port}",
   "check.portLabel": "Порт / кызмат",
   "check.portDefault": "Демейки порт",
@@ -260,6 +270,11 @@ export const ky: Record<keyof typeof en, string> = {
   "compare.reason.source_ip_not_assigned": "Бул IP дареги активдүү эмес жана тандалган колдонуучуга дайындалган эмес.",
   "compare.reason.invalid_source_ip": "Жарактуу IPv4 же IPv6 дарегин киргизиңиз.",
   "stage.hw_filter": "Аппараттык чыпкалоо",
+  // Acronyms stay literal — see the translation policy in en.ts.
+  "stage.dns": "DNS",
+  "stage.dnat": "DNAT",
+  "stage.snat": "SNAT",
+  "stage.antivirus": "Антивирус",
   "reason.hw_no_matching_rule": "Бир да аппараттык чыпкалоо эрежеси дал келген жок.",
   "reason.hw_rule_blocked": "Аппараттык чыпкалоо эрежеси бул трафикти тармак картасында таштайт.",
   "reason.hw_source_ip_unknown": "Булак IP боюнча аппараттык эреже дал келиши мүмкүн, бирок булак IP тандалган жок.",
@@ -296,11 +311,13 @@ export const ky: Record<keyof typeof en, string> = {
   "status.skip": "Өткөрүлдү",
   "status.bypass": "Айланып өтүлдү",
   "status.unknown": "Белгисиз",
+  "status.na": "Н/Д",
   "detail.ruleTriggered": "Эреже иштеди",
   "detail.action": "Аракет",
   "detail.category": "Категория",
   "detail.redirect": "Багыттоо максаты",
   "detail.speedLimit": "Ылдамдык чеги",
+  "detail.kbps": "Кбит/с",
   "detail.limitScope": "Чектөөнүн колдонулуу чөйрөсү",
   "detail.scopeUser": "Ар бир колдонуучуга",
   "detail.scopeGroup": "Жалпы",
