@@ -4,6 +4,16 @@ All notable user-visible changes are recorded here. The project follows
 [Semantic Versioning](https://semver.org/) and the structure of
 [Keep a Changelog](https://keepachangelog.com/).
 
+## [0.4.1]
+
+### ✨ Highlights
+
+- **Five new interface languages.** Uzbek, Brazilian Portuguese, Indonesian,
+  Vietnamese and Turkish extend coverage to one key market in each of the CIS,
+  Latin America, Asia-Pacific and Middle East regions. Spanish moved to a
+  neutral Latin American register (es-419): "ingrese"/"revise" instead of the
+  peninsular forms, and "firewall" instead of "cortafuegos"
+
 ## [0.4.0]: traffic compare and protocols
 
 ### ✨ Highlights

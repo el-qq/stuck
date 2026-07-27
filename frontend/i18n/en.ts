@@ -1,8 +1,27 @@
 /**
  * Canonical dictionary (English). The key set defined here is the source of
- * truth: es.ts / ru.ts / kk.ts / ms.ts are each typed as
- * `Record<keyof typeof en, string>`, so the TypeScript build fails loudly if
- * a translation is missing or a stale key lingers in any locale (FR-6.2).
+ * truth for every other locale and for the two translation tiers described in
+ * `core.ts`:
+ *
+ * - a **full** locale is typed `FullDictionary` (`Record<MessageKey, string>`),
+ *   so the TypeScript build fails loudly if a translation is missing or a
+ *   stale key lingers (FR-6.2);
+ * - a **core** locale is typed `CoreDictionary`: it must translate every key
+ *   in `CORE_MESSAGE_KEYS` and may omit the rest, which then render in English
+ *   through the fallback in `index.tsx`.
+ *
+ * Translation policy (applies to every locale, at every tier):
+ *
+ * 1. NGFW acronyms and protocol names stay literal — DNS, DNAT, SNAT, IPS,
+ *    NGFW, MAC, IP, TCP, UDP, ICMP, AH, ESP, GRE, JSON. An administrator has
+ *    to map STUCK's wording onto the NGFW console, which shows them untouched.
+ *    Translate the surrounding sentence, never the acronym.
+ * 2. Screen-reader-only and unit strings ("Kbit/s") follow the same rule.
+ * 3. `{placeholders}` are part of the contract: keep the same set in every
+ *    locale, do not translate the name inside the braces and do not reorder
+ *    them into a form that drops one.
+ * 4. Prefer the register the local NGFW/vendor documentation uses over a
+ *    literal translation of the English source.
  *
  * Keys are flat dotted strings grouped by screen/feature — see the section
  * comments below.

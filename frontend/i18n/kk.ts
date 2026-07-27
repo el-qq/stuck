@@ -1,7 +1,7 @@
-import { en } from "./en";
+import type { FullDictionary } from "./core";
 
 /** Kazakh (қазақша). Must stay in sync with the key set in en.ts. */
-export const kk: Record<keyof typeof en, string> = {
+export const kk: FullDictionary = {
   "common.appName": "STUCK",
   "common.appTagline": "Ideco NGFW үшін трафик жолын тексеру",
   "common.loading": "Жүктелуде…",

@@ -16,7 +16,7 @@ and IP-dependent decisions remain explicitly unknown.
 
 #### Supported interface languages
 
-🇬🇧 English · 🇪🇸 Español · 🇷🇺 Русский · 🇰🇿 Қазақша · 🇲🇾 Bahasa Melayu · 🇫🇷 Français · 🇧🇾 Беларуская · 🇰🇬 Кыргызча · 🇦🇲 Հայերեն
+🇬🇧 English · 🇷🇺 Русский · 🇧🇾 Беларуская · 🇰🇿 Қазақша · 🇰🇬 Кыргызча · 🇺🇿 Oʻzbekcha · 🇦🇲 Հայերեն · 🇫🇷 Français · 🇲🇽 Español · 🇧🇷 Português (Brasil) · 🇮🇩 Bahasa Indonesia · 🇲🇾 Bahasa Melayu · 🇻🇳 Tiếng Việt · 🇹🇷 Türkçe
 
 ## Key capabilities ✨
 

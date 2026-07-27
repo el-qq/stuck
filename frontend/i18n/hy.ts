@@ -1,8 +1,14 @@
-import { en } from "./en";
+import type { CoreDictionary } from "./core";
 
-/** Armenian (հայերեն). */
-export const hy: Record<keyof typeof en, string> = {
-  ...en,
+/**
+ * Armenian (հայերեն). Core-tier locale: keys outside CORE_MESSAGE_KEYS fall back to
+ * English (see core.ts).
+ *
+ * This file used to spread `...en`, which produced the same rendering while
+ * presenting the locale as complete. The tier states it instead.
+ */
+export const hy: CoreDictionary = {
+  "common.appName": "STUCK",
   "common.appTagline": "Ideco NGFW-ի երթևեկության ուղու ստուգում",
   "common.loading": "Բեռնվում է…",
   "common.cancel": "Չեղարկել",
@@ -24,6 +30,7 @@ export const hy: Record<keyof typeof en, string> = {
   "login.title": "Մուտք",
   "login.subtitle": "Մուտքագրեք ադմինիստրատորի տվյալներն ու NGFW սերվերի հասցեն",
   "login.serverLabel": "Սերվեր",
+  "login.serverPlaceholder": "192.168.1.1",
   "login.readonlyHint": "Խորհուրդ է տրվում մուտք գործել միայն կարդալու իրավունքով ադմինիստրատորի հաշվով։",
   "login.unrestrictedNgfwWarning": "Լաբորատոր ռեժիմը միացված է. STUCK-ի այս օրինակը կարող է միանալ ցանկացած NGFW հոսթի։ Մի բացեք այն անվստահելի ցանցերի համար։",
   "login.sessionExpiredNotice": "NGFW-ի աշխատաշրջանն ավարտվել է։ Մուտքագրեք գաղտնաբառը և նորից մուտք գործեք։",
@@ -31,7 +38,9 @@ export const hy: Record<keyof typeof en, string> = {
   "login.showPassword": "Ցուցադրել գաղտնաբառը",
   "login.hidePassword": "Թաքցնել գաղտնաբառը",
   "login.loginLabel": "Մուտքանուն",
+  "login.loginPlaceholder": "admin",
   "login.passwordLabel": "Գաղտնաբառ",
+  "login.passwordPlaceholder": "••••••••",
   "login.submit": "Միանալ",
   "login.submitting": "Միացվում է…",
   "login.footnote": "Մուտք գործելուց հետո կանոնների հավաքածուն սերվերից կբեռնվի դրա API-ի միջոցով։",
@@ -196,6 +205,7 @@ export const hy: Record<keyof typeof en, string> = {
   "access.role.unknown": "NGFW ադմինիստրատորի դեր",
   "check.panelTitle": "Ստուգել հասցեն",
   "check.addressLabel": "Կայք կամ հասցե",
+  "check.addressPlaceholder": "example.com:12345",
   "check.servicePortHint": "Պորտ {port}",
   "check.portLabel": "Պորտ / ծառայություն",
   "check.portDefault": "Կանխադրված պորտ",
@@ -261,6 +271,11 @@ export const hy: Record<keyof typeof en, string> = {
   "compare.reason.source_ip_not_assigned": "Այս IP հասցեն ակտիվ չէ և նշանակված չէ ընտրված օգտատիրոջը։",
   "compare.reason.invalid_source_ip": "Մուտքագրեք վավեր IPv4 կամ IPv6 հասցե։",
   "stage.hw_filter": "Ապարատային զտում",
+  // Acronyms stay literal — see the translation policy in en.ts.
+  "stage.dns": "DNS",
+  "stage.dnat": "DNAT",
+  "stage.snat": "SNAT",
+  "stage.antivirus": "Հակավիրուս",
   "reason.hw_no_matching_rule": "Ապարատային զտման ոչ մի կանոն չհամընկավ։",
   "reason.hw_rule_blocked": "Ապարատային զտման կանոնը գցում է այս թրաֆիկը ցանցային քարտի մակարդակում։",
   "reason.hw_source_ip_unknown": "Աղբյուրի IP-ով ապարատային կանոնը կարող է համընկնել, բայց աղբյուրի IP ընտրված չէ։",
@@ -298,11 +313,13 @@ export const hy: Record<keyof typeof en, string> = {
   "status.skip": "Բաց է թողնվել",
   "status.bypass": "Շրջանցված է",
   "status.unknown": "Անհայտ",
+  "status.na": "Չկա",
   "detail.ruleTriggered": "Կանոնը գործարկվել է",
   "detail.action": "Գործողություն",
   "detail.category": "Կատեգորիա",
   "detail.redirect": "Վերաուղղման թիրախ",
   "detail.speedLimit": "Արագության սահմանափակում",
+  "detail.kbps": "Կբիթ/վրկ",
   "detail.limitScope": "Սահմանափակման տիրույթ",
   "detail.scopeUser": "Յուրաքանչյուր օգտատիրոջ համար",
   "detail.scopeGroup": "Համատեղ",

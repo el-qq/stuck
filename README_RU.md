@@ -2,7 +2,7 @@
 
 ## Поддерживаемые языки интерфейса
 
-🇬🇧 English · 🇪🇸 Español · 🇷🇺 Русский · 🇰🇿 Қазақша · 🇲🇾 Bahasa Melayu · 🇫🇷 Français · 🇧🇾 Беларуская · 🇰🇬 Кыргызча · 🇦🇲 Հայերեն
+🇬🇧 English · 🇷🇺 Русский · 🇧🇾 Беларуская · 🇰🇿 Қазақша · 🇰🇬 Кыргызча · 🇺🇿 Oʻzbekcha · 🇦🇲 Հայերեն · 🇫🇷 Français · 🇲🇽 Español · 🇧🇷 Português (Brasil) · 🇮🇩 Bahasa Indonesia · 🇲🇾 Bahasa Melayu · 🇻🇳 Tiếng Việt · 🇹🇷 Türkçe
 
 [![PR](https://github.com/el-qq/stuck/actions/workflows/pr.yml/badge.svg)](https://github.com/el-qq/stuck/actions/workflows/pr.yml)
 

@@ -1,7 +1,7 @@
-import { en } from "./en";
+import type { FullDictionary } from "./core";
 
 /** French (français). Must stay in sync with the key set in en.ts. */
-export const fr: Record<keyof typeof en, string> = {
+export const fr: FullDictionary = {
   "common.appName": "STUCK",
   "common.appTagline": "Vérification du chemin réseau pour Ideco NGFW",
   "common.loading": "Chargement…",

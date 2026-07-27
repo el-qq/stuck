@@ -1,8 +1,14 @@
-import { en } from "./en";
+import type { CoreDictionary } from "./core";
 
-/** Belarusian (беларуская). */
-export const be: Record<keyof typeof en, string> = {
-  ...en,
+/**
+ * Belarusian (беларуская). Core-tier locale: keys outside CORE_MESSAGE_KEYS
+ * fall back to English (see core.ts).
+ *
+ * This file used to spread `...en`, which produced the same rendering while
+ * presenting the locale as complete. The tier states it instead.
+ */
+export const be: CoreDictionary = {
+  "common.appName": "STUCK",
   "common.appTagline": "Праверка шляху трафіку для Ideco NGFW",
   "common.loading": "Загрузка…",
   "common.cancel": "Скасаваць",
@@ -24,6 +30,7 @@ export const be: Record<keyof typeof en, string> = {
   "login.title": "Уваход",
   "login.subtitle": "Увядзіце ўліковыя даныя адміністратара і адрас сервера NGFW",
   "login.serverLabel": "Сервер",
+  "login.serverPlaceholder": "192.168.1.1",
   "login.readonlyHint": "Рэкамендуецца ўваходзіць пад уліковым запісам адміністратара толькі для чытання.",
   "login.unrestrictedNgfwWarning": "Уключаны лабараторны рэжым: гэты асобнік STUCK можа падлучацца да любога NGFW. Не адкрывайце яго ненадзейным сеткам.",
   "login.sessionExpiredNotice": "Сеанс NGFW скончыўся. Увядзіце пароль і ўвайдзіце зноў.",
@@ -31,7 +38,9 @@ export const be: Record<keyof typeof en, string> = {
   "login.showPassword": "Паказаць пароль",
   "login.hidePassword": "Схаваць пароль",
   "login.loginLabel": "Лагін",
+  "login.loginPlaceholder": "admin",
   "login.passwordLabel": "Пароль",
+  "login.passwordPlaceholder": "••••••••",
   "login.submit": "Падлучыцца",
   "login.submitting": "Падлучэнне…",
   "login.footnote": "Пасля ўваходу набор правілаў будзе загружаны з сервера праз яго API.",
@@ -194,6 +203,7 @@ export const be: Record<keyof typeof en, string> = {
   "access.role.unknown": "Роля адміністратара NGFW",
   "check.panelTitle": "Праверыць адрас",
   "check.addressLabel": "Сайт або адрас",
+  "check.addressPlaceholder": "example.com:12345",
   "check.servicePortHint": "Порт {port}",
   "check.portLabel": "Порт / сэрвіс",
   "check.portDefault": "Па змаўчанні",
@@ -259,6 +269,11 @@ export const be: Record<keyof typeof en, string> = {
   "compare.reason.source_ip_not_assigned": "Гэты IP-адрас не актыўны і не прызначаны выбранаму карыстальніку.",
   "compare.reason.invalid_source_ip": "Увядзіце карэктны адрас IPv4 або IPv6.",
   "stage.hw_filter": "Апаратная фільтрацыя",
+  // Acronyms stay literal — see the translation policy in en.ts.
+  "stage.dns": "DNS",
+  "stage.dnat": "DNAT",
+  "stage.snat": "SNAT",
+  "stage.antivirus": "Антывірус",
   "reason.hw_no_matching_rule": "Ніводнае правіла апаратнай фільтрацыі не супала.",
   "reason.hw_rule_blocked": "Правіла апаратнай фільтрацыі адкідае гэты трафік на сеткавай карце.",
   "reason.hw_source_ip_unknown": "Апаратнае правіла па IP крыніцы можа супасці, але IP крыніцы не выбраны.",
@@ -295,11 +310,13 @@ export const be: Record<keyof typeof en, string> = {
   "status.skip": "Прапушчана",
   "status.bypass": "Абыдзена",
   "status.unknown": "Невядома",
+  "status.na": "Н/Д",
   "detail.ruleTriggered": "Спрацавала правіла",
   "detail.action": "Дзеянне",
   "detail.category": "Катэгорыя",
   "detail.redirect": "Мэта перанакіравання",
   "detail.speedLimit": "Абмежаванне хуткасці",
+  "detail.kbps": "Кбіт/с",
   "detail.limitScope": "Вобласць абмежавання",
   "detail.scopeUser": "На карыстальніка",
   "detail.scopeGroup": "Агульнае",
