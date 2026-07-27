@@ -29,9 +29,18 @@ function fail(message) {
 const indexPath = path.join(dist, "index.html");
 const index = await readFile(indexPath, "utf8");
 const basePath = normalizedBasePath(process.env.VITE_BASE_PATH);
+const previewImageUrl = "https://el-qq.github.io/stuck/link-preview.png";
 
 if (!index.includes(`src=\"${basePath}assets/`)) fail(`index.html does not reference its JavaScript through base path ${basePath}`);
 if (index.includes("/main.tsx") || index.includes("/demo-main.tsx")) fail("index.html still contains a source TypeScript entry");
+if (!index.includes(`property="og:image" content="${previewImageUrl}"`)) {
+  fail("index.html does not publish the expected Open Graph preview image");
+}
+try {
+  await readFile(path.join(dist, "link-preview.png"));
+} catch {
+  fail("link-preview.png is missing");
+}
 
 // The static artifact must stay incapable of contacting a STUCK backend. Scan
 // emitted text, not source files: this catches accidental provider imports as
