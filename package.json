@@ -34,7 +34,7 @@
     "test:frontend": "cd frontend && npm test -- --run"
   },
   "devDependencies": {
-    "concurrently": "10.0.3",
+    "concurrently": "10.0.4",
     "editorconfig-checker": "6.1.1",
     "prettier": "3.9.6"
   }
