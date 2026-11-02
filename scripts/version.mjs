@@ -56,4 +56,11 @@ if (mismatches.length > 0) {
   for (const [file, version] of found) process.stderr.write(`${file}: ${version ?? "missing"}\n`);
   throw new Error("Application versions are not synchronized");
 }
+const nodeVersion = (await readFile(resolve(root, ".nvmrc"), "utf8")).trim();
+const dockerfile = await readFile(resolve(root, "frontend/Dockerfile"), "utf8");
+const dockerNodeVersion = /^FROM node:(\d+\.\d+\.\d+)-[^\s@]+@sha256:[a-f0-9]{64}\s+AS builder$/m.exec(dockerfile)?.[1];
+if (!semver.test(nodeVersion) || dockerNodeVersion !== nodeVersion) {
+  throw new Error(`Node version mismatch: .nvmrc=${nodeVersion}, frontend/Dockerfile=${dockerNodeVersion ?? "missing"}`);
+}
 process.stdout.write(`STUCK version ${expected}\n`);
+process.stdout.write(`Node version ${nodeVersion}\n`);

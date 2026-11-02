@@ -11,7 +11,7 @@
     "version:set": "node scripts/version.mjs --set",
     "deps:update": "npm run deps:update:backend && npm run deps:update:frontend && npm test && npm --prefix frontend run typecheck && npm --prefix frontend run build && npm run deps:audit",
     "deps:update:backend": "cd backend && .venv/bin/pip install --upgrade pip-tools && .venv/bin/pip-compile --upgrade --resolver=backtracking --strip-extras --generate-hashes --allow-unsafe --output-file=requirements.txt requirements.in && .venv/bin/pip-compile --upgrade --resolver=backtracking --strip-extras --generate-hashes --allow-unsafe --output-file=requirements-dev.txt requirements-dev.in && .venv/bin/pip-sync requirements-dev.txt",
-    "deps:update:frontend": "npm install --save-dev --save-exact concurrently@latest editorconfig-checker@latest prettier@latest && npm --prefix frontend install --save-exact @ibm/plex-mono@latest @ibm/plex-sans@latest react@latest react-dom@latest && npm --prefix frontend install --save-dev --save-exact @playwright/test@latest @types/node@latest @types/react@latest @types/react-dom@latest @vitejs/plugin-react@latest @vitest/ui@latest happy-dom@latest typescript@latest vite@latest vitest@latest",
+    "deps:update:frontend": "node scripts/update-npm-deps.mjs",
     "deps:audit": "npm run deps:audit:backend && npm run deps:audit:root && npm --prefix frontend audit --audit-level=high",
     "deps:audit:backend": "cd backend && .venv/bin/pip-audit --require-hashes --disable-pip -r requirements-dev.txt",
     "deps:audit:root": "node scripts/audit-root.mjs",
@@ -34,8 +34,8 @@
     "test:frontend": "cd frontend && npm test -- --run"
   },
   "devDependencies": {
-    "concurrently": "10.0.5",
+    "concurrently": "10.0.6",
     "editorconfig-checker": "7.0.0",
-    "prettier": "3.9.9"
+    "prettier": "3.9.10"
   }
 }
