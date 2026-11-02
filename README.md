@@ -72,7 +72,11 @@ test totals, dependency versions or completed implementation plans.
 
 ## Quick start
 
-Requirements: Python, Node.js, npm and a POSIX shell. Docker is optional.
+Requirements: Python, Node.js and npm, and a POSIX shell. Docker is optional.
+Use the Node.js version in `.nvmrc` (with nvm, run `nvm install` and `nvm use`);
+GitHub Actions uses the same file, and the frontend container uses the same version.
+The container also pins its image tag and digest; `npm run version:check` detects
+any mismatch with `.nvmrc`.
 
 ```bash
 npm run setup
@@ -124,6 +128,9 @@ Configuration is loaded from [backend/conf/stuck.conf](backend/conf/stuck.conf);
 environment variables with the same names take precedence. Complete resolved
 dependency graphs live in lock files; direct frontend versions are also exact
 in `package.json`, while backend `.in` files remain update inputs.
+The update command reads npm dependencies from both manifests, refreshes
+compatible transitive packages, and leaves pinned container base images for a
+separate review and update.
 
 NGFW access is fail-closed outside `npm start`. Configure one or both:
 

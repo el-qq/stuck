@@ -2,8 +2,8 @@
 # Build:  docker build -t stuck-frontend ./frontend
 # Run:    docker run -p 3000:3000 stuck-frontend
 
-# Exact tags + multi-platform digests are updated deliberately with the locks.
-FROM node:24.14.1-alpine3.23@sha256:8510330d3eb72c804231a834b1a8ebb55cb3796c3e4431297a24d246b8add4d5 AS builder
+# Keep this Node version aligned with ../.nvmrc; update the digest with the tag.
+FROM node:26.13.0-alpine3.23@sha256:e6c03d42b46af3b1e98207e59f06a43cfe5efd3ec4b4d3d9802bddf04f833374 AS builder
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
